@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { btnSecondary, card, Segmented } from '../components/ui'
+import { Link } from 'react-router-dom'
+import { btnPrimary, btnSecondary, card, Segmented } from '../components/ui'
+import { useAuth } from '../lib/auth'
 import { useLibrary } from '../lib/library'
 import { useSettings } from '../lib/settings'
 import { fmtNum, fromUnit, MS_TO_KN, SPEED_SHORT, toUnit } from '../lib/units'
@@ -7,6 +9,8 @@ import { fmtNum, fromUnit, MS_TO_KN, SPEED_SHORT, toUnit } from '../lib/units'
 export default function SettingsPage() {
   const { settings, update } = useSettings()
   const { sessions, removeAll, reanalyzeAll } = useLibrary()
+  const { user, profile, signOut, rename } = useAuth()
+  const [accountError, setAccountError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [name, setName] = useState(settings.riderName)
 
@@ -35,18 +39,58 @@ export default function SettingsPage() {
     <div className="space-y-5">
       <h1 className="text-2xl font-semibold tracking-tight">Impostazioni</h1>
 
+      <section className={`${card} space-y-3 p-4`}>
+        <h2 className="text-base font-semibold">Account e crew</h2>
+        {user ? (
+          <>
+            <label className="block text-sm">
+              <span className="font-semibold">Il tuo nome nella crew</span>
+              <input
+                key={profile?.display_name}
+                defaultValue={profile?.display_name ?? ''}
+                maxLength={40}
+                onBlur={(e) => {
+                  const v = e.target.value.trim()
+                  if (v && v !== profile?.display_name) rename(v).catch((err: Error) => setAccountError(err.message))
+                }}
+                className="mt-2 w-full max-w-xs rounded-lg border border-line bg-surface px-3 py-2 text-base"
+              />
+            </label>
+            <p className="text-sm text-ink-2">Accesso fatto come {user.email}.</p>
+            {accountError && <p className="text-sm text-critical">{accountError}</p>}
+            <div className="flex flex-wrap gap-2">
+              <Link to="/crew" className={btnSecondary}>
+                Le tue crew
+              </Link>
+              <button type="button" className={btnSecondary} onClick={() => signOut()}>
+                Esci
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-ink-2">Con un account gratuito condividi le uscite con la tua crew.</p>
+            <Link to="/accedi" className={btnPrimary}>
+              Entra o crea un account
+            </Link>
+          </>
+        )}
+      </section>
+
       <section className={`${card} divide-y divide-[var(--border)]`}>
-        <label className="block p-4">
-          <span className="text-sm font-semibold">Il tuo nome</span>
-          <span className="block text-sm text-ink-2">Compare come rider sulle tue uscite e nei confronti.</span>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => update({ riderName: name.trim() })}
-            placeholder="Io"
-            className="mt-2 w-full max-w-xs rounded-lg border border-line bg-surface px-3 py-2 text-base"
-          />
-        </label>
+        {!user && (
+          <label className="block p-4">
+            <span className="text-sm font-semibold">Il tuo nome</span>
+            <span className="block text-sm text-ink-2">Compare come rider sulle tue uscite e nei confronti.</span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => update({ riderName: name.trim() })}
+              placeholder="Io"
+              className="mt-2 w-full max-w-xs rounded-lg border border-line bg-surface px-3 py-2 text-base"
+            />
+          </label>
+        )}
         <div className="space-y-2 p-4">
           <p className="text-sm font-semibold">Velocità</p>
           <Segmented
@@ -124,18 +168,19 @@ export default function SettingsPage() {
       <section className={`${card} space-y-3 p-4 text-sm`}>
         <h2 className="text-base font-semibold">I tuoi dati</h2>
         <p className="text-ink-2">
-          Le uscite sono salvate solo su questo dispositivo ({sessions?.length ?? 0} in tutto). Per stimare il vento, FoilLog invia a
-          Open-Meteo la zona (arrotondata a circa 1 km) e l'orario dell'uscita.
+          Su questo dispositivo ci sono {sessions?.length ?? 0} uscite. Quelle condivise con la crew stanno anche sul server della crew
+          (Supabase) e le vedono solo i membri delle tue crew. Per stimare il vento, FoilLog invia a Open-Meteo la zona (arrotondata a circa
+          1 km) e l'orario dell'uscita.
         </p>
         <button
           type="button"
           className={`${btnSecondary} text-critical`}
           disabled={!sessions?.length}
           onClick={async () => {
-            if (window.confirm('Eliminare tutte le uscite da questo dispositivo? Non si può annullare.')) await removeAll()
+            if (window.confirm('Eliminare tutte le uscite da questo dispositivo? Quelle condivise restano nella crew.')) await removeAll()
           }}
         >
-          Elimina tutte le uscite
+          Elimina le uscite da questo dispositivo
         </button>
       </section>
 

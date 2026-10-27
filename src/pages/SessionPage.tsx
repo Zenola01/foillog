@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { EChart, type Chart } from '../components/EChart'
 import { IconBack, IconEdit, IconTrash } from '../components/icons'
 import { MapView, type MapTrack } from '../components/MapView'
@@ -121,6 +121,7 @@ export default function SessionPage() {
       </div>
     )
   }
+  if (rec?.cloudId) return <Navigate to={`/c/${rec.cloudId}`} replace />
   if (!rec || !data || !analysis) return <p className="py-16 text-center text-ink-2">Analisi in corso…</p>
 
   return (
@@ -141,7 +142,7 @@ export default function SessionPage() {
   )
 }
 
-function SessionView({
+export function SessionView({
   rec,
   data,
   a,
@@ -149,6 +150,11 @@ function SessionView({
   colors,
   onUpdate,
   onDelete,
+  readOnly = false,
+  riderEditable = true,
+  compareId,
+  meta,
+  below,
 }: {
   rec: SessionRecord
   data: SessionData
@@ -157,6 +163,16 @@ function SessionView({
   colors: ThemeColors
   onUpdate: (patch: Partial<SessionRecord>) => Promise<void>
   onDelete: () => void
+  /** A crewmate's session: nothing to edit. */
+  readOnly?: boolean
+  /** Crew sessions take the rider name from the account. */
+  riderEditable?: boolean
+  /** Id used by the compare page (crew sessions are prefixed «c:»). */
+  compareId?: string
+  /** Extra line under the title (spot, visibility…). */
+  meta?: ReactNode
+  /** Shown after the details (kudos, comments…). */
+  below?: ReactNode
 }) {
   const tr = data.track
   const n = tr.t.length
@@ -249,7 +265,7 @@ function SessionView({
   })()
 
   const wind = a.wind
-  const lowConfidence = rec.windOverride == null && wind.dir != null && wind.confidence < 0.6
+  const lowConfidence = !readOnly && rec.windOverride == null && wind.dir != null && wind.confidence < 0.6
 
   return (
     <div className="space-y-4">
@@ -259,7 +275,7 @@ function SessionView({
           <IconBack width={18} height={18} /> Uscite
         </Link>
         {editing ? (
-          <EditDetails rec={rec} onCancel={() => setEditing(false)} onSave={async (p) => {
+          <EditDetails rec={rec} riderEditable={riderEditable} onCancel={() => setEditing(false)} onSave={async (p) => {
             await onUpdate(p)
             setEditing(false)
           }} />
@@ -271,16 +287,21 @@ function SessionView({
                 {fmtDate(sum.start)} · {fmtTime(sum.start)}–{fmtTime(sum.end)} · {rec.rider}
                 {rec.device ? ` · ${rec.device}` : ''}
               </p>
+              {meta}
             </div>
-            <button type="button" className={btnGhost} onClick={() => setEditing(true)} aria-label="Modifica titolo e rider">
-              <IconEdit width={18} height={18} />
-            </button>
-            <Link to={`/confronta?ids=${rec.id}`} className={btnGhost}>
+            {!readOnly && (
+              <button type="button" className={btnGhost} onClick={() => setEditing(true)} aria-label="Modifica titolo e rider">
+                <IconEdit width={18} height={18} />
+              </button>
+            )}
+            <Link to={`/confronta?ids=${compareId ?? rec.id}`} className={btnGhost}>
               Confronta
             </Link>
-            <button type="button" className={`${btnGhost} text-critical`} onClick={onDelete} aria-label="Elimina uscita">
-              <IconTrash width={18} height={18} />
-            </button>
+            {!readOnly && (
+              <button type="button" className={`${btnGhost} text-critical`} onClick={onDelete} aria-label="Elimina uscita">
+                <IconTrash width={18} height={18} />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -349,9 +370,11 @@ function SessionView({
                     </p>
                   )}
                 </div>
-                <button type="button" className={btnGhost} onClick={() => setWindEdit(true)}>
-                  {wind.dir == null ? 'Imposta' : 'Correggi'}
-                </button>
+                {!readOnly && (
+                  <button type="button" className={btnGhost} onClick={() => setWindEdit(true)}>
+                    {wind.dir == null ? 'Imposta' : 'Correggi'}
+                  </button>
+                )}
               </div>
               {lowConfidence && (
                 <div className="rounded-xl bg-surface-2 p-3 text-sm">
@@ -371,7 +394,7 @@ function SessionView({
                   </div>
                 </div>
               )}
-              {wind.dir == null && (
+              {wind.dir == null && !readOnly && (
                 <p className="text-sm text-ink-2">Imposta la direzione del vento per vedere manovre, andature e polare.</p>
               )}
             </div>
@@ -501,7 +524,17 @@ function SessionView({
           {tab === 'andature' && <SailTab a={a} unit={unit} colors={colors} onSetWind={() => setWindEdit(true)} />}
           {tab === 'bordi' && <LegsTab a={a} tr={tr} unit={unit} distUnit={settings.distUnit} onPick={(i0, i1) => focus(i0, i1, 2000)} />}
 
-          <Notes rec={rec} onSave={(notes) => onUpdate({ notes })} />
+          {below}
+          {readOnly ? (
+            rec.notes && (
+              <div className={`${card} p-3.5`}>
+                <p className="text-sm font-semibold">Note</p>
+                <p className="mt-1 text-sm whitespace-pre-wrap">{rec.notes}</p>
+              </div>
+            )
+          ) : (
+            <Notes rec={rec} onSave={(notes) => onUpdate({ notes })} />
+          )}
           {rec.warnings.length > 0 && <p className="px-1 text-xs text-ink-2">Note sul file: {rec.warnings.join(' · ')}.</p>}
         </div>
       </div>
@@ -509,7 +542,17 @@ function SessionView({
   )
 }
 
-function EditDetails({ rec, onSave, onCancel }: { rec: SessionRecord; onSave: (p: Partial<SessionRecord>) => void; onCancel: () => void }) {
+function EditDetails({
+  rec,
+  riderEditable,
+  onSave,
+  onCancel,
+}: {
+  rec: SessionRecord
+  riderEditable: boolean
+  onSave: (p: Partial<SessionRecord>) => void
+  onCancel: () => void
+}) {
   const [title, setTitle] = useState(rec.title)
   const [rider, setRider] = useState(rec.rider)
   return (
@@ -517,17 +560,19 @@ function EditDetails({ rec, onSave, onCancel }: { rec: SessionRecord; onSave: (p
       className={`${card} space-y-3 p-3.5`}
       onSubmit={(e) => {
         e.preventDefault()
-        onSave({ title: title.trim() || rec.title, rider: rider.trim() || rec.rider })
+        onSave(riderEditable ? { title: title.trim() || rec.title, rider: rider.trim() || rec.rider } : { title: title.trim() || rec.title })
       }}
     >
       <label className="block text-sm">
         <span className="text-ink-2">Titolo</span>
         <input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-base" />
       </label>
-      <label className="block text-sm">
-        <span className="text-ink-2">Rider (di chi è questa uscita)</span>
-        <input value={rider} onChange={(e) => setRider(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-base" />
-      </label>
+      {riderEditable && (
+        <label className="block text-sm">
+          <span className="text-ink-2">Rider (di chi è questa uscita)</span>
+          <input value={rider} onChange={(e) => setRider(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-base" />
+        </label>
+      )}
       <div className="flex gap-2">
         <button type="submit" className={btnPrimary}>
           Salva

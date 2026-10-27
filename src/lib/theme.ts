@@ -33,7 +33,7 @@ function read(): ThemeColors {
     accent: v('--accent-text'),
     good: v('--good'),
     critical: v('--critical'),
-    series: [1, 2, 3, 4].map((k) => v(`--series-${k}`)),
+    series: [1, 2, 3, 4, 5, 6, 7, 8].map((k) => v(`--series-${k}`)),
     speed: [1, 2, 3, 4, 5].map((k) => v(`--speed-${k}`)),
   }
 }

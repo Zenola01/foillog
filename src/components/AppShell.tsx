@@ -1,11 +1,13 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { IconCompare, IconList, IconSettings, Logo } from './icons'
+import { IconCompare, IconCrew, IconList, IconSettings, IconTrophy, Logo } from './icons'
 
 const NAV = [
   { to: '/', label: 'Uscite', Icon: IconList, end: true },
+  { to: '/crew', label: 'Crew', Icon: IconCrew, end: false },
+  { to: '/record', label: 'Record', Icon: IconTrophy, end: false },
   { to: '/confronta', label: 'Confronta', Icon: IconCompare, end: false },
-  { to: '/impostazioni', label: 'Impostazioni', Icon: IconSettings, end: false },
+  { to: '/impostazioni', label: 'Altro', Icon: IconSettings, end: false },
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -43,7 +45,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur-md md:hidden"
         aria-label="Sezioni"
       >
-        <div className="grid grid-cols-3">
+        <div className="grid grid-cols-5">
           {NAV.map(({ to, label, Icon, end }) => (
             <NavLink
               key={to}

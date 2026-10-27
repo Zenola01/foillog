@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useAuth } from './auth'
+import { shareSession } from './cloud'
 import { demoFiles, demoModelWind, demoStartTime } from './demo'
 import { analyzeInWorker, importInWorker, type ImportResult } from './engine'
 import { fetchModelWind } from './openMeteo'
@@ -19,9 +21,13 @@ import { fmtShortDate, fmtTime } from './units'
 export interface ImportJob {
   key: string
   name: string
-  status: 'reading' | 'analyzing' | 'done' | 'duplicate' | 'error'
+  status: 'reading' | 'analyzing' | 'sharing' | 'done' | 'duplicate' | 'error'
   error?: string
   sessionId?: string
+  /** Set when the session also went to the crew. */
+  cloudId?: string
+  /** Why it stayed on this device only. */
+  shareError?: string
 }
 
 interface LibraryValue {
@@ -36,6 +42,13 @@ interface LibraryValue {
   dismissJobs: () => void
   /** Recomputes every stored summary, e.g. after the foil threshold changes. */
   reanalyzeAll: (foilOnKn: number) => Promise<void>
+  /** Shares a session kept on this device with the crew; returns its crew id. */
+  share: (id: string) => Promise<string>
+  /** Changes on the crew copy also applied to the copy on this device. */
+  mirror: (cloudId: string, patch: Partial<SessionRecord>) => Promise<void>
+  removeByCloudId: (cloudId: string) => Promise<void>
+  /** Increases whenever something was shared, so crew lists reload. */
+  cloudVersion: number
 }
 
 const Ctx = createContext<LibraryValue | null>(null)
@@ -50,8 +63,13 @@ function defaultTitle(imp: ImportResult): string {
 
 export function LibraryProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings()
+  const { user, profile } = useAuth()
   const [sessions, setSessions] = useState<SessionRecord[] | null>(null)
   const [jobs, setJobs] = useState<ImportJob[]>([])
+  const [cloudVersion, setCloudVersion] = useState(0)
+  // Signed in, your own sessions carry your crew name.
+  const riderName = profile?.display_name ?? myName(settings)
+  const userId = user?.id ?? null
 
   const refresh = useCallback(async () => setSessions(await listSessions()), [])
   useEffect(() => {
@@ -114,17 +132,33 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           const buf = await q.file.arrayBuffer()
           setJob(q.key, { status: 'analyzing' })
           const imp = await importInWorker(q.file.name, buf, q.file.lastModified)
-          const { rec, duplicate } = await createSession(imp, { fileName: q.file.name, rider: myName(settings) })
-          setJob(q.key, { status: duplicate ? 'duplicate' : 'done', sessionId: rec.id })
-          if (!duplicate) created.push(rec)
+          const { rec, duplicate } = await createSession(imp, { fileName: q.file.name, rider: riderName })
+          if (duplicate) {
+            setJob(q.key, { status: 'duplicate', sessionId: rec.id, cloudId: rec.cloudId })
+            continue
+          }
+          created.push(rec)
+          if (userId) {
+            setJob(q.key, { status: 'sharing', sessionId: rec.id })
+            try {
+              const d = await getSessionData(rec.id)
+              const cloudId = await shareSession(rec, d!, userId)
+              await saveSession({ ...rec, cloudId })
+              rec.cloudId = cloudId
+              setJob(q.key, { status: 'done', sessionId: rec.id, cloudId })
+            } catch (e) {
+              setJob(q.key, { status: 'done', sessionId: rec.id, shareError: e instanceof Error ? e.message : String(e) })
+            }
+          } else setJob(q.key, { status: 'done', sessionId: rec.id })
         } catch (e) {
           setJob(q.key, { status: 'error', error: e instanceof Error ? e.message : String(e) })
         }
       }
       await refresh()
+      if (created.some((r) => r.cloudId)) setCloudVersion((v) => v + 1)
       return created
     },
-    [createSession, refresh, settings],
+    [createSession, refresh, riderName, userId],
   )
 
   const importDemo = useCallback(async () => {
@@ -134,7 +168,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       const imp = await importInWorker(f.name, buf)
       const { rec } = await createSession(imp, {
         fileName: f.name,
-        rider: f.friend ? 'Amico (esempio)' : myName(settings),
+        rider: f.friend ? 'Amico (esempio)' : riderName,
         modelWind: demoModelWind,
         demo: true,
         title: 'Esempio · Lago di Garda',
@@ -143,7 +177,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     }
     await refresh()
     return created
-  }, [createSession, refresh, settings])
+  }, [createSession, refresh, riderName])
 
   const updateSession = useCallback(
     async (id: string, patch: Partial<SessionRecord>) => {
@@ -183,6 +217,40 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     [refresh],
   )
 
+  const share = useCallback(
+    async (id: string) => {
+      if (!userId) throw new Error('Per condividere con la crew devi prima entrare.')
+      const rec = (await listSessions()).find((s) => s.id === id)
+      const d = rec ? await getSessionData(id) : null
+      if (!rec || !d) throw new Error('Uscita non trovata su questo dispositivo.')
+      const cloudId = await shareSession({ ...rec, rider: riderName }, d, userId)
+      await saveSession({ ...rec, rider: riderName, cloudId })
+      await refresh()
+      setCloudVersion((v) => v + 1)
+      return cloudId
+    },
+    [userId, riderName, refresh],
+  )
+
+  const mirror = useCallback(
+    async (cloudId: string, patch: Partial<SessionRecord>) => {
+      const cur = (await listSessions()).find((s) => s.cloudId === cloudId)
+      if (!cur) return
+      await saveSession({ ...cur, ...patch, id: cur.id, cloudId })
+      await refresh()
+    },
+    [refresh],
+  )
+
+  const removeByCloudId = useCallback(
+    async (cloudId: string) => {
+      const cur = (await listSessions()).find((s) => s.cloudId === cloudId)
+      if (cur) await deleteSession(cur.id)
+      await refresh()
+    },
+    [refresh],
+  )
+
   const value = useMemo<LibraryValue>(
     () => ({
       sessions,
@@ -195,8 +263,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       removeAll,
       dismissJobs: () => setJobs([]),
       reanalyzeAll,
+      share,
+      mirror,
+      removeByCloudId,
+      cloudVersion,
     }),
-    [sessions, jobs, importFiles, importDemo, updateSession, removeSession, removeAll, reanalyzeAll],
+    [sessions, jobs, importFiles, importDemo, updateSession, removeSession, removeAll, reanalyzeAll, share, mirror, removeByCloudId, cloudVersion],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

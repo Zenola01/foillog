@@ -280,6 +280,8 @@ create policy "comments: delete own" on public.comments
 -- the app needs, to signed-in users only. Nothing is granted to anonymous visitors.
 
 grant usage on schema public to authenticated;
+revoke all on public.profiles, public.crews, public.crew_members, public.spots, public.sessions, public.kudos,
+  public.comments from anon;
 grant select, update on public.profiles to authenticated;
 grant select, update on public.crews to authenticated;
 grant select, delete on public.crew_members to authenticated;

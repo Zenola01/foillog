@@ -6,6 +6,8 @@ import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { TrackThumb } from '../components/TrackThumb'
 import { btnPrimary, btnSecondary, card, LineKey, Segmented } from '../components/ui'
 import { compareSpeedOption, polarOption } from '../lib/charts'
+import { useAuth } from '../lib/auth'
+import { asRecord, feed, getSession, loadTrack } from '../lib/cloud'
 import { analyzeInWorker } from '../lib/engine'
 import { useLibrary } from '../lib/library'
 import { useSettings, type Settings } from '../lib/settings'
@@ -34,20 +36,44 @@ export default function ComparePage() {
   return <CompareView ids={ids} onChange={() => setPicking(true)} />
 }
 
+interface PickItem {
+  id: string
+  title: string
+  rider: string
+  start: number
+  preview: [number, number][]
+}
+
 function Picker({ initial, onConfirm }: { initial: string[]; onConfirm: (ids: string[]) => void }) {
   const { sessions } = useLibrary()
+  const { user } = useAuth()
+  const [crew, setCrew] = useState<PickItem[]>([])
   const [sel, setSel] = useState<string[]>(initial)
+  const userId = user?.id
+  useEffect(() => {
+    if (!userId) return
+    feed(60)
+      .then((rows) =>
+        setCrew(rows.map((r) => ({ id: `c:${r.id}`, title: r.title, rider: r.profile?.display_name ?? 'Rider', start: Date.parse(r.started_at), preview: r.preview }))),
+      )
+      .catch(() => {})
+  }, [userId])
+  const items = useMemo(() => {
+    const local = (sessions ?? [])
+      .filter((s) => !s.cloudId)
+      .map((s) => ({ id: s.id, title: s.title, rider: s.rider, start: s.summary.start, preview: s.preview }))
+    return [...crew, ...local].sort((a, b) => b.start - a.start)
+  }, [sessions, crew])
   const toggle = (id: string) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length >= MAX ? s : [...s, id]))
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Confronta</h1>
         <p className="text-sm text-ink-2">
-          Scegli da 2 a {MAX} uscite: le tue in giorni diversi, o la tua e quella di un amico (importa il suo GPX dalla pagina Uscite e
-          indica il suo nome come rider).
+          Scegli da 2 a {MAX} uscite: le tue in giorni diversi, o le tue e quelle della crew.
         </p>
       </div>
-      {sessions && sessions.length < 2 && (
+      {sessions && items.length < 2 && (
         <p className={`${card} p-4 text-sm text-ink-2`}>
           Servono almeno due uscite.{' '}
           <Link to="/" className="font-medium text-accent">
@@ -57,7 +83,7 @@ function Picker({ initial, onConfirm }: { initial: string[]; onConfirm: (ids: st
         </p>
       )}
       <ul className="space-y-2">
-        {(sessions ?? []).map((s) => {
+        {items.map((s) => {
           const on = sel.includes(s.id)
           return (
             <li key={s.id}>
@@ -73,7 +99,7 @@ function Picker({ initial, onConfirm }: { initial: string[]; onConfirm: (ids: st
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{s.title}</span>
                   <span className="block truncate text-sm text-ink-2">
-                    {fmtShortDate(s.summary.start)}, {fmtTime(s.summary.start)} · {s.rider}
+                    {fmtShortDate(s.start)}, {fmtTime(s.start)} · {s.rider}
                   </span>
                 </span>
               </label>
@@ -94,6 +120,8 @@ interface Loaded {
   rec: SessionRecord
   data: SessionData
   a: SessionAnalysis
+  /** Page of the session: on this device (/s/…) or in the crew (/c/…). */
+  link: string
 }
 
 function CompareView({ ids, onChange }: { ids: string[]; onChange: () => void }) {
@@ -110,6 +138,19 @@ function CompareView({ ids, onChange }: { ids: string[]; onChange: () => void })
     ;(async () => {
       const out: Loaded[] = []
       for (const id of ids) {
+        // «c:…» ids are crew sessions; the rest live on this device.
+        if (id.startsWith('c:')) {
+          const row = await getSession(id.slice(2))
+          if (!row) continue
+          const data = await loadTrack(row)
+          const a = await analyzeInWorker(data.track, data.wind, {
+            foilOnKn: settings.foilOnKn,
+            windOverride: row.wind_override,
+            modelWind: row.model_wind,
+          })
+          out.push({ rec: asRecord(row), data, a, link: `/c/${row.id}` })
+          continue
+        }
         const rec = sessions.find((s) => s.id === id)
         const data = rec ? await getSessionData(id) : null
         if (!rec || !data) continue
@@ -118,10 +159,10 @@ function CompareView({ ids, onChange }: { ids: string[]; onChange: () => void })
           windOverride: rec.windOverride,
           modelWind: rec.modelWind,
         })
-        out.push({ rec, data, a })
+        out.push({ rec, data, a, link: rec.cloudId ? `/c/${rec.cloudId}` : `/s/${rec.id}` })
       }
       if (!alive) return
-      if (out.length < 2) setError('Non trovo abbastanza uscite da confrontare su questo dispositivo.')
+      if (out.length < 2) setError('Non trovo abbastanza uscite da confrontare: alcune potrebbero essere state eliminate.')
       else setLoaded(out)
     })().catch((e: Error) => alive && setError(e.message))
     return () => {
@@ -193,7 +234,7 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
           <li key={s.rec.id} className="flex items-center gap-2 text-sm">
             <LineKey color={s.color} />
             <span className="font-medium">{s.name}</span>
-            <Link to={`/s/${s.rec.id}`} className="text-ink-2 underline-offset-2 hover:underline">
+            <Link to={s.link} className="text-ink-2 underline-offset-2 hover:underline">
               {fmtShortDate(s.a.summary.start)}, {fmtTime(s.a.summary.start)}
             </Link>
           </li>

@@ -82,6 +82,32 @@ export const IconWind = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+export const IconCrew = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="9" cy="8" r="3.2" />
+    <path d="M3 19c.6-3.4 3-5 6-5s5.4 1.6 6 5" />
+    <circle cx="17" cy="9" r="2.6" />
+    <path d="M16 14.2c2.6.2 4.4 1.8 5 4.8" />
+  </svg>
+)
+export const IconTrophy = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M8 4h8v5a4 4 0 0 1-8 0z" />
+    <path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8 20h8M9.5 17h5" />
+  </svg>
+)
+export const IconShare = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" />
+    <path d="M6 12H5a1 1 0 0 0-1 1v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a1 1 0 0 0-1-1h-1" />
+  </svg>
+)
+export const IconComment = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M5 18.5V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8.5z" />
+  </svg>
+)
+
 export function Logo({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 512 512" className={className} aria-hidden="true">

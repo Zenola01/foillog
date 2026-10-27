@@ -20,6 +20,8 @@ export interface SessionRecord {
   preview: [number, number][]
   warnings: string[]
   demo?: boolean
+  /** Id of the crew copy once shared. */
+  cloudId?: string
 }
 
 export interface SessionData {

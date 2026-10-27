@@ -393,3 +393,37 @@ export function compareSpeedOption(
     }),
   }
 }
+
+/** Best 10 s speed of each session over the season: one series, so no legend. */
+export function progressOption(points: { t: number; v: number }[], unit: SpeedUnit, c: ThemeColors): EChartsCoreOption {
+  const u = SPEED_SHORT[unit]
+  return {
+    animation: false,
+    grid: { left: 42, right: 16, top: 26, bottom: 30 },
+    tooltip: {
+      ...tooltipBase(c),
+      trigger: 'item',
+      formatter: (p: { value: [number, number] }) =>
+        `<b style="font-size:15px">${fmtNum(p.value[1])} ${u}</b><br><span style="color:${c.ink2}">${new Date(p.value[0]).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}</span>`,
+    },
+    xAxis: {
+      type: 'time',
+      axisLine: { lineStyle: { color: c.axis } },
+      axisTick: { show: false },
+      axisLabel: { color: c.muted, hideOverlap: true },
+      splitLine: { show: false },
+    },
+    yAxis: valueAxis(c, u, { scale: true }),
+    series: [
+      {
+        type: 'line',
+        data: points.map((p) => [p.t, Math.round(toUnit(p.v, unit) * 10) / 10]),
+        showSymbol: true,
+        symbolSize: 8,
+        lineStyle: { width: 2, color: c.series[0] },
+        itemStyle: { color: c.series[0], borderColor: c.surface, borderWidth: 2 },
+        emphasis: { scale: 1.3 },
+      },
+    ],
+  }
+}
