@@ -33,6 +33,8 @@ interface Props {
   /** Shared-clock time range to highlight. */
   range?: [number, number] | null
   maneuvers?: Maneuver[]
+  /** Falls or rests outside manoeuvres: index of the stop on the first track. */
+  stops?: number[]
   selectedManeuver?: number | null
   onManeuverClick?: (k: number) => void
   /** Point labelled on the map (e.g. top speed): index into the first track. */
@@ -128,7 +130,7 @@ function markerEl(color: string, label: string | undefined, c: ThemeColors): HTM
 }
 
 function MapViewImpl(props: Props) {
-  const { tracks, cursor, range, maneuvers, selectedManeuver, onManeuverClick, pin, windDir, legend, className } = props
+  const { tracks, cursor, range, maneuvers, stops, selectedManeuver, onManeuverClick, pin, windDir, legend, className } = props
   const { dark, colors } = useTheme()
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -263,6 +265,19 @@ function MapViewImpl(props: Props) {
       map.addSource('fl-tail', { type: 'geojson', data: empty })
       map.addLayer({ id: 'fl-tail', type: 'line', source: 'fl-tail', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: paint({ 'line-color': ['get', 'c'], 'line-width': 5 }) })
     }
+    if (!map.getSource('fl-stop')) {
+      map.addSource('fl-stop', { type: 'geojson', data: empty })
+      // Hollow ring: a stop, as opposed to the filled manoeuvre dots.
+      map.addLayer({
+        id: 'fl-stop',
+        type: 'circle',
+        source: 'fl-stop',
+        paint: { 'circle-radius': 5, 'circle-color': colors.surface, 'circle-stroke-color': colors.critical, 'circle-stroke-width': 2.5 },
+      })
+    } else {
+      map.setPaintProperty('fl-stop', 'circle-color', colors.surface)
+      map.setPaintProperty('fl-stop', 'circle-stroke-color', colors.critical)
+    }
     if (!map.getSource('fl-mnv')) {
       map.addSource('fl-mnv', { type: 'geojson', data: empty })
       map.addLayer({
@@ -327,6 +342,16 @@ function MapViewImpl(props: Props) {
     for (const m of cursorMarkers.current) m?.remove()
     cursorMarkers.current = []
   }, [colors, tracks])
+
+  // Stops outside manoeuvres.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !styleReady.current || !map.getSource('fl-stop')) return
+    const t = tracks[0]?.track
+    const feats: Feature[] =
+      t && stops ? stops.map((i) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [t.lon[i], t.lat[i]] } })) : []
+    ;(map.getSource('fl-stop') as GeoJSONSource).setData({ type: 'FeatureCollection', features: feats })
+  }, [styleGen, tracks, stops])
 
   // Replay / hover position: one dot per track, plus a short tail when comparing.
   useEffect(() => {

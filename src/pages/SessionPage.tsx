@@ -247,6 +247,7 @@ export function SessionView({
   const rangeInfo = rangeIdx && rangeIdx[1] > rangeIdx[0] ? rangeStats(tr, a, rangeIdx[0], rangeIdx[1]) : null
 
   const mapTracks = useMemo<MapTrack[]>(() => [{ id: rec.id, track: tr, foil: a.foil }], [rec.id, tr, a.foil])
+  const stopPoints = useMemo(() => a.stops.map((s) => s.i0), [a.stops])
   const domain = useMemo<[number, number]>(() => {
     const s = Array.from(tr.spd)
       .filter((v) => v > 1)
@@ -316,6 +317,7 @@ export function SessionView({
             cursor={cursor}
             range={range}
             maneuvers={a.maneuvers}
+            stops={stopPoints}
             selectedManeuver={selMnv}
             onManeuverClick={(k) => {
               pickManeuver(k)
@@ -328,14 +330,19 @@ export function SessionView({
             className="h-[46vh] min-h-[300px] rounded-2xl border border-line lg:h-[calc(100dvh-11rem)]"
           />
           <ReplayBar replay={replay} t0={t0} t1={t1} readout={readout} />
-          {a.maneuvers.length > 0 && (
+          {(a.maneuvers.length > 0 || a.stops.length > 0) && (
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs text-ink-2">
               <span className="inline-flex items-center gap-1">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--good)' }} /> manovra in foil
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--critical)' }} /> manovra toccata
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--critical)' }} /> manovra toccata o caduta
               </span>
+              {a.stops.length > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2.5 w-2.5 rounded-full border-2" style={{ borderColor: 'var(--critical)' }} /> caduta o sosta
+                </span>
+              )}
               <span>Tocca un pallino per i dettagli.</span>
             </p>
           )}
@@ -689,8 +696,9 @@ function ManeuversTab({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
-        <StatTile label="Velocità minima in strambata" value={fmtSpeed(avg(jibes.map((m) => m.minSpeed)), unit)} unit={u} sub="media" />
-        <StatTile label="Durata media strambata" value={jibes.length ? `${fmtNum(avg(jibes.map((m) => m.duration)), 0)} s` : '–'} />
+        <StatTile label="Velocità minima in strambata" value={fmtSpeed(avg(jibes.filter((m) => !m.fell).map((m) => m.minSpeed)), unit)} unit={u} sub="media, senza le cadute" />
+        <StatTile label="Durata media strambata" value={jibes.length ? `${fmtNum(avg(jibes.filter((m) => !m.fell).map((m) => m.duration)), 0)} s` : '–'} sub="senza le cadute" />
+        <StatTile label="Cadute o soste" value={String(a.summary.falls)} sub={`${ms.filter((m) => m.fell).length} durante una manovra`} />
       </div>
       <div className={`${card} overflow-hidden`}>
         <table className="w-full text-sm">
@@ -735,7 +743,7 @@ function ManeuversTab({
                   <span className="text-ink-2">{m.from === 'S' ? 'D→S' : 'S→D'}</span>
                 </td>
                 <td className="px-2 py-2 whitespace-nowrap">
-                  <Outcome ok={m.foiled} />
+                  <Outcome ok={m.foiled} fell={m.fell} />
                 </td>
                 <td className="px-2 py-2 text-right font-semibold tabular">{fmtSpeed(m.minSpeed, unit)}</td>
                 <td className="px-2 py-2 text-right tabular">{fmtSpeed(m.entrySpeed, unit)}</td>

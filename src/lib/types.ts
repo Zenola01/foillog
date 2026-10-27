@@ -108,6 +108,15 @@ export interface Maneuver {
   minSpeed: number
   exitSpeed: number
   foiled: boolean
+  /** Stopped (or lost GPS) during the turn: a fall and a water start. */
+  fell: boolean
+}
+
+/** A stop after foiling outside any manoeuvre: a fall, or a rest. */
+export interface Stop {
+  i0: number
+  i1: number
+  duration: number
 }
 
 /** `mixed`: the track fixed the axis, the weather model its rotation (back-and-forth reaching). */
@@ -174,6 +183,8 @@ export interface SessionSummary {
   jibesFoiled: number
   tacks: number
   tacksFoiled: number
+  /** Falls and stops: failed manoeuvres plus stops outside manoeuvres. */
+  falls: number
   windDir: number | null
   windSource: WindSource | null
   windConfidence: number
@@ -201,6 +212,7 @@ export interface SessionAnalysis {
   s5x10Windows: SpeedRecord[]
   legs: Leg[]
   maneuvers: Maneuver[]
+  stops: Stop[]
   wind: WindEstimate
   /** Signed TWA per point, when the wind is known. */
   twa: Float32Array | null

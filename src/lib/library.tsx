@@ -59,7 +59,9 @@ const Ctx = createContext<LibraryValue | null>(null)
 const GENERIC_NAMES = /^(uscita|activity|track|traccia|workout|allenamento|untitled|senza titolo|esempio.*)$/i
 
 function defaultTitle(imp: ImportResult): string {
-  if (imp.name && !GENERIC_NAMES.test(imp.name.trim())) return imp.name.trim()
+  const name = imp.name?.trim()
+  const machineMade = !!name && (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}/i.test(name) || /\b(activity|workout|attività)\b/i.test(name))
+  if (name && !GENERIC_NAMES.test(name) && !machineMade) return name
   const t = imp.track.t[0]
   return `Uscita del ${fmtShortDate(t)}, ${fmtTime(t)}`
 }

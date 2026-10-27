@@ -80,7 +80,8 @@ export function LineKey({ color }: { color: string }) {
 }
 
 /** Status shown with an icon and a word, never colour alone. */
-export function Outcome({ ok, okText = 'In foil', koText = 'Toccato' }: { ok: boolean; okText?: string; koText?: string }) {
+export function Outcome({ ok, fell, okText = 'In foil', koText = 'Toccato' }: { ok: boolean; fell?: boolean; okText?: string; koText?: string }) {
+  if (fell) koText = 'Caduta'
   return (
     <span className={`inline-flex items-center gap-1 text-sm font-medium ${ok ? 'text-good-text' : 'text-critical'}`}>
       <span

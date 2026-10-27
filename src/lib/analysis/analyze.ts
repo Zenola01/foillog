@@ -11,7 +11,7 @@ import type {
   WindEstimate,
 } from '../types'
 import { detectFoil } from './foil'
-import { findLegs, findManeuvers, findTurns, tackOf, type RawLeg } from './maneuvers'
+import { findLegs, findManeuvers, findStops, findTurns, tackOf, type RawLeg } from './maneuvers'
 import { pointsOfSail } from './pointsOfSail'
 import { segmentIds } from './series'
 import { bestDistanceWindow, bestNTimeWindows, bestTimeWindow } from './speed'
@@ -44,6 +44,7 @@ export function analyzeTrack(tr: Track, instrument: InstrumentWind | null, opts:
 
   const W = wind.dir
   const maneuvers = W != null ? findManeuvers(tr, rawLegs, turns, foil, W) : []
+  const stops = findStops(tr, foil, maneuvers)
   const sail = W != null ? pointsOfSail(tr, foil, W, rawLegs) : null
   const legs = rawLegs.map((l) => describeLeg(tr, l, foil, W))
 
@@ -109,6 +110,7 @@ export function analyzeTrack(tr: Track, instrument: InstrumentWind | null, opts:
     jibesFoiled: maneuvers.filter((m) => m.kind === 'jibe' && m.foiled).length,
     tacks: maneuvers.filter((m) => m.kind === 'tack').length,
     tacksFoiled: maneuvers.filter((m) => m.kind === 'tack' && m.foiled).length,
+    falls: maneuvers.filter((m) => m.fell).length + stops.length,
     windDir: W,
     windSource: wind.source,
     windConfidence: wind.confidence,
@@ -133,6 +135,7 @@ export function analyzeTrack(tr: Track, instrument: InstrumentWind | null, opts:
     s5x10Windows: five?.windows ?? [],
     legs,
     maneuvers,
+    stops,
     wind,
     twa: sail?.twa ?? null,
     vmg: sail?.vmg ?? null,

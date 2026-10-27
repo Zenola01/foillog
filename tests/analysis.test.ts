@@ -186,3 +186,29 @@ describe('placeholder device data', () => {
     expect(processTrack(b.build()).warnings.join()).not.toMatch(/rotta/)
   })
 })
+
+describe('falls', () => {
+  it('counts a change of tack with a long stop in the water as a failed manoeuvre', () => {
+    // Second jibe: the rider falls and needs a minute to water start.
+    const tr = simTrack({ windFrom: 270, legs: zigzag, noiseM: 1.5, seed: 23, turns: { 5: { minKn: 0, seconds: 70 } } })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7, windOverride: 270 })
+    const jibes = a.maneuvers.filter((m) => m.kind === 'jibe')
+    expect(jibes).toHaveLength(3)
+    expect(jibes.filter((m) => m.fell)).toHaveLength(1)
+    expect(jibes.filter((m) => m.foiled)).toHaveLength(2)
+    expect(a.summary.falls).toBe(1)
+  })
+
+  it('marks a stop that does not change tack', () => {
+    // Port downwind, stop, then port upwind: no tack or jibe, but a stop on the map.
+    const legs: SimLeg[] = [
+      { twa: -135, seconds: 60, kn: 19 },
+      { twa: -57, seconds: 60, kn: 16 },
+    ]
+    const tr = simTrack({ windFrom: 270, legs, noiseM: 1, seed: 29, turns: { 0: { minKn: 0, seconds: 40 } } })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7, windOverride: 270 })
+    expect(a.maneuvers).toHaveLength(0)
+    expect(a.stops).toHaveLength(1)
+    expect(a.summary.falls).toBe(1)
+  })
+})
