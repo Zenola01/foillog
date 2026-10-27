@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { EChart } from '../components/EChart'
-import { MapView, type MapTrack } from '../components/MapView'
+import { LiveInfo, type LiveRider } from '../components/LiveInfo'
+import { MapView, TrailToggle, type MapTrack } from '../components/MapView'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { TrackThumb } from '../components/TrackThumb'
 import { btnPrimary, btnSecondary, card, LineKey, Segmented } from '../components/ui'
@@ -179,6 +180,7 @@ function CompareView({ ids, onChange }: { ids: string[]; onChange: () => void })
 
 function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: Settings; onChange: () => void }) {
   const { colors } = useTheme()
+  const { update } = useSettings()
   const coarse = useMemo(isCoarsePointer, [])
   const unit = settings.speedUnit
   const u = SPEED_SHORT[unit]
@@ -201,6 +203,12 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
 
   const mapTracks = useMemo<MapTrack[]>(
     () => series.map((s) => ({ id: s.rec.id, track: s.data.track, foil: s.a.foil, color: s.color, label: s.name, offset: s.offset })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, colors, mode],
+  )
+  const riders = useMemo<LiveRider[]>(
+    () =>
+      series.map((s) => ({ id: s.rec.id, name: s.name, color: s.color, track: s.data.track, offset: s.offset, windDir: s.a.wind.dir, foil: s.a.foil })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [items, colors, mode],
   )
@@ -243,19 +251,28 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-5">
         <div className="space-y-2 lg:sticky lg:top-[4.5rem] lg:self-start">
-          <MapView tracks={mapTracks} cursor={cursor} className="h-[46vh] min-h-[300px] rounded-2xl border border-line lg:h-[calc(100dvh-13rem)]" />
+          <MapView
+            tracks={mapTracks}
+            cursor={cursor}
+            trail={settings.trailMode}
+            overlay={<LiveInfo riders={riders} cursor={cursor} />}
+            className="h-[46vh] min-h-[300px] rounded-2xl border border-line lg:h-[calc(100dvh-13rem)]"
+          />
           <ReplayBar replay={replay} t0={clockStart} t1={clockEnd} relative={relative} />
-          {overlap && (
-            <Segmented
-              label="Allineamento"
-              value={mode}
-              onChange={setMode}
-              options={[
-                { value: 'clock', label: 'Stesso orario' },
-                { value: 'start', label: 'Dalla partenza' },
-              ]}
-            />
-          )}
+          <div className="flex flex-wrap gap-2">
+            <TrailToggle value={settings.trailMode} onChange={(trailMode) => update({ trailMode })} />
+            {overlap && (
+              <Segmented
+                label="Allineamento"
+                value={mode}
+                onChange={setMode}
+                options={[
+                  { value: 'clock', label: 'Stesso orario' },
+                  { value: 'start', label: 'Dalla partenza' },
+                ]}
+              />
+            )}
+          </div>
         </div>
 
         <div className="mt-4 space-y-4 lg:mt-0">

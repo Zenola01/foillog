@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { EChart } from '../components/EChart'
-import { MapView, type MapTrack } from '../components/MapView'
+import { LiveInfo, type LiveRider } from '../components/LiveInfo'
+import { MapView, TrailToggle, type MapTrack } from '../components/MapView'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { RequireAuth } from '../components/RequireAuth'
 import { btnGhost, card, LineKey, Segmented } from '../components/ui'
+import { detectFoil } from '../lib/analysis/foil'
 import { compareSpeedOption } from '../lib/charts'
 import { loadTrack, sessionsBetween, type CloudSession } from '../lib/cloud'
 import { dayKey, dayRange, groupByPlace, shiftDay } from '../lib/crewStats'
@@ -109,6 +111,7 @@ function valueOf(s: SessionSummary, key: (typeof COLUMNS)[number]['key']): numbe
 
 function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings }) {
   const { colors } = useTheme()
+  const { update } = useSettings()
   const coarse = useMemo(isCoarsePointer, [])
   const [tracks, setTracks] = useState<(SessionData | null)[] | null>(null)
   const [sortKey, setSortKey] = useState<(typeof COLUMNS)[number]['key']>('s10')
@@ -134,11 +137,32 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
   const t0 = Math.min(...rows.map((r) => Date.parse(r.started_at)))
   const t1 = Math.max(...rows.map((r) => Date.parse(r.ended_at)))
   const replay = useReplay(t0, t1)
-  const mapTracks = useMemo<MapTrack[]>(
-    () => loaded.map((r) => ({ id: r.row.id, track: r.data!.track, color: r.color, label: r.name })),
+  // Foil state is not stored in the cloud: recomputed here (one pass per track) for the map and the live numbers.
+  const foils = useMemo(
+    () => loaded.map((r) => detectFoil(r.data!.track, settings.foilOnKn).foil),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tracks, colors],
+    [tracks, settings.foilOnKn],
   )
+  const mapTracks = useMemo<MapTrack[]>(
+    () => loaded.map((r, k) => ({ id: r.row.id, track: r.data!.track, foil: foils[k], color: r.color, label: r.name })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [foils, colors],
+  )
+  const live = useMemo<LiveRider[]>(
+    () =>
+      loaded.map((r, k) => ({
+        id: r.row.id,
+        name: r.name,
+        color: r.color,
+        track: r.data!.track,
+        offset: 0,
+        windDir: r.row.wind_override ?? r.row.summary.windDir,
+        foil: foils[k],
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [foils, colors],
+  )
+  const cursor = replay.touched || replay.playing ? replay.t : null
   const speedOpt = useMemo(
     () => compareSpeedOption(loaded.map((r) => ({ name: r.name, color: r.color, tr: r.data!.track, offset: 0 })), unit, colors, false, coarse),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -181,13 +205,16 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
           {tracks ? (
             <MapView
               tracks={mapTracks}
-              cursor={replay.touched || replay.playing ? replay.t : null}
+              cursor={cursor}
+              trail={settings.trailMode}
+              overlay={loaded.length > 1 ? <LiveInfo riders={live} cursor={cursor} /> : undefined}
               className="h-[46vh] min-h-[300px] rounded-2xl border border-line lg:h-[calc(100dvh-14rem)]"
             />
           ) : (
             <div className="flex h-[46vh] min-h-[300px] items-center justify-center rounded-2xl border border-line text-ink-2">Carico le tracce…</div>
           )}
           <ReplayBar replay={replay} t0={t0} t1={t1} />
+          {loaded.length > 1 && <TrailToggle value={settings.trailMode} onChange={(trailMode) => update({ trailMode })} />}
           {wind && (
             <p className="px-1 text-sm text-ink-2">
               Vento del modello meteo: {fmtSpeed(wind.speed, unit)} {u}, raffiche {fmtSpeed(wind.gust, unit)} {u}, da {compass(wind.dir)}

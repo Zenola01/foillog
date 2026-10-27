@@ -2,15 +2,28 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { DEFAULT_FOIL_KN } from './analysis/analyze'
 import type { DistUnit, SpeedUnit } from './units'
 
+/** Numbers that can be shown live over the map while replaying several riders. */
+export type LiveMetric = 'spd' | 'vmg' | 'twa' | 'crs' | 'dist' | 'foil' | 'hr' | 'heel'
+
 export interface Settings {
   speedUnit: SpeedUnit
   distUnit: DistUnit
   foilOnKn: number
   riderName: string
+  liveMetrics: LiveMetric[]
+  /** Several riders on one map: whole tracks, or only the trail each one leaves. */
+  trailMode: 'full' | 'tail'
 }
 
 const KEY = 'foillog.settings'
-const DEFAULTS: Settings = { speedUnit: 'kn', distUnit: 'km', foilOnKn: DEFAULT_FOIL_KN, riderName: '' }
+const DEFAULTS: Settings = {
+  speedUnit: 'kn',
+  distUnit: 'km',
+  foilOnKn: DEFAULT_FOIL_KN,
+  riderName: '',
+  liveMetrics: ['spd', 'vmg'],
+  trailMode: 'full',
+}
 
 function load(): Settings {
   try {
