@@ -57,8 +57,10 @@ export interface Comment {
   profile: { display_name: string } | null
 }
 
+// Profiles are embedded through user_id explicitly: kudos and comments also link sessions and
+// profiles (many-to-many), and an unqualified embed is rejected as ambiguous.
 const SESSION_FIELDS =
-  'id, user_id, title, started_at, ended_at, visibility, spot_id, device, format, notes, summary, center_lat, center_lon, preview, track_path, wind_override, model_wind, created_at, profile:profiles(display_name), spot:spots(id, name), kudos(user_id), comments(count)'
+  'id, user_id, title, started_at, ended_at, visibility, spot_id, device, format, notes, summary, center_lat, center_lon, preview, track_path, wind_override, model_wind, created_at, profile:profiles!user_id(display_name), spot:spots(id, name), kudos(user_id), comments(count)'
 
 /** Spots closer than this to a session's centre are taken as its spot. */
 const SPOT_RADIUS_M = 3000
@@ -76,7 +78,7 @@ export async function myCrews(): Promise<Crew[]> {
   return check(
     await supabase
       .from('crews')
-      .select('id, name, invite_code, created_by, members:crew_members(user_id, role, profile:profiles(display_name))')
+      .select('id, name, invite_code, created_by, members:crew_members(user_id, role, profile:profiles!user_id(display_name))')
       .order('created_at'),
   ) as unknown as Crew[]
 }
@@ -242,7 +244,7 @@ export async function setKudos(sessionId: string, userId: string, on: boolean): 
 
 export async function listComments(sessionId: string): Promise<Comment[]> {
   return check(
-    await supabase.from('comments').select('id, user_id, body, created_at, profile:profiles(display_name)').eq('session_id', sessionId).order('created_at'),
+    await supabase.from('comments').select('id, user_id, body, created_at, profile:profiles!user_id(display_name)').eq('session_id', sessionId).order('created_at'),
   ) as unknown as Comment[]
 }
 
