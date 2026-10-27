@@ -1,0 +1,163 @@
+import { describe, expect, it } from 'vitest'
+import { analyzeTrack } from '../src/lib/analysis/analyze'
+import { processTrack } from '../src/lib/analysis/clean'
+import { findLegs, findTurns } from '../src/lib/analysis/maneuvers'
+import { estimateWind } from '../src/lib/analysis/wind'
+import { angDiff, axialDist, haversine } from '../src/lib/geo'
+import { TrackBuilder } from '../src/lib/parsers/trackBuilder'
+import type { SimLeg } from '../src/lib/sim'
+import { kn, simRaw, simTrack, T0 } from './helpers'
+
+const KN = 1852 / 3600
+
+describe('geo', () => {
+  it('measures distances and angles', () => {
+    expect(haversine(45, 10, 45, 10.01)).toBeCloseTo(786.3, 0)
+    expect(angDiff(350, 10)).toBe(20)
+    expect(angDiff(10, 350)).toBe(-20)
+    expect(axialDist(10, 185)).toBe(5)
+  })
+})
+
+describe('cleaning', () => {
+  it('drops a GPS spike and averages a 25 Hz log down to 5 Hz', () => {
+    const b = new TrackBuilder()
+    for (let k = 0; k < 25 * 60; k++) {
+      const spike = k === 700
+      b.push(T0 + k * 40, 45.605 + (spike ? 0.05 : k * 2e-6), 10.64, { sog: 5 })
+    }
+    const { track, rateHz, warnings } = processTrack(b.build())
+    expect(rateHz).toBeCloseTo(25, 0)
+    expect(track.t.length).toBeGreaterThan(290)
+    expect(track.t.length).toBeLessThan(310)
+    expect(Math.max(...track.lat)).toBeLessThan(45.61)
+    expect(warnings.join()).toMatch(/anomali/)
+  })
+})
+
+describe('speed records', () => {
+  it('a steady 20 kn run gives 20 kn on every record', () => {
+    const tr = simTrack({ windFrom: 0, legs: [{ twa: 90, seconds: 300, kn: 20 }], noiseM: 0 })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7 })
+    for (const key of ['s2', 's10', 's5x10', 'm100', 'm500', 'nm'] as const) {
+      expect(kn(a.summary.records[key])).toBeCloseTo(20, 0)
+    }
+    expect(kn(a.summary.records.s10)).toBeGreaterThan(19.8)
+  })
+
+  it('uses device speed when the file has it', () => {
+    const tr = simTrack({ windFrom: 0, legs: [{ twa: 90, seconds: 120, kn: 18 }], noiseM: 3, seed: 4 }, true)
+    const a = analyzeTrack(tr, null, { foilOnKn: 7 })
+    expect(kn(a.summary.records.s2)).toBeCloseTo(18, 0)
+  })
+})
+
+describe('foil detection', () => {
+  it('counts a single flight between slow sections', () => {
+    const tr = simTrack({ windFrom: 0, legs: [{ twa: 90, seconds: 120, kn: 15 }], slowSeconds: 60, noiseM: 1 })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7 })
+    expect(a.summary.takeoffs).toBe(1)
+    expect(a.summary.foilTime).toBeGreaterThan(115)
+    expect(a.summary.foilTime).toBeLessThan(130)
+  })
+})
+
+// Upwind with tacks, then downwind with jibes, wind from 270°.
+const zigzag: SimLeg[] = [
+  { twa: 55, seconds: 40, kn: 16 },
+  { twa: -55, seconds: 40, kn: 16 },
+  { twa: 55, seconds: 40, kn: 16 },
+  { twa: -55, seconds: 40, kn: 16 },
+  { twa: -140, seconds: 35, kn: 20 },
+  { twa: 140, seconds: 35, kn: 20 },
+  { twa: -140, seconds: 35, kn: 20 },
+  { twa: 140, seconds: 35, kn: 20 },
+]
+
+describe('wind and manoeuvres', () => {
+  it('finds the wind axis from the turns and the direction with a model prior', () => {
+    const tr = simTrack({ windFrom: 270, legs: zigzag, noiseM: 1.5, seed: 7 })
+    const legs = findLegs(tr)
+    const turns = findTurns(tr, legs)
+    expect(turns.length).toBe(7)
+    const w = estimateWind(tr, legs, turns, { modelDir: 250 })
+    expect(w.source).toBe('track')
+    expect(Math.abs(angDiff(w.dir!, 270))).toBeLessThan(5)
+    expect(w.confidence).toBeGreaterThan(0.8)
+  })
+
+  it('classifies tacks and jibes and their foiling', () => {
+    const tr = simTrack({
+      windFrom: 270,
+      legs: zigzag,
+      noiseM: 1.5,
+      seed: 3,
+      turns: { 1: { minKn: 3, seconds: 12 }, 5: { minKn: 2, seconds: 14 } },
+    })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7, windOverride: 270 })
+    const tacks = a.maneuvers.filter((m) => m.kind === 'tack')
+    const jibes = a.maneuvers.filter((m) => m.kind === 'jibe')
+    expect(tacks.length).toBe(3)
+    expect(jibes.length).toBe(3)
+    expect(a.summary.tacksFoiled).toBe(2)
+    expect(a.summary.jibesFoiled).toBe(2)
+    expect(a.summary.upwindAngle!).toBeGreaterThan(50)
+    expect(a.summary.upwindAngle!).toBeLessThan(60)
+    expect(a.summary.downwindAngle!).toBeGreaterThan(134)
+    expect(a.summary.downwindAngle!).toBeLessThan(146)
+    expect(kn(a.summary.bestVmgUp)).toBeCloseTo(16 * Math.cos((55 * Math.PI) / 180), 0)
+    // The bear-away between the upwind and downwind parts is on the same tack: not a manoeuvre.
+    expect(a.maneuvers.length).toBe(6)
+  })
+
+  it('handles back-and-forth reaching with jibes only', () => {
+    const legs: SimLeg[] = []
+    for (let k = 0; k < 8; k++) legs.push({ twa: k % 2 ? -100 : 95, seconds: 50, kn: 19 })
+    const tr = simTrack({ windFrom: 200, legs, noiseM: 1.5, seed: 11 })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7, modelWind: { dir: 220, speed: 7, gust: 9, hourly: [], label: 'test' } })
+    expect(Math.abs(angDiff(a.wind.dir!, 200))).toBeLessThan(8)
+    expect(a.maneuvers.length).toBe(7)
+    expect(a.maneuvers.every((m) => m.kind === 'jibe' && m.foiled)).toBe(true)
+  })
+
+  it('without a model it still guesses, but asks for confirmation', () => {
+    const tr = simTrack({ windFrom: 270, legs: zigzag, noiseM: 1.5, seed: 9 })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7 })
+    expect(a.wind.dir).not.toBeNull()
+    expect(axialDist(a.wind.dir!, 270)).toBeLessThan(5)
+    expect(a.wind.confidence).toBeLessThan(0.6)
+  })
+
+  it('reports per-tack upwind angles and a polar', () => {
+    const tr = simTrack({ windFrom: 270, legs: zigzag, noiseM: 1, seed: 5 })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7, windOverride: 270 })
+    expect(a.sail?.upwind.S?.angle).toBeCloseTo(55, -1)
+    expect(a.sail?.upwind.P?.angle).toBeCloseTo(55, -1)
+    expect(a.polar!.length).toBeGreaterThan(4)
+    const up = a.polar!.find((b) => Math.abs(b.twa - 57.5) < 3)
+    expect(kn(up?.speed)).toBeCloseTo(16, 0)
+  })
+})
+
+describe('raw tracks', () => {
+  it('positional speed matches the simulated speed', () => {
+    const raw = simRaw({ windFrom: 0, legs: [{ twa: 60, seconds: 60, kn: 14 }], noiseM: 0 })
+    const { track } = processTrack(raw)
+    const mid = Math.floor(track.t.length / 2)
+    expect(track.spd[mid] / KN).toBeCloseTo(14, 0)
+  })
+})
+
+describe('back-and-forth reaching', () => {
+  it('trusts the model rotation when the faster board is the broader one, and asks to confirm', () => {
+    // Wind from 70°: one board sailed high (70°) and slow, the other broad (116°) and fast, turning by jibes.
+    const legs: SimLeg[] = []
+    for (let k = 0; k < 8; k++) legs.push(k % 2 ? { twa: -116, seconds: 50, kn: 24 } : { twa: 70, seconds: 50, kn: 17 })
+    const tr = simTrack({ windFrom: 70, legs, noiseM: 1.5, seed: 13 })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7, modelWind: { dir: 75, speed: 6, gust: 9, hourly: [], label: 'test' } })
+    expect(a.wind.source).toBe('mixed')
+    expect(Math.abs(angDiff(a.wind.dir!, 70))).toBeLessThan(8)
+    expect(a.wind.confidence).toBeLessThan(0.6)
+    expect(a.maneuvers.every((m) => m.kind === 'jibe')).toBe(true)
+  })
+})
