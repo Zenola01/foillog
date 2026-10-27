@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useConfirm } from '../components/Confirm'
 import { Avatar, RequireAuth } from '../components/RequireAuth'
 import { btnGhost, btnPrimary, btnSecondary, card } from '../components/ui'
 import { useAuth } from '../lib/auth'
@@ -20,6 +21,8 @@ function Crews() {
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   const load = useCallback(() => {
     myCrews()
@@ -59,7 +62,10 @@ function Crews() {
               <button
                 type="button"
                 className={`${btnGhost} text-critical`}
-                onClick={() => window.confirm(`Uscire dalla crew «${c.name}»? Non vedrai più le loro uscite.`) && run(() => leaveCrew(c.id, user!.id))}
+                onClick={async () => {
+                  if (await confirm(`Uscire dalla crew «${c.name}»? Non vedrai più le loro uscite.`, { confirmLabel: 'Esci', danger: true }))
+                    void run(() => leaveCrew(c.id, user!.id))
+                }}
               >
                 Esci
               </button>
@@ -91,8 +97,17 @@ function Crews() {
                     Condividi l'invito
                   </button>
                 )}
-                <button type="button" className={btnSecondary} onClick={() => navigator.clipboard.writeText(link).then(() => alert('Link copiato'))}>
-                  Copia il link
+                <button
+                  type="button"
+                  className={btnSecondary}
+                  onClick={() =>
+                    navigator.clipboard
+                      .writeText(link)
+                      .then(() => setCopied(c.id))
+                      .catch(() => setError('Non riesco a copiare: tieni premuto sul codice per copiarlo.'))
+                  }
+                >
+                  {copied === c.id ? 'Link copiato ✓' : 'Copia il link'}
                 </button>
               </div>
             </div>

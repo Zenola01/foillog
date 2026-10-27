@@ -207,7 +207,10 @@ export async function updateSession(id: string, patch: SessionPatch): Promise<vo
 }
 
 export async function deleteSession(s: CloudSession): Promise<void> {
-  if (s.track_path) await supabase.storage.from('tracks').remove([s.track_path])
+  if (s.track_path) {
+    const r = await supabase.storage.from('tracks').remove([s.track_path])
+    if (r.error) console.warn('Traccia non rimossa dall’archivio', r.error)
+  }
   check(await supabase.from('sessions').delete().eq('id', s.id))
   await del(s.id, trackCache())
 }

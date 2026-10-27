@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { HashRouter, Link, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
+import { ConfirmProvider } from './components/Confirm'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { btnSecondary, card } from './components/ui'
 import { AuthProvider } from './lib/auth'
@@ -27,38 +28,40 @@ export default function App() {
       <AuthProvider>
         <LibraryProvider>
           <HashRouter>
-            <AppShell>
-              <ErrorBoundary>
-                <Suspense fallback={<p className="py-16 text-center text-ink-2">Caricamento…</p>}>
-                  <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/s/:id" element={<SessionPage />} />
-                    <Route path="/confronta" element={<ComparePage />} />
-                    <Route path="/impostazioni" element={<SettingsPage />} />
-                    <Route path="/accedi" element={<LoginPage />} />
-                    <Route path="/crew" element={<CrewPage />} />
-                    <Route path="/entra/:code" element={<JoinPage />} />
-                    <Route path="/c/:id" element={<CloudSessionPage />} />
-                    <Route path="/giornata/:day" element={<DayPage />} />
-                    <Route path="/giornata" element={<DayPage />} />
-                    <Route path="/record" element={<RecordsPage />} />
-                    <Route path="/rider/:id" element={<RecordsPage />} />
-                    <Route path="/spot/:id" element={<SpotPage />} />
-                    <Route
-                      path="*"
-                      element={
-                        <div className={`${card} space-y-3 p-5`}>
-                          <p className="font-semibold">Pagina non trovata</p>
-                          <Link to="/" className={btnSecondary}>
-                            Torna alle uscite
-                          </Link>
-                        </div>
-                      }
-                    />
-                  </Routes>
-                </Suspense>
-              </ErrorBoundary>
-            </AppShell>
+            <ConfirmProvider>
+              <AppShell>
+                <ErrorBoundary>
+                  <Suspense fallback={<p className="py-16 text-center text-ink-2">Caricamento…</p>}>
+                    <Routes>
+                      <Route path="/" element={<HomePage />} />
+                      <Route path="/s/:id" element={<SessionPage />} />
+                      <Route path="/confronta" element={<ComparePage />} />
+                      <Route path="/impostazioni" element={<SettingsPage />} />
+                      <Route path="/accedi" element={<LoginPage />} />
+                      <Route path="/crew" element={<CrewPage />} />
+                      <Route path="/entra/:code" element={<JoinPage />} />
+                      <Route path="/c/:id" element={<CloudSessionPage />} />
+                      <Route path="/giornata/:day" element={<DayPage />} />
+                      <Route path="/giornata" element={<DayPage />} />
+                      <Route path="/record" element={<RecordsPage />} />
+                      <Route path="/rider/:id" element={<RecordsPage />} />
+                      <Route path="/spot/:id" element={<SpotPage />} />
+                      <Route
+                        path="*"
+                        element={
+                          <div className={`${card} space-y-3 p-5`}>
+                            <p className="font-semibold">Pagina non trovata</p>
+                            <Link to="/" className={btnSecondary}>
+                              Torna alle uscite
+                            </Link>
+                          </div>
+                        }
+                      />
+                    </Routes>
+                  </Suspense>
+                </ErrorBoundary>
+              </AppShell>
+            </ConfirmProvider>
           </HashRouter>
         </LibraryProvider>
       </AuthProvider>

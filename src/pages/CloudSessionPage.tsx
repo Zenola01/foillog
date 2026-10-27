@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useConfirm } from '../components/Confirm'
 import { KudosButton } from '../components/FeedCard'
 import { Avatar, RequireAuth } from '../components/RequireAuth'
 import { btnGhost, btnPrimary, btnSecondary, card, Segmented } from '../components/ui'
@@ -46,6 +47,7 @@ function CloudSessionLoader() {
   const { colors } = useTheme()
   const library = useLibrary()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [row, setRow] = useState<CloudSession | null | undefined>(undefined)
   const [data, setData] = useState<SessionData | null>(null)
   const [a, setA] = useState<SessionAnalysis | null>(null)
@@ -161,10 +163,14 @@ function CloudSessionLoader() {
         await reload()
       }}
       onDelete={async () => {
-        if (!window.confirm('Eliminare questa uscita dalla crew e da questo dispositivo?')) return
-        await deleteSession(row)
-        await library.removeByCloudId(row.id)
-        navigate('/')
+        if (!(await confirm('Eliminare questa uscita dalla crew e da questo dispositivo?', { confirmLabel: 'Elimina', danger: true }))) return
+        try {
+          await deleteSession(row)
+          await library.removeByCloudId(row.id)
+          navigate('/')
+        } catch (e) {
+          setError(e instanceof Error ? e.message : String(e))
+        }
       }}
       below={
         <>
@@ -175,7 +181,7 @@ function CloudSessionLoader() {
               onChanged={reload}
               hasLocalCopy={!!library.sessions?.some((s) => s.cloudId === row.id)}
               onUnshare={async () => {
-                if (!window.confirm('Togliere questa uscita dalla crew? Resterà solo su questo dispositivo.')) return
+                if (!(await confirm('Togliere questa uscita dalla crew? Resterà solo su questo dispositivo.', { confirmLabel: 'Togli dalla crew' }))) return
                 await deleteSession(row)
                 const localId = await library.forgetCloud(row.id)
                 navigate(localId ? `/s/${localId}` : '/')

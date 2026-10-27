@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useConfirm } from '../components/Confirm'
 import { EChart, type Chart } from '../components/EChart'
 import { IconBack, IconEdit, IconTrash } from '../components/icons'
 import { MapView, type MapTrack } from '../components/MapView'
@@ -51,6 +52,7 @@ export default function SessionPage() {
   const { sessions, updateSession, removeSession } = useLibrary()
   const { settings } = useSettings()
   const { colors } = useTheme()
+  const confirm = useConfirm()
   const rec = sessions?.find((s) => s.id === id) ?? null
   const [data, setData] = useState<SessionData | null>(null)
   const [analysis, setAnalysis] = useState<SessionAnalysis | null>(null)
@@ -134,7 +136,7 @@ export default function SessionPage() {
       colors={colors}
       onUpdate={(patch) => updateSession(rec.id, patch)}
       onDelete={async () => {
-        if (!window.confirm('Eliminare questa uscita dal dispositivo?')) return
+        if (!(await confirm('Eliminare questa uscita da questo dispositivo?', { confirmLabel: 'Elimina', danger: true }))) return
         await removeSession(rec.id)
         navigate('/')
       }}

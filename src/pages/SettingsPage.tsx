@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useConfirm } from '../components/Confirm'
 import { btnPrimary, btnSecondary, card, Segmented } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useLibrary } from '../lib/library'
@@ -11,6 +12,7 @@ export default function SettingsPage() {
   const { sessions, removeAll, reanalyzeAll } = useLibrary()
   const { user, profile, signOut, rename } = useAuth()
   const [accountError, setAccountError] = useState<string | null>(null)
+  const confirm = useConfirm()
   const [busy, setBusy] = useState(false)
   const [name, setName] = useState(settings.riderName)
 
@@ -177,7 +179,8 @@ export default function SettingsPage() {
           className={`${btnSecondary} text-critical`}
           disabled={!sessions?.length}
           onClick={async () => {
-            if (window.confirm('Eliminare tutte le uscite da questo dispositivo? Quelle condivise restano nella crew.')) await removeAll()
+            if (await confirm('Eliminare tutte le uscite da questo dispositivo? Quelle condivise restano nella crew.', { confirmLabel: 'Elimina', danger: true }))
+              await removeAll()
           }}
         >
           Elimina le uscite da questo dispositivo
