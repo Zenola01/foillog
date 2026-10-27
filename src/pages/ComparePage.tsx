@@ -6,6 +6,7 @@ import { MapView, TrailToggle, type MapTrack } from '../components/MapView'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { TrackThumb } from '../components/TrackThumb'
 import { btnPrimary, btnSecondary, card, LineKey, Segmented } from '../components/ui'
+import { sharedWind } from '../lib/analysis/wind'
 import { compareSpeedOption, polarOption } from '../lib/charts'
 import { useAuth } from '../lib/auth'
 import { asRecord, feed, getSession, loadTrack } from '../lib/cloud'
@@ -206,11 +207,18 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [items, colors, mode],
   )
+  // Riders on the water together read one wind (live VMG and angles then compare fairly); sessions
+  // at different times keep their own, listed in the map's wind box.
+  const wind = useMemo(
+    () => (overlap ? sharedWind(items.map((x) => ({ dir: x.a.wind.dir, weight: x.a.wind.source === 'manual' ? 1 : x.a.wind.confidence }))) : null),
+    [items, overlap],
+  )
+  const windByRider = wind == null ? series.flatMap((s) => (s.a.wind.dir == null ? [] : [{ dir: s.a.wind.dir, color: s.color, label: s.name }])) : undefined
   const riders = useMemo<LiveRider[]>(
     () =>
-      series.map((s) => ({ id: s.rec.id, name: s.name, color: s.color, track: s.data.track, offset: s.offset, windDir: s.a.wind.dir, foil: s.a.foil })),
+      series.map((s) => ({ id: s.rec.id, name: s.name, color: s.color, track: s.data.track, offset: s.offset, windDir: wind ?? s.a.wind.dir, foil: s.a.foil })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, colors, mode],
+    [items, colors, mode, wind],
   )
   const speedOpt = useMemo(
     () => compareSpeedOption(series.map((s) => ({ name: s.name, color: s.color, tr: s.data.track, offset: s.offset })), unit, colors, relative, coarse),
@@ -255,6 +263,8 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
             tracks={mapTracks}
             cursor={cursor}
             trail={settings.trailMode}
+            windDir={wind}
+            windByRider={windByRider}
             overlay={<LiveInfo riders={riders} cursor={cursor} />}
             className="h-[46vh] min-h-[300px] rounded-2xl border border-line lg:h-[calc(100dvh-13rem)]"
           />

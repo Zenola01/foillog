@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { analyzeTrack } from '../src/lib/analysis/analyze'
 import { processTrack } from '../src/lib/analysis/clean'
 import { findLegs, findTurns } from '../src/lib/analysis/maneuvers'
-import { estimateWind } from '../src/lib/analysis/wind'
+import { estimateWind, sharedWind } from '../src/lib/analysis/wind'
 import { angDiff, axialDist, bearing, haversine } from '../src/lib/geo'
 import { TrackBuilder } from '../src/lib/parsers/trackBuilder'
 import { simulate, type SimLeg } from '../src/lib/sim'
@@ -223,5 +223,30 @@ describe('manoeuvres close together', () => {
     const tr = simTrack({ windFrom: 83, legs, noiseM: 1, seed: 31, turns: { 0: { seconds: 7, minKn: 14 }, 1: { seconds: 7, minKn: 14 } } })
     const a = analyzeTrack(tr, null, { foilOnKn: 7, windOverride: 83 })
     expect(a.maneuvers.map((m) => `${m.kind} ${m.from}>${m.to} ${m.foiled}`)).toEqual(['jibe S>P true', 'jibe P>S true'])
+  })
+})
+
+describe('shared wind', () => {
+  it('averages estimates that agree, across north', () => {
+    const w = sharedWind([
+      { dir: 350, weight: 1 },
+      { dir: 10, weight: 1 },
+    ])!
+    expect(Math.abs(angDiff(w, 0))).toBeLessThan(0.5)
+  })
+
+  it('leans towards the more confident estimate', () => {
+    const w = sharedWind([
+      { dir: 80, weight: 0.9 },
+      { dir: 100, weight: 0.3 },
+    ])!
+    expect(w).toBeGreaterThan(80)
+    expect(w).toBeLessThan(90)
+  })
+
+  it('gives up when the riders disagree, and ignores unknown winds', () => {
+    expect(sharedWind([{ dir: 80, weight: 1 }, { dir: 200, weight: 1 }])).toBeNull()
+    expect(sharedWind([{ dir: null, weight: 1 }])).toBeNull()
+    expect(sharedWind([{ dir: 82, weight: 0.6 }, { dir: null, weight: 0 }])).toBeCloseTo(82)
   })
 })

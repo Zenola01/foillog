@@ -1,4 +1,4 @@
-import { angDiff, axialDist, norm180, norm360, RAD } from '../geo'
+import { angDiff, axialDist, circularMean, norm180, norm360, RAD } from '../geo'
 import type { InstrumentWind, Track, WindEstimate } from '../types'
 import type { RawLeg, Turn } from './maneuvers'
 import { indexAtTime } from './series'
@@ -195,4 +195,19 @@ export function estimateWind(
     score += 0.5 * Math.sign(diff) * Math.min(1, Math.abs(diff) / 1.5)
   }
   return { dir: score >= 0 ? e : ends[1], source: 'track', confidence: 0.35 }
+}
+
+/**
+ * One wind for riders on the same water: their estimates, weighted by confidence, when they agree
+ * within `tolerance` degrees. Null when none is known or they disagree (e.g. sessions on different
+ * days), in which case each rider keeps their own.
+ */
+export function sharedWind(winds: { dir: number | null; weight: number }[], tolerance = 25): number | null {
+  const known = winds.filter((w): w is { dir: number; weight: number } => w.dir != null && Number.isFinite(w.dir))
+  if (!known.length) return null
+  const { mean } = circularMean(
+    known.map((w) => w.dir),
+    known.map((w) => Math.max(w.weight, 0.05)),
+  )
+  return known.every((w) => Math.abs(angDiff(w.dir, mean)) <= tolerance) ? mean : null
 }

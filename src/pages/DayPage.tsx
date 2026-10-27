@@ -7,6 +7,7 @@ import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { RequireAuth } from '../components/RequireAuth'
 import { btnGhost, card, LineKey, Segmented } from '../components/ui'
 import { detectFoil } from '../lib/analysis/foil'
+import { sharedWind } from '../lib/analysis/wind'
 import { compareSpeedOption } from '../lib/charts'
 import { loadTrack, sessionsBetween, type CloudSession } from '../lib/cloud'
 import { dayKey, dayRange, groupByPlace, shiftDay } from '../lib/crewStats'
@@ -148,6 +149,16 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [foils, colors],
   )
+  const wind = rows.find((r) => r.model_wind && r.model_wind.label !== 'esempio')?.model_wind
+  // Everyone sailed the same water: one wind from their estimates (the weather model if none has one).
+  const ownWind = (r: CloudSession) => r.wind_override ?? r.summary.windDir
+  const shared = useMemo(() => {
+    const est = rows.map((r) => ({ dir: ownWind(r), weight: r.wind_override != null ? 1 : r.summary.windConfidence }))
+    return est.some((w) => w.dir != null) ? sharedWind(est) : (wind?.dir ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, wind])
+  const windByRider =
+    shared == null ? riders.flatMap((r) => (ownWind(r.row) == null ? [] : [{ dir: ownWind(r.row)!, color: r.color, label: r.name }])) : undefined
   const live = useMemo<LiveRider[]>(
     () =>
       loaded.map((r, k) => ({
@@ -156,11 +167,11 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
         color: r.color,
         track: r.data!.track,
         offset: 0,
-        windDir: r.row.wind_override ?? r.row.summary.windDir,
+        windDir: shared ?? ownWind(r.row),
         foil: foils[k],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [foils, colors],
+    [foils, colors, shared],
   )
   const cursor = replay.touched || replay.playing ? replay.t : null
   const speedOpt = useMemo(
@@ -168,7 +179,6 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tracks, colors, unit, coarse],
   )
-  const wind = rows.find((r) => r.model_wind && r.model_wind.label !== 'esempio')?.model_wind
   const sorted = [...riders].sort((a, b) => (valueOf(b.row.summary, sortKey) ?? -1) - (valueOf(a.row.summary, sortKey) ?? -1))
   const best = Object.fromEntries(
     COLUMNS.map((c) => {
@@ -207,6 +217,8 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
               tracks={mapTracks}
               cursor={cursor}
               trail={settings.trailMode}
+              windDir={shared}
+              windByRider={windByRider}
               overlay={loaded.length > 1 ? <LiveInfo riders={live} cursor={cursor} /> : undefined}
               className="h-[46vh] min-h-[300px] rounded-2xl border border-line lg:h-[calc(100dvh-14rem)]"
             />

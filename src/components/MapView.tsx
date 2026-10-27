@@ -4,6 +4,7 @@ import type { Feature, FeatureCollection } from 'geojson'
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { indexAtTime } from '../lib/analysis/series'
 import { alpha } from '../lib/charts'
+import { EARTH_RADIUS, RAD } from '../lib/geo'
 import type { Settings } from '../lib/settings'
 import { isCoarsePointer, useTheme, type ThemeColors } from '../lib/theme'
 import type { Maneuver, Track } from '../lib/types'
@@ -42,7 +43,10 @@ interface Props {
   onManeuverClick?: (k: number) => void
   /** Point labelled on the map (e.g. top speed): index into the first track. */
   pin?: { i: number; text: string } | null
+  /** Direction the wind blows from: shown in a corner box and as faint arrows on the water. */
   windDir?: number | null
+  /** Riders whose winds differ (sessions on different days): one arrow each in the box, none on the water. */
+  windByRider?: { dir: number; color: string; label: string }[]
   /** Speed range (m/s) mapped onto the colour ramp. */
   speedDomain?: [number, number]
   legend?: { min: string; max: string; unit: string }
@@ -129,6 +133,71 @@ function speedColor(c: ThemeColors, d: [number, number]): never {
   return ['interpolate', ['linear'], ['get', 'v'], ...stops] as never
 }
 
+/** Wind arrow drawn on the water: a streak fading in from upwind, head where the wind blows. */
+function windArrowImage(color: string): ImageData {
+  const r = 2
+  const canvas = document.createElement('canvas')
+  canvas.width = 16 * r
+  canvas.height = 36 * r
+  const ctx = canvas.getContext('2d')!
+  ctx.scale(r, r)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = 1.6
+  const fade = ctx.createLinearGradient(0, 2, 0, 33)
+  fade.addColorStop(0, alpha(color, 0))
+  fade.addColorStop(1, alpha(color, 1))
+  ctx.strokeStyle = fade
+  ctx.beginPath()
+  ctx.moveTo(8, 2)
+  ctx.lineTo(8, 33)
+  ctx.stroke()
+  ctx.strokeStyle = color
+  ctx.beginPath()
+  ctx.moveTo(3.5, 27.5)
+  ctx.lineTo(8, 33)
+  ctx.lineTo(12.5, 27.5)
+  ctx.stroke()
+  return ctx.getImageData(0, 0, canvas.width, canvas.height)
+}
+
+const WIND_LEVELS = 4
+/** Screen gap (px) between wind arrows: finer grid levels appear as the map zooms in. */
+const WIND_GAP_PX = 110
+
+/**
+ * Points for the wind arrows: a grid over the sailing area, about three arrows across at the coarsest
+ * level. Each point carries `z`, the zoom from which its level is spaced at least WIND_GAP_PX apart.
+ */
+function windGrid(b: LngLatBounds): FC {
+  if (b.isEmpty()) return empty
+  const sw = b.getSouthWest()
+  const ne = b.getNorthEast()
+  const lat0 = (sw.lat + ne.lat) / 2
+  const lon0 = (sw.lng + ne.lng) / 2
+  const ky = EARTH_RADIUS * RAD
+  const kx = Math.cos(lat0 * RAD) * ky
+  const halfW = ((ne.lng - sw.lng) * kx) / 2
+  const halfH = ((ne.lat - sw.lat) * ky) / 2
+  const coarse = (Math.max(halfW, halfH, 150) * 2) / 3
+  const top = 2 ** (WIND_LEVELS - 1)
+  const fine = coarse / top
+  const nx = Math.ceil((halfW + coarse / 2) / fine)
+  const ny = Math.ceil((halfH + coarse / 2) / fine)
+  // Metres per pixel at zoom 0 (MapLibre's world is 512 px wide) at this latitude.
+  const mpp0 = (360 * kx) / 512
+  const features: Feature[] = []
+  for (let i = -nx; i <= nx; i++) {
+    for (let j = -ny; j <= ny; j++) {
+      let step = top
+      while (step > 1 && (i % step !== 0 || j % step !== 0)) step /= 2
+      const z = step === top ? 0 : Math.log2((mpp0 * WIND_GAP_PX) / (fine * step))
+      features.push({ type: 'Feature', properties: { z }, geometry: { type: 'Point', coordinates: [lon0 + (i * fine) / kx, lat0 + (j * fine) / ky] } })
+    }
+  }
+  return { type: 'FeatureCollection', features }
+}
+
 const SVG_NS = 'http://www.w3.org/2000/svg'
 /** Board seen from above, nose up: rotated to the course while replaying. */
 const BOARD_PATH = 'M0 -14 C3.6 -9 5 -2 4.8 6 C4.7 10 4 13 3 14 L-3 14 C-4 13 -4.7 10 -4.8 6 C-5 -2 -3.6 -9 0 -14 Z'
@@ -200,7 +269,7 @@ function placeLabels(map: MapLibreMap, boats: (Boat | null)[]) {
 }
 
 function MapViewImpl(props: Props) {
-  const { tracks, cursor, range, maneuvers, stops, selectedManeuver, onManeuverClick, pin, windDir, legend, className } = props
+  const { tracks, cursor, range, maneuvers, stops, selectedManeuver, onManeuverClick, pin, windDir, windByRider, legend, className } = props
   const trail = props.trail ?? 'full'
   const tailMs = (props.tailSeconds ?? 60) * 1000
   const multi = tracks.length > 1
@@ -291,6 +360,39 @@ function MapViewImpl(props: Props) {
     if (map && !bounds.isEmpty()) map.fitBounds(bounds, { padding: 36, animate: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trackKey])
+
+  // Wind on the water: faint arrows under the tracks, rotated to where the wind blows.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !styleReady.current) return
+    const img = windArrowImage(colors.ink2)
+    if (map.hasImage('fl-wind-arrow')) map.updateImage('fl-wind-arrow', img)
+    else map.addImage('fl-wind-arrow', img, { pixelRatio: 2 })
+    const data = windDir != null ? windGrid(bounds) : empty
+    const src = map.getSource('fl-wind') as GeoJSONSource | undefined
+    if (src) src.setData(data)
+    else {
+      map.addSource('fl-wind', { type: 'geojson', data })
+      const before = ['fl-trk-0-casing', 'fl-tail-0', 'fl-sel-casing'].find((id) => map.getLayer(id))
+      map.addLayer(
+        {
+          id: 'fl-wind',
+          type: 'symbol',
+          source: 'fl-wind',
+          filter: ['>=', ['zoom'], ['get', 'z']] as never,
+          layout: {
+            'icon-image': 'fl-wind-arrow',
+            'icon-rotation-alignment': 'map',
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+          },
+          paint: { 'icon-opacity': 0.45 },
+        },
+        before,
+      )
+    }
+    if (windDir != null) map.setLayoutProperty('fl-wind', 'icon-rotate', windDir)
+  }, [styleGen, windDir, bounds, colors])
 
   // Track lines.
   useEffect(() => {
@@ -516,7 +618,7 @@ function MapViewImpl(props: Props) {
       {/* MapLibre's stylesheet sets position:relative on this node (and wins over Tailwind's layered
           utilities), so it is sized with height/width rather than absolute insets. */}
       <div ref={box} className="h-full w-full" />
-      {(windDir != null || legend || props.overlay) && (
+      {(windDir != null || !!windByRider?.length || legend || props.overlay) && (
         <div className="pointer-events-none absolute top-2 left-2 flex max-w-[calc(100%-3.75rem)] flex-col items-start gap-1.5">
           {windDir != null && (
             <div className="flex items-center gap-2 rounded-xl border border-line bg-surface/90 px-2 py-1.5 backdrop-blur">
@@ -533,6 +635,27 @@ function MapViewImpl(props: Props) {
                   {compass(windDir)} {Math.round(windDir)}°
                 </p>
               </div>
+            </div>
+          )}
+          {windDir == null && !!windByRider?.length && (
+            <div className="rounded-xl border border-line bg-surface/90 px-2.5 py-1.5 text-xs backdrop-blur">
+              <p className="mb-1 text-ink-2">Vento da</p>
+              <ul className="space-y-1">
+                {windByRider.map((w) => (
+                  <li key={w.label} className="flex items-center gap-1.5">
+                    <svg width="16" height="16" viewBox="-8 -8 16 16" aria-hidden="true" className="shrink-0">
+                      <g transform={`rotate(${w.dir})`}>
+                        <path d="M0 -7 L0 5" stroke={w.color} strokeWidth="1.8" strokeLinecap="round" />
+                        <path d="M-3.2 1.8 L0 6 L3.2 1.8" fill="none" stroke={w.color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+                      </g>
+                    </svg>
+                    <span className="max-w-[6rem] truncate font-medium">{w.label}</span>
+                    <span className="tabular">
+                      {compass(w.dir)} {Math.round(w.dir)}°
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           {legend && (
