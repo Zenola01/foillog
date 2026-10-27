@@ -34,7 +34,8 @@ interface LibraryValue {
   sessions: SessionRecord[] | null
   jobs: ImportJob[]
   persistent: boolean
-  importFiles: (files: File[]) => Promise<SessionRecord[]>
+  /** `friend`: a crewmate's file, kept on this device under their name and never shared as yours. */
+  importFiles: (files: File[], opts?: { friend?: string }) => Promise<SessionRecord[]>
   importDemo: () => Promise<SessionRecord[]>
   updateSession: (id: string, patch: Partial<SessionRecord>) => Promise<void>
   removeSession: (id: string) => Promise<void>
@@ -47,6 +48,8 @@ interface LibraryValue {
   /** Changes on the crew copy also applied to the copy on this device. */
   mirror: (cloudId: string, patch: Partial<SessionRecord>) => Promise<void>
   removeByCloudId: (cloudId: string) => Promise<void>
+  /** The crew copy was removed: keep the session on this device only. */
+  forgetCloud: (cloudId: string) => Promise<string | null>
   /** Increases whenever something was shared, so crew lists reload. */
   cloudVersion: number
 }
@@ -123,7 +126,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   )
 
   const importFiles = useCallback(
-    async (files: File[]) => {
+    async (files: File[], opts: { friend?: string } = {}) => {
+      const friend = opts.friend?.trim()
       const queued = files.map((f) => ({ key: crypto.randomUUID(), name: f.name, status: 'reading' as const, file: f }))
       setJobs((js) => [...js.filter((j) => j.status !== 'done' && j.status !== 'duplicate'), ...queued.map(({ file: _f, ...j }) => j)])
       const created: SessionRecord[] = []
@@ -132,13 +136,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           const buf = await q.file.arrayBuffer()
           setJob(q.key, { status: 'analyzing' })
           const imp = await importInWorker(q.file.name, buf, q.file.lastModified)
-          const { rec, duplicate } = await createSession(imp, { fileName: q.file.name, rider: riderName })
+          const { rec, duplicate } = await createSession(imp, { fileName: q.file.name, rider: friend || riderName })
           if (duplicate) {
             setJob(q.key, { status: 'duplicate', sessionId: rec.id, cloudId: rec.cloudId })
             continue
           }
           created.push(rec)
-          if (userId) {
+          if (userId && !friend) {
             setJob(q.key, { status: 'sharing', sessionId: rec.id })
             try {
               const d = await getSessionData(rec.id)
@@ -251,6 +255,18 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     [refresh],
   )
 
+  const forgetCloud = useCallback(
+    async (cloudId: string) => {
+      const cur = (await listSessions()).find((s) => s.cloudId === cloudId)
+      if (!cur) return null
+      const { cloudId: _gone, ...rest } = cur
+      await saveSession(rest)
+      await refresh()
+      return cur.id
+    },
+    [refresh],
+  )
+
   const value = useMemo<LibraryValue>(
     () => ({
       sessions,
@@ -266,9 +282,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       share,
       mirror,
       removeByCloudId,
+      forgetCloud,
       cloudVersion,
     }),
-    [sessions, jobs, importFiles, importDemo, updateSession, removeSession, removeAll, reanalyzeAll, share, mirror, removeByCloudId, cloudVersion],
+    [sessions, jobs, importFiles, importDemo, updateSession, removeSession, removeAll, reanalyzeAll, share, mirror, removeByCloudId, forgetCloud, cloudVersion],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

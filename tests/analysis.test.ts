@@ -3,9 +3,9 @@ import { analyzeTrack } from '../src/lib/analysis/analyze'
 import { processTrack } from '../src/lib/analysis/clean'
 import { findLegs, findTurns } from '../src/lib/analysis/maneuvers'
 import { estimateWind } from '../src/lib/analysis/wind'
-import { angDiff, axialDist, haversine } from '../src/lib/geo'
+import { angDiff, axialDist, bearing, haversine } from '../src/lib/geo'
 import { TrackBuilder } from '../src/lib/parsers/trackBuilder'
-import type { SimLeg } from '../src/lib/sim'
+import { simulate, type SimLeg } from '../src/lib/sim'
 import { kn, simRaw, simTrack, T0 } from './helpers'
 
 const KN = 1852 / 3600
@@ -159,5 +159,30 @@ describe('back-and-forth reaching', () => {
     expect(Math.abs(angDiff(a.wind.dir!, 70))).toBeLessThan(8)
     expect(a.wind.confidence).toBeLessThan(0.6)
     expect(a.maneuvers.every((m) => m.kind === 'jibe')).toBe(true)
+  })
+})
+
+describe('placeholder device data', () => {
+  it('ignores a course column that is all zeros (Waterspeed) and still finds wind and manoeuvres', () => {
+    const pts = simulate({ start: [45.61, 13.73], t0: T0, windFrom: 61, legs: zigzag.map((l) => ({ ...l })), noiseM: 1.5, seed: 17 })
+    const b = new TrackBuilder()
+    for (const p of pts) b.push(p.t, p.lat, p.lon, { sog: p.speed, cog: 0 })
+    const { track, warnings } = processTrack(b.build())
+    expect(warnings.join()).toMatch(/rotta del dispositivo ignorata/)
+    const a = analyzeTrack(track, null, { foilOnKn: 7, modelWind: { dir: 61, speed: 8, gust: 14, hourly: [], label: 'test' } })
+    expect(Math.abs(angDiff(a.wind.dir!, 61))).toBeLessThan(8)
+    expect(a.maneuvers.filter((m) => m.kind === 'tack')).toHaveLength(3)
+    expect(a.maneuvers.filter((m) => m.kind === 'jibe')).toHaveLength(3)
+  })
+
+  it('keeps a real device course', () => {
+    const pts = simulate({ start: [45.61, 13.73], t0: T0, windFrom: 61, legs: zigzag, noiseM: 1, seed: 19 })
+    const b = new TrackBuilder()
+    for (let i = 0; i < pts.length; i++) {
+      const j = Math.min(i + 1, pts.length - 1)
+      const k = Math.max(i - 1, 0)
+      b.push(pts[i].t, pts[i].lat, pts[i].lon, { cog: bearing(pts[k].lat, pts[k].lon, pts[j].lat, pts[j].lon) })
+    }
+    expect(processTrack(b.build()).warnings.join()).not.toMatch(/rotta/)
   })
 })

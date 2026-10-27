@@ -1,4 +1,4 @@
-import { bearing, haversine, norm360, RAD } from '../geo'
+import { angDiff, bearing, haversine, norm360, RAD } from '../geo'
 import type { RawTrack, Track } from '../types'
 
 export const GAP_MS = 10_000
@@ -84,7 +84,9 @@ export function processTrack(raw: RawTrack): ProcessResult {
 
   // Speed: the device's Doppler speed when it reports one, otherwise from positions.
   const sog = cols.opt.sog
-  const useSog = sog != null && finiteShare(sog) >= 0.7
+  const hasSog = sog != null && finiteShare(sog) >= 0.7
+  const useSog = hasSog && agreesWithPositions('speed', sog, t, lat, lon, gap)
+  if (hasSog && !useSog) warnings.push('velocità del dispositivo ignorata perché non corrisponde alle posizioni')
   const spd = new Float32Array(n)
   if (useSog) {
     const s = sog.slice()
@@ -116,7 +118,9 @@ export function processTrack(raw: RawTrack): ProcessResult {
 
   // Course: device COG when available, otherwise the bearing across neighbours; then smoothed.
   const cog = cols.opt.cog
-  const useCog = cog != null && finiteShare(cog) >= 0.7
+  const hasCog = cog != null && finiteShare(cog) >= 0.7
+  const useCog = hasCog && agreesWithPositions('course', cog, t, lat, lon, gap)
+  if (hasCog && !useCog) warnings.push('rotta del dispositivo ignorata perché non corrisponde alle posizioni')
   const rawCrs = new Float32Array(n)
   for (let i = 0; i < n; i++) {
     if (useCog && Number.isFinite(cog[i])) {
@@ -212,6 +216,40 @@ function binTrack(raw: RawTrack, keep: number[]): Columns {
   }
   flush()
   return out
+}
+
+/**
+ * Some apps fill device columns with placeholders (Waterspeed writes course 0.000 on every
+ * point). A column is trusted only if, while moving, it mostly agrees with the positions.
+ */
+function agreesWithPositions(
+  kind: 'speed' | 'course',
+  dev: ArrayLike<number>,
+  t: Float64Array,
+  lat: Float64Array,
+  lon: Float64Array,
+  gap: Uint8Array,
+): boolean {
+  let ok = 0
+  let total = 0
+  let first = NaN
+  let constant = true
+  for (let i = 1; i < t.length - 1; i++) {
+    const x = dev[i]
+    if (!Number.isFinite(x)) continue
+    if (Number.isNaN(first)) first = x
+    else if (x !== first) constant = false
+    if (gap[i] || gap[i + 1]) continue
+    const d = haversine(lat[i - 1], lon[i - 1], lat[i + 1], lon[i + 1])
+    const v = d / ((t[i + 1] - t[i - 1]) / 1000)
+    if (v < 2.5) continue // too slow for the positions to be a reliable reference
+    total++
+    if (kind === 'course') {
+      if (Math.abs(angDiff(x, bearing(lat[i - 1], lon[i - 1], lat[i + 1], lon[i + 1]))) < 45) ok++
+    } else if (x / v > 0.6 && x / v < 1.6) ok++
+  }
+  if (constant) return false
+  return total < 20 || ok / total >= 0.6
 }
 
 function finiteShare(a: ArrayLike<number>): number {

@@ -1,7 +1,8 @@
 /**
  * Parses the date-time strings found in GPX and CSV files. Times without an offset are
  * taken as UTC (as the GPX spec requires); Safari rejects "YYYY-MM-DD HH:MM:SS", so the
- * space is normalised to "T" first. Day-first European dates ("31/12/2024 14:00") are accepted.
+ * space is normalised to "T" first. Day-first European dates ("31/12/2024 14:00") are accepted, and
+ * so are offsets without a colon ("+0000", as Waterspeed writes), which Safari would reject.
  */
 export function parseDateTime(raw: string): number {
   let v = raw.trim().replace(/^"|"$/g, '')
@@ -13,6 +14,7 @@ export function parseDateTime(raw: string): number {
     return Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s), ms)
   }
   if (/^\d{4}-\d{2}-\d{2} \d/.test(v)) v = v.replace(' ', 'T')
+  if (/T[\d:.,]+[+-]\d{4}$/.test(v)) v = v.replace(/([+-]\d{2})(\d{2})$/, '$1:$2')
   if (/T\d{1,2}:\d{2}(:\d{2}([.,]\d+)?)?$/.test(v)) v = `${v.replace(',', '.')}Z`
   return Date.parse(v)
 }

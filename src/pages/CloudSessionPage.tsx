@@ -169,7 +169,19 @@ function CloudSessionLoader() {
       below={
         <>
           <Social row={row} userId={user!.id} />
-          {owner && <OwnerControls row={row} onChanged={reload} />}
+          {owner && (
+            <OwnerControls
+              row={row}
+              onChanged={reload}
+              hasLocalCopy={!!library.sessions?.some((s) => s.cloudId === row.id)}
+              onUnshare={async () => {
+                if (!window.confirm('Togliere questa uscita dalla crew? Resterà solo su questo dispositivo.')) return
+                await deleteSession(row)
+                const localId = await library.forgetCloud(row.id)
+                navigate(localId ? `/s/${localId}` : '/')
+              }}
+            />
+          )}
           <Link to={`/giornata/${dayKey(Date.parse(row.started_at))}`} className={`${card} flex items-center gap-3 p-3.5`}>
             <span className="min-w-0 flex-1">
               <span className="block font-semibold">La giornata</span>
@@ -259,7 +271,17 @@ function Social({ row, userId }: { row: CloudSession; userId: string }) {
   )
 }
 
-function OwnerControls({ row, onChanged }: { row: CloudSession; onChanged: () => Promise<void> }) {
+function OwnerControls({
+  row,
+  onChanged,
+  hasLocalCopy,
+  onUnshare,
+}: {
+  row: CloudSession
+  onChanged: () => Promise<void>
+  hasLocalCopy: boolean
+  onUnshare: () => Promise<void>
+}) {
   const [spots, setSpots] = useState<(Spot & { d: number })[] | null>(null)
   const [newName, setNewName] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -352,6 +374,14 @@ function OwnerControls({ row, onChanged }: { row: CloudSession; onChanged: () =>
           </div>
         )}
       </div>
+      {hasLocalCopy && (
+        <div className="space-y-1 border-t border-line pt-3">
+          <button type="button" className={`${btnGhost} px-0`} onClick={() => onUnshare().catch((e: Error) => setError(e.message))}>
+            Togli dalla crew
+          </button>
+          <p className="text-xs text-ink-2">Per esempio se è l'uscita di un amico caricata per sbaglio come tua: resterà solo su questo dispositivo.</p>
+        </div>
+      )}
       {error && <p className="text-sm text-critical">{error}</p>}
     </section>
   )

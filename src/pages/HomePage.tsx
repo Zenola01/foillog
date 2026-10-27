@@ -4,7 +4,7 @@ import { FeedCard } from '../components/FeedCard'
 import { FileDrop } from '../components/FileDrop'
 import { IconShare, IconX } from '../components/icons'
 import { TrackThumb } from '../components/TrackThumb'
-import { btnGhost, btnPrimary, btnSecondary, card } from '../components/ui'
+import { btnGhost, btnPrimary, btnSecondary, card, Segmented } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { feed, myCrews, type CloudSession } from '../lib/cloud'
 import { dayKey } from '../lib/crewStats'
@@ -59,6 +59,8 @@ export default function HomePage() {
   const [crewCount, setCrewCount] = useState<number | null>(null)
   const [feedError, setFeedError] = useState<string | null>(null)
   const [sharing, setSharing] = useState<Record<string, 'busy' | string>>({})
+  const [whose, setWhose] = useState<'mine' | 'friend'>('mine')
+  const [friend, setFriend] = useState('')
 
   const userId = user?.id
   useEffect(() => {
@@ -90,7 +92,7 @@ export default function HomePage() {
   const localDays = useMemo(() => byDay(local, (s) => s.summary.start), [local])
 
   const onFiles = async (files: File[]) => {
-    const created = await importFiles(files)
+    const created = await importFiles(files, whose === 'friend' ? { friend: friend.trim() || 'Amico' } : {})
     if (files.length === 1 && created.length === 1) navigate(created[0].cloudId ? `/c/${created[0].cloudId}` : `/s/${created[0].id}`)
   }
   const toggle = (id: string) =>
@@ -125,7 +127,37 @@ export default function HomePage() {
         </p>
       )}
 
-      <FileDrop onFiles={onFiles} compact={!empty} />
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Segmented
+            label="Di chi sono le uscite da caricare"
+            value={whose}
+            onChange={setWhose}
+            options={[
+              { value: 'mine', label: 'Mie' },
+              { value: 'friend', label: 'Di un amico' },
+            ]}
+          />
+          {whose === 'friend' && (
+            <input
+              value={friend}
+              onChange={(e) => setFriend(e.target.value)}
+              maxLength={40}
+              placeholder="Nome dell'amico"
+              aria-label="Nome dell'amico"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-base sm:max-w-xs"
+            />
+          )}
+        </div>
+        <p className="px-1 text-xs text-ink-2">
+          {whose === 'mine'
+            ? user
+              ? 'Le tue uscite vanno anche nel feed della crew.'
+              : 'Le uscite restano su questo dispositivo.'
+            : 'Le uscite di un amico restano solo su questo dispositivo, a suo nome: per metterle nella crew deve caricarle lui con il suo account.'}
+        </p>
+        <FileDrop onFiles={onFiles} compact={!empty} />
+      </div>
 
       {jobs.length > 0 && (
         <div className={`${card} p-3`}>

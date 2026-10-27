@@ -112,5 +112,8 @@ describe('CSV', () => {
   it('parses European dates', () => {
     expect(parseDateTime('15/07/2026 14:30:05')).toBe(Date.UTC(2026, 6, 15, 14, 30, 5))
     expect(parseDateTime('2026-07-15T14:30:05+02:00')).toBe(Date.UTC(2026, 6, 15, 12, 30, 5))
+    // Waterspeed writes the offset without a colon.
+    expect(parseDateTime('2026-10-22T11:10:31.000+0000')).toBe(Date.UTC(2026, 9, 22, 11, 10, 31))
+    expect(parseDateTime('2026-10-22T13:10:31+0200')).toBe(Date.UTC(2026, 9, 22, 11, 10, 31))
   })
 })
