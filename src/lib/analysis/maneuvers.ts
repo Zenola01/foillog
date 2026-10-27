@@ -145,7 +145,7 @@ function inArc(from: number, delta: number, x: number): boolean {
 
 /** A manoeuvre is a change of tack between two legs; it is a tack if the bow passed through the wind. */
 export function findManeuvers(tr: Track, legs: RawLeg[], turns: Turn[], foil: Uint8Array, windDir: number): Maneuver[] {
-  const { t, spd, crs } = tr
+  const { t, spd } = tr
   const s3 = movingAverage(tr, spd, 1500)
   const byLeg = new Map(turns.map((x) => [x.leg, x]))
   const out: Maneuver[] = []
@@ -159,62 +159,190 @@ export function findManeuvers(tr: Track, legs: RawLeg[], turns: Turn[], foil: Ui
     if (!from || !to || from === to) continue
 
     const turn = byLeg.get(k)
+    const meanTwa = (Math.abs(norm180(windDir - a.course)) + Math.abs(norm180(windDir - b.course))) / 2
     let kind: Maneuver['kind']
     if (turn) {
       const up = inArc(a.course, turn.delta, windDir)
       const down = inArc(a.course, turn.delta, windDir + 180)
       kind = up && !down ? 'tack' : down && !up ? 'jibe' : Math.abs(angDiff(turn.apex, windDir)) < 90 ? 'tack' : 'jibe'
-    } else {
-      const meanTwa = (Math.abs(norm180(windDir - a.course)) + Math.abs(norm180(windDir - b.course))) / 2
-      kind = meanTwa < 90 ? 'tack' : 'jibe'
-    }
+    } else kind = meanTwa < 90 ? 'tack' : 'jibe'
+    out.push(measure(tr, s3, foil, windDir, a.i1, b.i0, kind, from, to, meanTwa))
+  }
 
-    const i0 = a.i1
-    const i1 = b.i0
-    let minSpeed = Infinity
-    let minAt = i0
-    let foiled = true
-    let at = Math.round((i0 + i1) / 2)
-    let bestApex = Infinity
-    let gap = false
-    const target = kind === 'tack' ? windDir : windDir + 180
-    for (let i = i0; i <= i1; i++) {
-      if (spd[i] < minSpeed) {
-        minSpeed = spd[i]
-        minAt = i
-      }
-      if (!foil[i]) foiled = false
-      if (i > i0 && tr.gap[i]) gap = true
-      const d = Math.abs(angDiff(crs[i], target))
-      if (d < bestApex) {
-        bestApex = d
-        at = i
-      }
+  // Second pass, point by point: changes of tack with no straight leg on one side (two jibes a few
+  // seconds apart, the first turn of the session) never show up between legs.
+  for (const c of tackChanges(tr, s3, windDir)) {
+    if (out.some((m) => m.i0 - 3 <= c.i1 && c.i0 <= m.i1 + 3)) continue
+    out.push(measure(tr, s3, foil, windDir, c.i0, c.i1, c.through, c.from, c.to, c.meanTwa))
+  }
+  out.sort((x, y) => x.i0 - y.i0)
+  return out
+}
+
+/** Metrics of a manoeuvre between i0 and i1, shared by both ways of finding it. */
+function measure(
+  tr: Track,
+  s3: Float32Array,
+  foil: Uint8Array,
+  windDir: number,
+  i0: number,
+  i1: number,
+  kind: Maneuver['kind'],
+  from: Tack,
+  to: Tack,
+  meanTwa: number,
+): Maneuver {
+  const { t, spd, crs } = tr
+  let minSpeed = Infinity
+  let minAt = i0
+  let foiled = true
+  let at = Math.round((i0 + i1) / 2)
+  let bestApex = Infinity
+  let gap = false
+  const target = kind === 'tack' ? windDir : windDir + 180
+  for (let i = i0; i <= i1; i++) {
+    if (spd[i] < minSpeed) {
+      minSpeed = spd[i]
+      minAt = i
     }
-    // A stop (or a GPS gap) inside the turn means the rider went in the water. Which manoeuvre
-    // it was then follows from the two legs: both downwind is a jibe, both upwind a tack.
-    const fell = gap || stoppedSeconds(t, s3, i0, i1) >= 3
-    if (fell) {
-      at = minAt
-      const meanTwa = (Math.abs(norm180(windDir - a.course)) + Math.abs(norm180(windDir - b.course))) / 2
-      kind = meanTwa < 90 ? 'tack' : 'jibe'
+    if (!foil[i]) foiled = false
+    if (i > i0 && tr.gap[i]) gap = true
+    const d = Math.abs(angDiff(crs[i], target))
+    if (d < bestApex) {
+      bestApex = d
+      at = i
     }
-    out.push({
-      kind,
-      from,
-      to,
-      i0,
-      i1,
-      at,
-      duration: (t[i1] - t[i0]) / 1000,
-      entrySpeed: meanBetween(t, spd, t[i0] - 3000, t[i0], i0),
-      minSpeed,
-      exitSpeed: meanBetween(t, spd, t[i1], t[i1] + 3000, i1),
-      foiled: foiled && !fell,
-      fell,
-    })
+  }
+  // A stop (or a GPS gap) inside the turn means the rider went in the water. Which manoeuvre it
+  // was then follows from the two sides: both downwind is a jibe, both upwind a tack.
+  const fell = gap || stoppedSeconds(t, s3, i0, i1) >= 3
+  if (fell) {
+    at = minAt
+    kind = meanTwa < 90 ? 'tack' : 'jibe'
+  }
+  return {
+    kind,
+    from,
+    to,
+    i0,
+    i1,
+    at,
+    duration: (t[i1] - t[i0]) / 1000,
+    entrySpeed: meanBetween(t, spd, t[i0] - 3000, t[i0], i0),
+    minSpeed,
+    exitSpeed: meanBetween(t, spd, t[i1], t[i1] + 3000, i1),
+    foiled: foiled && !fell,
+    fell,
+  }
+}
+
+/** Wind angles counted as clearly on one tack (deg): away from head to wind and dead downwind. */
+const CLEAR_MIN = 15
+const CLEAR_MAX = 165
+/** Seconds on the new tack before a change counts. */
+const SETTLE_S = 5
+/** Sailing speed (3 s average, m/s, about 6 kn): slower, the rider may be swimming or walking the board out. */
+const SAILING_SPEED = 3
+
+interface TackChange {
+  i0: number
+  i1: number
+  from: Tack
+  to: Tack
+  through: Maneuver['kind']
+  meanTwa: number
+}
+
+/**
+ * Changes of tack followed point by point: a change counts once the rider has been clearly on the
+ * other tack, at sailing speed, for 5 s. The window is then widened to the whole turn, as long as the course keeps
+ * turning the same way.
+ */
+function tackChanges(tr: Track, s3: Float32Array, windDir: number): TackChange[] {
+  const { t, crs } = tr
+  const n = t.length
+  const twa = new Float32Array(n)
+  const side = new Int8Array(n)
+  for (let i = 0; i < n; i++) {
+    twa[i] = norm180(windDir - crs[i])
+    const x = Math.abs(twa[i])
+    if (s3[i] >= SAILING_SPEED && x >= CLEAR_MIN && x <= CLEAR_MAX) side[i] = twa[i] > 0 ? 1 : -1
+  }
+  const out: TackChange[] = []
+  let cur = 0
+  let lastCur = -1
+  let cand = -1
+  let candPrev = -1
+  let candSecs = 0
+  for (let i = 0; i < n; i++) {
+    const sd = side[i]
+    if (sd === 0) continue
+    if (sd === cur) {
+      lastCur = i
+      cand = -1
+      continue
+    }
+    if (cand < 0 || side[cand] !== sd) {
+      cand = i
+      candPrev = i
+      candSecs = 0
+      continue
+    }
+    candSecs += (t[i] - t[candPrev]) / 1000
+    candPrev = i
+    if (candSecs < SETTLE_S) continue
+    if (cur !== 0 && t[cand] - t[lastCur] <= MANEUVER_MAX_MS) {
+      const a = lastCur
+      const b = cand
+      // Which way it crossed: through head to wind (small angles) or through dead downwind.
+      let through: Maneuver['kind'] = 'jibe'
+      let flipped = false
+      let prev = NaN
+      let turned = 0
+      let prevCrs = crs[a]
+      for (let k = a; k <= b; k++) {
+        if (s3[k] < STOP_SPEED) continue
+        turned += angDiff(prevCrs, crs[k])
+        prevCrs = crs[k]
+        if (!flipped && !Number.isNaN(prev) && twa[k] !== 0 && Math.sign(twa[k]) !== Math.sign(prev)) {
+          through = Math.abs(twa[k]) + Math.abs(prev) < 180 ? 'tack' : 'jibe'
+          flipped = true
+        }
+        prev = twa[k]
+      }
+      const dir = Math.sign(turned) || 1
+      out.push({
+        i0: widen(tr, a, dir, -1),
+        i1: widen(tr, b, dir, 1),
+        from: cur > 0 ? 'S' : 'P',
+        to: sd > 0 ? 'S' : 'P',
+        through,
+        meanTwa: (Math.abs(twa[a]) + Math.abs(twa[b])) / 2,
+      })
+    }
+    cur = sd
+    lastCur = i
+    cand = -1
   }
   return out
+}
+
+/** Moves from index i in `step` direction while the course keeps turning in `dir` (≥ 2°/s), up to 10 s. */
+function widen(tr: Track, i: number, dir: number, step: -1 | 1): number {
+  const { t, crs, gap } = tr
+  let k = i
+  for (;;) {
+    const nk = k + step
+    if (nk < 0 || nk >= t.length || Math.abs(t[nk] - t[i]) > 10_000) break
+    const lo = Math.min(k, nk)
+    const hi = Math.max(k, nk)
+    if (gap[hi]) break
+    const d = angDiff(crs[lo], crs[hi])
+    const rate = Math.abs(d) / ((t[hi] - t[lo]) / 1000)
+    if (Math.sign(d) !== dir || rate < 2) break
+    k = nk
+  }
+  return k
 }
 
 /**

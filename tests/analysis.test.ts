@@ -212,3 +212,16 @@ describe('falls', () => {
     expect(a.summary.falls).toBe(1)
   })
 })
+
+describe('manoeuvres close together', () => {
+  it('finds two jibes a few seconds apart with no straight leg between them', () => {
+    const legs: SimLeg[] = [
+      { twa: 75, seconds: 60, kn: 18 },
+      { twa: -110, seconds: 6, kn: 18 },
+      { twa: 75, seconds: 60, kn: 18 },
+    ]
+    const tr = simTrack({ windFrom: 83, legs, noiseM: 1, seed: 31, turns: { 0: { seconds: 7, minKn: 14 }, 1: { seconds: 7, minKn: 14 } } })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7, windOverride: 83 })
+    expect(a.maneuvers.map((m) => `${m.kind} ${m.from}>${m.to} ${m.foiled}`)).toEqual(['jibe S>P true', 'jibe P>S true'])
+  })
+})
