@@ -11,6 +11,7 @@ import { dayKey } from '../lib/crewStats'
 import { useLibrary, type ImportJob } from '../lib/library'
 import { useSettings, type Settings } from '../lib/settings'
 import type { SessionRecord } from '../lib/store'
+import { together, type Span } from '../lib/together'
 import { fmtDate, fmtDist, fmtDuration, fmtPct, fmtSpeed, fmtTime, SPEED_SHORT } from '../lib/units'
 
 const STATUS: Record<ImportJob['status'], string> = {
@@ -97,6 +98,25 @@ export default function HomePage() {
   }
   const toggle = (id: string) =>
     setSelected((sel) => (sel.includes(id) ? sel.filter((x) => x !== id) : sel.length >= 4 ? sel : [...sel, id]))
+  // Only sessions sailed at the same time can be compared: the box shows where somebody else was on
+  // the water together, and once one is ticked, only the sessions sailed with it can join.
+  const spans = useMemo(() => {
+    const m = new Map<string, Span>()
+    for (const r of rows ?? []) m.set(`c:${r.id}`, { start: Date.parse(r.started_at), end: Date.parse(r.ended_at) })
+    for (const s of local) m.set(s.id, s.summary)
+    return m
+  }, [rows, local])
+  const paired = useMemo(() => {
+    const ids = [...spans.keys()]
+    return new Set(ids.filter((a) => ids.some((b) => b !== a && together([spans.get(a)!, spans.get(b)!]))))
+  }, [spans])
+  const pick = (id: string): { selected?: boolean; onToggle?: () => void; blocked?: string } => {
+    if (!paired.has(id)) return {}
+    const on = selected.includes(id)
+    const chosen = selected.flatMap((x) => spans.get(x) ?? [])
+    const blocked = on ? undefined : chosen.length >= 4 ? 'max 4' : chosen.length && !together([...chosen, spans.get(id)!]) ? 'altro orario' : undefined
+    return { selected: on, onToggle: () => toggle(id), blocked }
+  }
   const shareOne = async (id: string) => {
     setSharing((m) => ({ ...m, [id]: 'busy' }))
     try {
@@ -241,8 +261,7 @@ export default function HomePage() {
                 s={r}
                 userId={user!.id}
                 settings={settings}
-                selected={selected.includes(`c:${r.id}`)}
-                onToggle={() => toggle(`c:${r.id}`)}
+                {...pick(`c:${r.id}`)}
               />
             ))}
           </ul>
@@ -281,8 +300,7 @@ export default function HomePage() {
                     key={s.id}
                     s={s}
                     settings={settings}
-                    selected={selected.includes(s.id)}
-                    onToggle={() => toggle(s.id)}
+                    {...pick(s.id)}
                     canShare={!!user && !s.demo}
                     sharing={sharing[s.id]}
                     onShare={() => shareOne(s.id)}
@@ -297,7 +315,7 @@ export default function HomePage() {
       {selected.length > 0 && (
         <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4 md:bottom-6">
           <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-2.5 shadow-lg">
-            <span className="text-sm">{selected.length === 1 ? 'Scegli almeno un’altra uscita' : `${selected.length} uscite selezionate`}</span>
+            <span className="text-sm">{selected.length === 1 ? 'Scegli un’altra uscita nello stesso orario' : `${selected.length} uscite selezionate`}</span>
             <button
               type="button"
               className={btnPrimary}
@@ -343,14 +361,18 @@ function LocalCard({
   settings,
   selected,
   onToggle,
+  blocked,
   canShare,
   sharing,
   onShare,
 }: {
   s: SessionRecord
   settings: Settings
-  selected: boolean
-  onToggle: () => void
+  selected?: boolean
+  /** Without it there is no compare box (nobody else on the water at the same time). */
+  onToggle?: () => void
+  /** Why it cannot join the sessions already ticked. */
+  blocked?: string
   canShare: boolean
   sharing?: 'busy' | string
   onShare: () => void
@@ -378,16 +400,19 @@ function LocalCard({
             </p>
           </div>
         </Link>
-        <label className="flex shrink-0 cursor-pointer flex-col items-center gap-0.5 px-1 text-[11px] text-ink-2">
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={onToggle}
-            className="h-5 w-5 accent-[var(--series-1)]"
-            aria-label={`Seleziona ${s.title} per il confronto`}
-          />
-          confronta
-        </label>
+        {onToggle && (
+          <label className={`flex shrink-0 flex-col items-center gap-0.5 px-1 text-[11px] text-ink-2 ${blocked ? 'opacity-60' : 'cursor-pointer'}`}>
+            <input
+              type="checkbox"
+              checked={!!selected}
+              disabled={!!blocked}
+              onChange={onToggle}
+              className="h-5 w-5 accent-[var(--series-1)]"
+              aria-label={`Seleziona ${s.title} per il confronto`}
+            />
+            {blocked ?? 'confronta'}
+          </label>
+        )}
       </div>
       {canShare && (
         <div className="mt-2 flex items-center gap-2 border-t border-line pt-2">

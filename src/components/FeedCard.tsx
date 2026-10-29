@@ -43,12 +43,16 @@ export function FeedCard({
   settings,
   selected,
   onToggle,
+  blocked,
 }: {
   s: CloudSession
   userId: string
   settings: Settings
   selected?: boolean
+  /** Without it there is no compare box (nobody else on the water at the same time). */
   onToggle?: () => void
+  /** Why it cannot join the sessions already ticked. */
+  blocked?: string
 }) {
   const sum = s.summary
   const name = s.profile?.display_name ?? 'Rider'
@@ -78,15 +82,16 @@ export function FeedCard({
           </p>
         </div>
         {onToggle && (
-          <label className="flex shrink-0 cursor-pointer flex-col items-center gap-0.5 px-1 text-[11px] text-ink-2">
+          <label className={`flex shrink-0 flex-col items-center gap-0.5 px-1 text-[11px] text-ink-2 ${blocked ? 'opacity-60' : 'cursor-pointer'}`}>
             <input
               type="checkbox"
               checked={!!selected}
+              disabled={!!blocked}
               onChange={onToggle}
               className="h-5 w-5 accent-[var(--series-1)]"
               aria-label={`Seleziona l'uscita di ${name} per il confronto`}
             />
-            confronta
+            {blocked ?? 'confronta'}
           </label>
         )}
       </div>

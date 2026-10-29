@@ -6,6 +6,7 @@ import { EChart, type Chart } from '../components/EChart'
 import { IconBack, IconEdit, IconTrash } from '../components/icons'
 import { MapView, type MapTrack } from '../components/MapView'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
+import { TogetherBanner } from '../components/TogetherBanner'
 import { btnGhost, btnPrimary, btnSecondary, card, Outcome, StatTile } from '../components/ui'
 import { WindDial } from '../components/WindDial'
 import { rangeStats } from '../lib/analysis/analyze'
@@ -172,7 +173,7 @@ export function SessionView({
   readOnly?: boolean
   /** Crew sessions take the rider name from the account. */
   riderEditable?: boolean
-  /** Id used by the compare page (crew sessions are prefixed «c:»). */
+  /** Id used by the compare page (crew sessions are prefixed «c:»), for the «sailed together» link. */
   compareId?: string
   /** Extra line under the title (spot, visibility…). */
   meta?: ReactNode
@@ -308,15 +309,13 @@ export function SessionView({
                 {rec.device ? ` · ${rec.device}` : ''}
               </p>
               {meta}
+              <TogetherBanner id={compareId ?? rec.id} start={sum.start} end={sum.end} />
             </div>
             {!readOnly && (
               <button type="button" className={btnGhost} onClick={() => setEditing(true)} aria-label="Modifica titolo e rider">
                 <IconEdit width={18} height={18} />
               </button>
             )}
-            <Link to={`/confronta?ids=${compareId ?? rec.id}`} className={btnGhost}>
-              Confronta
-            </Link>
             {!readOnly && (
               <button type="button" className={`${btnGhost} text-critical`} onClick={onDelete} aria-label="Elimina uscita">
                 <IconTrash width={18} height={18} />

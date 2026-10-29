@@ -6,7 +6,7 @@ import { LiveInfo, type LiveRider } from '../components/LiveInfo'
 import { MapView, TrailToggle, type MapTrack } from '../components/MapView'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { TrackThumb } from '../components/TrackThumb'
-import { btnPrimary, btnSecondary, card, LineKey, Segmented } from '../components/ui'
+import { btnPrimary, btnSecondary, card, LineKey } from '../components/ui'
 import { legsInWind } from '../lib/analysis/bestLegs'
 import { sharedWind } from '../lib/analysis/wind'
 import { compareSpeedOption, polarOption } from '../lib/charts'
@@ -16,9 +16,10 @@ import { analyzeInWorker } from '../lib/engine'
 import { useLibrary } from '../lib/library'
 import { useSettings, type Settings } from '../lib/settings'
 import { getSessionData, type SessionData, type SessionRecord } from '../lib/store'
+import { groupTogether, together, type Span } from '../lib/together'
 import { isCoarsePointer, useTheme } from '../lib/theme'
 import type { SessionAnalysis, SessionSummary } from '../lib/types'
-import { fmtDate, fmtDist, fmtDuration, fmtPct, fmtShortDate, fmtSpeed, fmtTime, SPEED_SHORT } from '../lib/units'
+import { fmtDate, fmtDist, fmtDuration, fmtPct, fmtSpeed, fmtTime, SPEED_SHORT } from '../lib/units'
 
 const MAX = 4
 
@@ -40,83 +41,143 @@ export default function ComparePage() {
   return <CompareView ids={ids} onChange={() => setPicking(true)} />
 }
 
-interface PickItem {
+interface PickItem extends Span {
   id: string
   title: string
   rider: string
-  start: number
   preview: [number, number][]
 }
 
+/** Only sessions sailed at the same time can be compared: the picker offers them in groups. */
 function Picker({ initial, onConfirm }: { initial: string[]; onConfirm: (ids: string[]) => void }) {
   const { sessions } = useLibrary()
   const { user } = useAuth()
-  const [crew, setCrew] = useState<PickItem[]>([])
-  const [sel, setSel] = useState<string[]>(initial)
+  const [crew, setCrew] = useState<PickItem[] | null>(null)
   const userId = user?.id
   useEffect(() => {
-    if (!userId) return
+    if (!userId) {
+      setCrew([])
+      return
+    }
+    let alive = true
     feed(60)
-      .then((rows) =>
-        setCrew(rows.map((r) => ({ id: `c:${r.id}`, title: r.title, rider: r.profile?.display_name ?? 'Rider', start: Date.parse(r.started_at), preview: r.preview }))),
-      )
-      .catch(() => {})
+      .then((rows) => {
+        if (!alive) return
+        setCrew(
+          rows.map((r) => ({
+            id: `c:${r.id}`,
+            title: r.title,
+            rider: r.profile?.display_name ?? 'Rider',
+            start: Date.parse(r.started_at),
+            end: Date.parse(r.ended_at),
+            preview: r.preview,
+          })),
+        )
+      })
+      .catch(() => alive && setCrew([]))
+    return () => {
+      alive = false
+    }
   }, [userId])
-  const items = useMemo(() => {
+  const opened = initial.join(',')
+  const groups = useMemo(() => {
     const local = (sessions ?? [])
       .filter((s) => !s.cloudId)
-      .map((s) => ({ id: s.id, title: s.title, rider: s.rider, start: s.summary.start, preview: s.preview }))
-    return [...crew, ...local].sort((a, b) => b.start - a.start)
-  }, [sessions, crew])
-  const toggle = (id: string) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length >= MAX ? s : [...s, id]))
+      .map((s) => ({ id: s.id, title: s.title, rider: s.rider, start: s.summary.start, end: s.summary.end, preview: s.preview }))
+    const all = groupTogether<PickItem>([...(crew ?? []), ...local])
+    // The group of the session the page was opened from comes first.
+    const first = (g: PickItem[]) => g.some((it) => initial.includes(it.id))
+    return [...all.filter(first), ...all.filter((g) => !first(g))]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, crew, opened])
+  const loading = sessions == null || crew == null
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Confronta</h1>
-        <p className="text-sm text-ink-2">
-          Scegli da 2 a {MAX} uscite: le tue in giorni diversi, o le tue e quelle della crew.
-        </p>
+        <p className="text-sm text-ink-2">Sovrapponi le tracce di chi era in acqua nello stesso momento: stesso vento, stesso campo, un solo replay.</p>
       </div>
-      {sessions && items.length < 2 && (
-        <p className={`${card} p-4 text-sm text-ink-2`}>
-          Servono almeno due uscite.{' '}
-          <Link to="/" className="font-medium text-accent">
-            Caricane una
+      {loading && <p className="py-8 text-center text-ink-2">Cerco le uscite nello stesso orario…</p>}
+      {!loading && groups.length === 0 && (
+        <div className={`${card} space-y-2 p-4 text-sm`}>
+          <p className="font-medium">Nessuna uscita nello stesso orario</p>
+          <p className="text-ink-2">
+            Il confronto mette insieme solo le tracce di chi era in acqua nello stesso momento. Carica anche la traccia di un amico (in Uscite
+            scegli «Di un amico») oppure chiedigli di condividere le sue uscite con la crew.
+          </p>
+          <Link to="/" className={btnSecondary}>
+            Vai alle uscite
           </Link>
-          .
-        </p>
+        </div>
       )}
-      <ul className="space-y-2">
-        {items.map((s) => {
-          const on = sel.includes(s.id)
+      {groups.map((g) => (
+        <TogetherGroup key={g.map((it) => it.id).join()} items={g} initial={initial} onConfirm={onConfirm} />
+      ))}
+      {!loading && groups.length > 0 && (
+        <p className="px-1 text-xs text-ink-2">Le uscite senza nessun altro in acqua nello stesso momento non compaiono qui.</p>
+      )}
+    </div>
+  )
+}
+
+/** One group of sessions sailed together. The chosen ones must all have been on the water at once. */
+function TogetherGroup({ items, initial, onConfirm }: { items: PickItem[]; initial: string[]; onConfirm: (ids: string[]) => void }) {
+  const [sel, setSel] = useState<string[]>(() => {
+    const out = items.filter((it) => initial.includes(it.id)).slice(0, MAX)
+    for (const it of items) if (out.length < MAX && !out.includes(it) && (!out.length || together([...out, it]))) out.push(it)
+    return out.map((it) => it.id)
+  })
+  const chosen = items.filter((it) => sel.includes(it.id))
+  const canAdd = (it: PickItem) => chosen.length < MAX && (!chosen.length || together([...chosen, it]))
+  const toggle = (it: PickItem) => setSel((s) => (s.includes(it.id) ? s.filter((x) => x !== it.id) : canAdd(it) ? [...s, it.id] : s))
+  const start = Math.min(...items.map((it) => it.start))
+  const end = Math.max(...items.map((it) => it.end))
+
+  return (
+    <section className={`${card} space-y-2 p-3`}>
+      <p className="flex flex-wrap items-baseline justify-between gap-x-2 px-1">
+        <span className="font-semibold first-letter:uppercase">{fmtDate(start)}</span>
+        <span className="text-sm text-ink-2 tabular">
+          {fmtTime(start)}–{fmtTime(end)}
+        </span>
+      </p>
+      <ul className="space-y-1">
+        {items.map((it) => {
+          const on = sel.includes(it.id)
+          const blocked = !on && !canAdd(it)
           return (
-            <li key={s.id}>
-              <label className={`${card} flex cursor-pointer items-center gap-3 p-2.5 ${on ? 'ring-2 ring-[var(--series-1)]' : ''}`}>
+            <li key={it.id}>
+              <label className={`flex items-center gap-3 rounded-xl p-2 ${on ? 'bg-surface-2' : ''} ${blocked ? 'opacity-60' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
                   checked={on}
-                  onChange={() => toggle(s.id)}
-                  aria-label={`${s.title}, ${s.rider}`}
+                  disabled={blocked}
+                  onChange={() => toggle(it)}
+                  aria-label={`${it.rider}, ${fmtTime(it.start)}–${fmtTime(it.end)}`}
                   className="h-5 w-5 shrink-0 accent-[var(--series-1)]"
                 />
-                <TrackThumb points={s.preview} className="h-12 w-[76px] shrink-0" />
+                <TrackThumb points={it.preview} className="h-12 w-[76px] shrink-0" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{s.title}</span>
+                  <span className="block truncate font-medium">{it.rider}</span>
                   <span className="block truncate text-sm text-ink-2">
-                    {fmtShortDate(s.start)}, {fmtTime(s.start)} · {s.rider}
+                    {fmtTime(it.start)}–{fmtTime(it.end)} · {it.title}
                   </span>
+                  {blocked && (
+                    <span className="block text-xs text-ink-2">
+                      {chosen.length >= MAX ? `Al massimo ${MAX} uscite insieme.` : 'Non era in acqua insieme alle uscite scelte.'}
+                    </span>
+                  )}
                 </span>
               </label>
             </li>
           )
         })}
       </ul>
-      <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] flex justify-end md:bottom-4">
-        <button type="button" className={`${btnPrimary} shadow-lg`} disabled={sel.length < 2} onClick={() => onConfirm(sel)}>
-          Confronta {sel.length >= 2 ? `(${sel.length})` : ''}
-        </button>
-      </div>
-    </div>
+      <button type="button" className={btnPrimary} disabled={chosen.length < 2} onClick={() => onConfirm(chosen.map((it) => it.id))}>
+        Sovrapponi le tracce{chosen.length >= 2 ? ` (${chosen.length})` : ''}
+      </button>
+    </section>
   )
 }
 
@@ -178,6 +239,18 @@ function CompareView({ ids, onChange }: { ids: string[]; onChange: () => void })
 
   if (error) return <p className={`${card} p-4 text-sm`}>{error}</p>
   if (!loaded) return <p className="py-16 text-center text-ink-2">Preparo il confronto…</p>
+  // An old link, or a session edited since: only sessions sailed together are compared.
+  if (!together(loaded.map((x) => x.a.summary))) {
+    return (
+      <div className={`${card} space-y-3 p-4 text-sm`}>
+        <p className="font-medium">Queste uscite non sono nello stesso orario</p>
+        <p className="text-ink-2">Si possono sovrapporre solo le tracce di chi era in acqua nello stesso momento.</p>
+        <button type="button" className={btnSecondary} onClick={onChange}>
+          Scegli altre uscite
+        </button>
+      </div>
+    )
+  }
   return <Comparison items={loaded} settings={settings} onChange={onChange} />
 }
 
@@ -187,33 +260,28 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
   const coarse = useMemo(isCoarsePointer, [])
   const unit = settings.speedUnit
   const u = SPEED_SHORT[unit]
-  const starts = items.map((x) => x.a.summary.start)
-  const ends = items.map((x) => x.a.summary.end)
-  const overlap = Math.max(...starts) < Math.min(...ends) - 60_000
-  const [mode, setMode] = useState<'clock' | 'start'>(overlap ? 'clock' : 'start')
-  const relative = mode === 'start'
 
   // Colour follows the entity: the k-th chosen session keeps slot k whatever else happens.
   const series = items.map((x, k) => ({
     ...x,
     color: colors.series[k],
-    name: items.filter((y) => y.rec.rider === x.rec.rider).length > 1 ? `${x.rec.rider} · ${fmtShortDate(x.a.summary.start)}` : x.rec.rider,
-    offset: relative ? -x.a.summary.start : 0,
+    // The same rider twice (two devices on one outing): told apart by the start time.
+    name: items.filter((y) => y.rec.rider === x.rec.rider).length > 1 ? `${x.rec.rider} · ${fmtTime(x.a.summary.start)}` : x.rec.rider,
   }))
-  const clockStart = Math.min(...series.map((s) => s.a.summary.start + s.offset))
-  const clockEnd = Math.max(...series.map((s) => s.a.summary.end + s.offset))
+  const clockStart = Math.min(...series.map((s) => s.a.summary.start))
+  const clockEnd = Math.max(...series.map((s) => s.a.summary.end))
   const replay = useReplay(clockStart, clockEnd)
 
   const mapTracks = useMemo<MapTrack[]>(
-    () => series.map((s) => ({ id: s.rec.id, track: s.data.track, foil: s.a.foil, color: s.color, label: s.name, offset: s.offset })),
+    () => series.map((s) => ({ id: s.rec.id, track: s.data.track, foil: s.a.foil, color: s.color, label: s.name })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, colors, mode],
+    [items, colors],
   )
-  // Riders on the water together read one wind (live VMG and angles then compare fairly); sessions
-  // at different times keep their own, listed in the map's wind box.
+  // Riders on the water together read one wind, so live VMG and angles compare fairly; if their
+  // estimates disagree, each keeps their own, listed in the map's wind box.
   const wind = useMemo(
-    () => (overlap ? sharedWind(items.map((x) => ({ dir: x.a.wind.dir, weight: x.a.wind.source === 'manual' ? 1 : x.a.wind.confidence }))) : null),
-    [items, overlap],
+    () => sharedWind(items.map((x) => ({ dir: x.a.wind.dir, weight: x.a.wind.source === 'manual' ? 1 : x.a.wind.confidence }))),
+    [items],
   )
   const windByRider = wind == null ? series.flatMap((s) => (s.a.wind.dir == null ? [] : [{ dir: s.a.wind.dir, color: s.color, label: s.name }])) : undefined
   // Best legs: measured against the shared wind when there is one, so angles and VMG compare fairly.
@@ -223,15 +291,14 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
     [items, colors, wind],
   )
   const riders = useMemo<LiveRider[]>(
-    () =>
-      series.map((s) => ({ id: s.rec.id, name: s.name, color: s.color, track: s.data.track, offset: s.offset, windDir: wind ?? s.a.wind.dir, foil: s.a.foil })),
+    () => series.map((s) => ({ id: s.rec.id, name: s.name, color: s.color, track: s.data.track, offset: 0, windDir: wind ?? s.a.wind.dir, foil: s.a.foil })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, colors, mode, wind],
+    [items, colors, wind],
   )
   const speedOpt = useMemo(
-    () => compareSpeedOption(series.map((s) => ({ name: s.name, color: s.color, tr: s.data.track, offset: s.offset })), unit, colors, relative, coarse),
+    () => compareSpeedOption(series.map((s) => ({ name: s.name, color: s.color, tr: s.data.track, offset: 0 })), unit, colors, false, coarse),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, colors, unit, mode, coarse],
+    [items, colors, unit, coarse],
   )
   const polarSessions = series.filter((s) => s.a.polar && s.a.polar.length > 0)
   const polarOpt = useMemo(
@@ -246,7 +313,9 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">Confronto</h1>
-          <p className="text-sm text-ink-2">{overlap ? 'In acqua nello stesso momento.' : 'Uscite in momenti diversi: allineate dalla partenza.'}</p>
+          <p className="text-sm text-ink-2 first-letter:uppercase">
+            {fmtDate(clockStart)} · in acqua nello stesso momento
+          </p>
         </div>
         <button type="button" className={btnSecondary} onClick={onChange}>
           Cambia uscite
@@ -258,8 +327,8 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
           <li key={s.rec.id} className="flex items-center gap-2 text-sm">
             <LineKey color={s.color} />
             <span className="font-medium">{s.name}</span>
-            <Link to={s.link} className="text-ink-2 underline-offset-2 hover:underline">
-              {fmtShortDate(s.a.summary.start)}, {fmtTime(s.a.summary.start)}
+            <Link to={s.link} className="text-ink-2 tabular underline-offset-2 hover:underline">
+              {fmtTime(s.a.summary.start)}–{fmtTime(s.a.summary.end)}
             </Link>
           </li>
         ))}
@@ -276,21 +345,8 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
             overlay={<LiveInfo riders={riders} cursor={cursor} />}
             className="h-[46vh] min-h-[300px] rounded-2xl border border-line lg:h-[calc(100dvh-13rem)]"
           />
-          <ReplayBar replay={replay} t0={clockStart} t1={clockEnd} relative={relative} />
-          <div className="flex flex-wrap gap-2">
-            <TrailToggle value={settings.trailMode} onChange={(trailMode) => update({ trailMode })} />
-            {overlap && (
-              <Segmented
-                label="Allineamento"
-                value={mode}
-                onChange={setMode}
-                options={[
-                  { value: 'clock', label: 'Stesso orario' },
-                  { value: 'start', label: 'Dalla partenza' },
-                ]}
-              />
-            )}
-          </div>
+          <ReplayBar replay={replay} t0={clockStart} t1={clockEnd} />
+          <TrailToggle value={settings.trailMode} onChange={(trailMode) => update({ trailMode })} />
         </div>
 
         <div className="mt-4 space-y-4 lg:mt-0">
@@ -298,7 +354,7 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
           <BestLegsCompare riders={legRiders} unit={unit} sharedWind={wind != null} />
           <div className={`${card} p-3`}>
             <p className="text-sm font-semibold">Velocità</p>
-            <p className="text-xs text-ink-2">{relative ? 'Tempo dalla partenza di ciascuno.' : 'Ora del giorno.'}</p>
+            <p className="text-xs text-ink-2">Ora del giorno.</p>
             <EChart option={speedOpt} height={280} label="Velocità delle uscite a confronto" />
           </div>
           {polarSessions.length > 0 && (
