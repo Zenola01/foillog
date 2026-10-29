@@ -3,7 +3,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import type { Feature, FeatureCollection } from 'geojson'
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { indexAtTime } from '../lib/analysis/series'
-import { alpha } from '../lib/charts'
+import { alpha, mix } from '../lib/charts'
 import { EARTH_RADIUS, RAD } from '../lib/geo'
 import type { Settings } from '../lib/settings'
 import { isCoarsePointer, useTheme, type ThemeColors } from '../lib/theme'
@@ -36,6 +36,8 @@ interface Props {
   cursor?: number | null
   /** Shared-clock time range to highlight. */
   range?: [number, number] | null
+  /** Index ranges on the first track to pick out (the best legs), the rest dimmed; a range wins over them. */
+  segments?: [number, number][] | null
   maneuvers?: Maneuver[]
   /** Falls or rests outside manoeuvres: index of the stop on the first track. */
   stops?: number[]
@@ -269,7 +271,7 @@ function placeLabels(map: MapLibreMap, boats: (Boat | null)[]) {
 }
 
 function MapViewImpl(props: Props) {
-  const { tracks, cursor, range, maneuvers, stops, selectedManeuver, onManeuverClick, pin, windDir, windByRider, legend, className } = props
+  const { tracks, cursor, range, segments, maneuvers, stops, selectedManeuver, onManeuverClick, pin, windDir, windByRider, legend, className } = props
   const trail = props.trail ?? 'full'
   const tailMs = (props.tailSeconds ?? 60) * 1000
   const multi = tracks.length > 1
@@ -487,17 +489,24 @@ function MapViewImpl(props: Props) {
     map.setPaintProperty('fl-sel-casing', 'line-color', colors.surface)
   }, [styleGen, tracks, colors, domain, multi])
 
-  // How visible the whole tracks are: dimmed around a selected range; with several riders, faint
-  // (or hidden, in trail mode) while the replay runs so the moving trails stand out.
+  // How the whole tracks show: set back around a picked stretch (range or best legs); with several
+  // riders, faint (or hidden, in trail mode) while the replay runs so the moving trails stand out.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !styleReady.current) return
-    const op = range ? 0.35 : !multi ? 1 : replaying ? (trail === 'tail' ? 0 : 0.28) : trail === 'tail' ? 0.3 : 0.85
-    tracks.forEach((_, k) => {
-      if (map.getLayer(`fl-trk-${k}-line`)) map.setPaintProperty(`fl-trk-${k}-line`, 'line-opacity', op)
-      if (map.getLayer(`fl-trk-${k}-casing`)) map.setPaintProperty(`fl-trk-${k}-casing`, 'line-opacity', op * 0.6)
+    const picked = range || !!segments?.length
+    tracks.forEach((t, k) => {
+      const line = `fl-trk-${k}-line`
+      if (!map.getLayer(line)) return
+      // A speed-coloured track turns grey rather than see-through: its many short pieces would show
+      // a bead at every joint.
+      const grey = picked && !t.color
+      const op = grey ? 1 : picked ? 0.35 : !multi ? 1 : replaying ? (trail === 'tail' ? 0 : 0.28) : trail === 'tail' ? 0.3 : 0.85
+      map.setPaintProperty(line, 'line-color', grey ? mix(colors.muted, colors.surface, 0.45) : (t.color ?? speedColor(colors, domain)))
+      map.setPaintProperty(line, 'line-opacity', op)
+      map.setPaintProperty(`fl-trk-${k}-casing`, 'line-opacity', op * 0.6)
     })
-  }, [styleGen, tracks, range, multi, replaying, trail])
+  }, [styleGen, tracks, range, segments, multi, replaying, trail, colors, domain])
 
   // Highlighted range: brighter copy on top, the rest dimmed.
   useEffect(() => {
@@ -517,10 +526,19 @@ function MapViewImpl(props: Props) {
         }
       }
     })
+    const first = tracks[0]
+    if (!range && segments && first) {
+      for (const [i0, i1] of segments) {
+        for (const f of lineFeatures(first.track, first.foil, i0, i1, domain, !first.color).features) {
+          f.properties = { ...f.properties, c: first.color ?? null }
+          feats.push(f)
+        }
+      }
+    }
     ;(map.getSource('fl-sel') as GeoJSONSource).setData({ type: 'FeatureCollection', features: feats })
     const solid = tracks[0]?.color
     map.setPaintProperty('fl-sel-line', 'line-color', solid ? (['coalesce', ['get', 'c'], solid] as never) : speedColor(colors, domain))
-  }, [styleGen, tracks, range, colors, domain])
+  }, [styleGen, tracks, range, segments, colors, domain])
 
   // Manoeuvre markers (single-session view): status colour plus a ring.
   useEffect(() => {

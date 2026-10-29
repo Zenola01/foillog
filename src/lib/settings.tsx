@@ -13,6 +13,8 @@ export interface Settings {
   liveMetrics: LiveMetric[]
   /** Several riders on one map: whole tracks, or only the trail each one leaves. */
   trailMode: 'full' | 'tail'
+  /** Share of the upwind and downwind legs, best first, behind the "best legs" averages (1 = all). */
+  topShare: number
 }
 
 const KEY = 'foillog.settings'
@@ -23,6 +25,7 @@ const DEFAULTS: Settings = {
   riderName: '',
   liveMetrics: ['spd', 'vmg'],
   trailMode: 'full',
+  topShare: 0.2,
 }
 
 function load(): Settings {

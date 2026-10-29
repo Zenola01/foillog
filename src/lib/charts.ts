@@ -16,6 +16,17 @@ export function alpha(hex: string, a: number): string {
   return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`
 }
 
+/** Solid colour `t` of the way from hex colour `a` to `b` (both #rrggbb; otherwise `a`). */
+export function mix(a: string, b: string, t: number): string {
+  const ma = /^#?([0-9a-f]{6})$/i.exec(a.trim())
+  const mb = /^#?([0-9a-f]{6})$/i.exec(b.trim())
+  if (!ma || !mb) return a
+  const va = parseInt(ma[1], 16)
+  const vb = parseInt(mb[1], 16)
+  const ch = (shift: number) => Math.round(((va >> shift) & 255) * (1 - t) + ((vb >> shift) & 255) * t)
+  return `#${((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0')}`
+}
+
 const lineKey = (color: string) =>
   `<span style="display:inline-block;width:14px;height:3px;border-radius:2px;background:${color};vertical-align:middle;margin-right:6px"></span>`
 

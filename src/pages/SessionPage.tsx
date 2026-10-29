@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { BestLegsCard } from '../components/BestLegs'
 import { useConfirm } from '../components/Confirm'
 import { EChart, type Chart } from '../components/EChart'
 import { IconBack, IconEdit, IconTrash } from '../components/icons'
@@ -8,6 +9,7 @@ import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { btnGhost, btnPrimary, btnSecondary, card, Outcome, StatTile } from '../components/ui'
 import { WindDial } from '../components/WindDial'
 import { rangeStats } from '../lib/analysis/analyze'
+import { bestLegs, courseOf } from '../lib/analysis/bestLegs'
 import { indexAtTime } from '../lib/analysis/series'
 import { heartRateOption, histogramOption, orientationOption, polarOption, speedOption } from '../lib/charts'
 import { analyzeInWorker } from '../lib/engine'
@@ -16,7 +18,7 @@ import { useLibrary } from '../lib/library'
 import { useSettings, type Settings } from '../lib/settings'
 import { getSessionData, type SessionData, type SessionRecord } from '../lib/store'
 import { isCoarsePointer, useTheme, type ThemeColors } from '../lib/theme'
-import type { Maneuver, SessionAnalysis, SideStats, WindSource } from '../lib/types'
+import type { Leg, Maneuver, SessionAnalysis, SideStats, WindSource } from '../lib/types'
 import {
   compass,
   fmtDate,
@@ -247,6 +249,13 @@ export function SessionView({
   const rangeInfo = rangeIdx && rangeIdx[1] > rangeIdx[0] ? rangeStats(tr, a, rangeIdx[0], rangeIdx[1]) : null
 
   const mapTracks = useMemo<MapTrack[]>(() => [{ id: rec.id, track: tr, foil: a.foil }], [rec.id, tr, a.foil])
+  // The best legs (Bordi tab): picked out on the map and starred in the table.
+  const share = settings.topShare
+  const top = useMemo(() => {
+    if (share >= 1) return null
+    const chosen = [...(bestLegs(a.legs, 'up', share)?.chosen ?? []), ...(bestLegs(a.legs, 'down', share)?.chosen ?? [])]
+    return { legs: new Set(chosen), segments: chosen.map((l) => [l.i0, l.i1] as [number, number]) }
+  }, [a.legs, share])
   const stopPoints = useMemo(() => a.stops.map((s) => s.i0), [a.stops])
   const domain = useMemo<[number, number]>(() => {
     const s = Array.from(tr.spd)
@@ -316,6 +325,7 @@ export function SessionView({
             tracks={mapTracks}
             cursor={cursor}
             range={range}
+            segments={tab === 'bordi' ? top?.segments : null}
             maneuvers={a.maneuvers}
             stops={stopPoints}
             selectedManeuver={selMnv}
@@ -530,8 +540,21 @@ export function SessionView({
           )}
 
           {tab === 'manovre' && <ManeuversTab a={a} unit={unit} selected={selMnv} onPick={pickManeuver} tr={tr} />}
-          {tab === 'andature' && <SailTab a={a} unit={unit} colors={colors} onSetWind={() => setWindEdit(true)} />}
-          {tab === 'bordi' && <LegsTab a={a} tr={tr} unit={unit} distUnit={settings.distUnit} onPick={(i0, i1) => focus(i0, i1, 2000)} />}
+          {tab === 'andature' && <SailTab a={a} unit={unit} colors={colors} onSetWind={() => setWindEdit(true)} onBest={() => setTab('bordi')} />}
+          {tab === 'bordi' && (
+            <div className="space-y-4">
+              <BestLegsCard legs={a.legs} unit={unit} onSetWind={readOnly ? undefined : () => setWindEdit(true)} />
+              <LegsTab
+                a={a}
+                tr={tr}
+                unit={unit}
+                distUnit={settings.distUnit}
+                top={top?.legs ?? null}
+                share={share}
+                onPick={(i0, i1) => focus(i0, i1, 2000)}
+              />
+            </div>
+          )}
 
           {below}
           {readOnly ? (
@@ -759,7 +782,19 @@ function ManeuversTab({
   )
 }
 
-function SailTab({ a, unit, colors, onSetWind }: { a: SessionAnalysis; unit: Settings['speedUnit']; colors: ThemeColors; onSetWind: () => void }) {
+function SailTab({
+  a,
+  unit,
+  colors,
+  onSetWind,
+  onBest,
+}: {
+  a: SessionAnalysis
+  unit: Settings['speedUnit']
+  colors: ThemeColors
+  onSetWind: () => void
+  onBest: () => void
+}) {
   const u = SPEED_SHORT[unit]
   const option = useMemo(
     () => (a.polar ? polarOption([{ name: 'Questa uscita', color: colors.series[0], bins: a.polar }], unit, colors) : null),
@@ -789,6 +824,9 @@ function SailTab({ a, unit, colors, onSetWind }: { a: SessionAnalysis; unit: Set
       <div className="grid grid-cols-2 gap-2">
         <StatTile label="Miglior VMG in bolina" value={fmtSpeed(a.sail.bestVmgUp?.v, unit)} unit={u} sub="media su 10 s" />
         <StatTile label="Miglior VMG in poppa" value={fmtSpeed(a.sail.bestVmgDown?.v, unit)} unit={u} sub="media su 10 s" />
+        <button type="button" className={`${btnGhost} col-span-2 justify-self-start`} onClick={onBest}>
+          Bordi migliori di bolina e poppa →
+        </button>
       </div>
       <div className={`${card} p-3`}>
         <p className="text-sm font-semibold">Polare</p>
@@ -824,9 +862,8 @@ function SailTab({ a, unit, colors, onSetWind }: { a: SessionAnalysis; unit: Set
 }
 
 function pointOfSail(twa: number | null): string {
-  if (twa == null) return '–'
-  const x = Math.abs(twa)
-  return x < 70 ? 'Bolina' : x <= 110 ? 'Traverso' : 'Poppa'
+  const c = courseOf(twa)
+  return c == null ? '–' : c === 'up' ? 'Bolina' : c === 'down' ? 'Poppa' : 'Traverso'
 }
 
 function LegsTab({
@@ -834,12 +871,17 @@ function LegsTab({
   tr,
   unit,
   distUnit,
+  top,
+  share,
   onPick,
 }: {
   a: SessionAnalysis
   tr: SessionData['track']
   unit: Settings['speedUnit']
   distUnit: Settings['distUnit']
+  /** The best legs, starred. */
+  top: Set<Leg> | null
+  share: number
   onPick: (i0: number, i1: number) => void
 }) {
   const u = SPEED_SHORT[unit]
@@ -863,7 +905,14 @@ function LegsTab({
         <tbody>
           {a.legs.map((l, k) => (
             <tr key={k} onClick={() => onPick(l.i0, l.i1)} className="cursor-pointer border-t border-line hover:bg-surface-2">
-              <td className="px-3 py-2 tabular">{fmtTimeSec(tr.t[l.i0])}</td>
+              <td className="px-3 py-2 whitespace-nowrap tabular">
+                {fmtTimeSec(tr.t[l.i0])}
+                {top?.has(l) && (
+                  <span className="ml-1 text-accent" title="Tra i bordi migliori">
+                    ★<span className="sr-only"> tra i migliori</span>
+                  </span>
+                )}
+              </td>
               <td className="px-2 py-2">
                 {pointOfSail(l.twa)}
                 {l.tack && <span className="text-ink-2"> · {l.tack === 'S' ? 'dritta' : 'sinistra'}</span>}
@@ -879,7 +928,8 @@ function LegsTab({
         </tbody>
       </table>
       <p className="px-3 pb-3 text-xs text-ink-2">
-        Distanza totale dei tratti: {fmtDist(a.legs.reduce((s, l) => s + l.distance, 0), distUnit)}. Tocca una riga per vederla sulla mappa.
+        Distanza totale dei tratti: {fmtDist(a.legs.reduce((s, l) => s + l.distance, 0), distUnit)}.
+        {top && ` ★ tra i bordi migliori (top ${Math.round(share * 100)}%).`} Tocca una riga per vederla sulla mappa.
       </p>
     </div>
   )

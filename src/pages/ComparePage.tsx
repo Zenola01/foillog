@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { BestLegsCompare } from '../components/BestLegs'
 import { EChart } from '../components/EChart'
 import { LiveInfo, type LiveRider } from '../components/LiveInfo'
 import { MapView, TrailToggle, type MapTrack } from '../components/MapView'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { TrackThumb } from '../components/TrackThumb'
 import { btnPrimary, btnSecondary, card, LineKey, Segmented } from '../components/ui'
+import { legsInWind } from '../lib/analysis/bestLegs'
 import { sharedWind } from '../lib/analysis/wind'
 import { compareSpeedOption, polarOption } from '../lib/charts'
 import { useAuth } from '../lib/auth'
@@ -214,6 +216,12 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
     [items, overlap],
   )
   const windByRider = wind == null ? series.flatMap((s) => (s.a.wind.dir == null ? [] : [{ dir: s.a.wind.dir, color: s.color, label: s.name }])) : undefined
+  // Best legs: measured against the shared wind when there is one, so angles and VMG compare fairly.
+  const legRiders = useMemo(
+    () => series.map((s) => ({ id: s.rec.id, name: s.name, color: s.color, legs: wind != null ? legsInWind(s.a.legs, wind) : s.a.legs })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, colors, wind],
+  )
   const riders = useMemo<LiveRider[]>(
     () =>
       series.map((s) => ({ id: s.rec.id, name: s.name, color: s.color, track: s.data.track, offset: s.offset, windDir: wind ?? s.a.wind.dir, foil: s.a.foil })),
@@ -287,6 +295,7 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
 
         <div className="mt-4 space-y-4 lg:mt-0">
           <CompareTable series={series} settings={settings} />
+          <BestLegsCompare riders={legRiders} unit={unit} sharedWind={wind != null} />
           <div className={`${card} p-3`}>
             <p className="text-sm font-semibold">Velocità</p>
             <p className="text-xs text-ink-2">{relative ? 'Tempo dalla partenza di ciascuno.' : 'Ora del giorno.'}</p>
