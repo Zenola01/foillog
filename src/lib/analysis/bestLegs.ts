@@ -1,24 +1,15 @@
 import { norm180, RAD } from '../geo'
 import type { Leg, Tack } from '../types'
 import { tackOf } from './maneuvers'
+import { courseOf, type Course } from './pointsOfSail'
 
 // "Top 20% of the upwind legs": the legs sailed upwind (or downwind), ranked by the VMG each one
-// made good, and the averages of the best of them. These are the angle and speed to aim for.
+// made good, and the averages of the best of them: the angle and speed to aim for. Reaching legs,
+// where VMG means little, are ranked by speed.
 
-/** Under this |TWA| a leg is upwind, over DOWNWIND_MIN downwind; in between it is a reach. */
-export const UPWIND_MAX = 80
-export const DOWNWIND_MIN = 110
 /** Shorter legs, or legs mostly off the foil, are not counted as a leg sailed. */
 export const MIN_LEG_SECONDS = 10
 export const MIN_LEG_FOIL = 0.5
-
-export type Course = 'up' | 'down'
-
-export function courseOf(twa: number | null): Course | 'reach' | null {
-  if (twa == null) return null
-  const a = Math.abs(twa)
-  return a < UPWIND_MAX ? 'up' : a > DOWNWIND_MIN ? 'down' : 'reach'
-}
 
 /** Time-weighted averages of a set of legs. VMG is positive both ways (made good towards or away from the wind). */
 export interface LegAverages {
@@ -39,8 +30,10 @@ export interface BestLegs extends LegAverages {
   byTack: Record<Tack, LegAverages | null>
 }
 
-/** VMG made good on this course: towards the wind upwind, away from it downwind. */
-const made = (l: Leg, course: Course) => (course === 'up' ? l.vmg! : -l.vmg!)
+/** VMG made good on this course: towards the wind upwind, away from it downwind (either way on a reach). */
+const made = (l: Leg, course: Course) => (course === 'up' ? l.vmg! : course === 'down' ? -l.vmg! : Math.abs(l.vmg!))
+/** What ranks a leg: VMG, or speed on a reach. */
+const score = (l: Leg, course: Course) => (course === 'reach' ? l.avgSpeed : made(l, course))
 
 function averages(legs: Leg[], course: Course): LegAverages | null {
   if (!legs.length) return null
@@ -58,15 +51,15 @@ function averages(legs: Leg[], course: Course): LegAverages | null {
 }
 
 /**
- * The best `share` (0..1] of the legs sailed on `course`, by VMG, with their averages; at least one
- * leg when any qualifies. Null without the wind or without such legs.
+ * The best `share` (0..1] of the legs sailed on `course` (by VMG, or speed on a reach) with their
+ * averages; at least one leg when any qualifies. Null without the wind or without such legs.
  */
 export function bestLegs(legs: Leg[], course: Course, share: number): BestLegs | null {
   const pool = legs.filter(
     (l) => l.twa != null && l.vmg != null && courseOf(l.twa) === course && l.duration >= MIN_LEG_SECONDS && l.foilShare >= MIN_LEG_FOIL,
   )
   if (!pool.length) return null
-  pool.sort((a, b) => made(b, course) - made(a, course))
+  pool.sort((a, b) => score(b, course) - score(a, course))
   const chosen = pool.slice(0, Math.max(1, Math.ceil(pool.length * share - 1e-9)))
   return {
     ...averages(chosen, course)!,

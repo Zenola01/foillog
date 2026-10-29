@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { analyzeTrack } from '../src/lib/analysis/analyze'
+import { bestLegs } from '../src/lib/analysis/bestLegs'
 import { processTrack } from '../src/lib/analysis/clean'
 import { findLegs, findTurns } from '../src/lib/analysis/maneuvers'
 import { estimateWind, sharedWind } from '../src/lib/analysis/wind'
@@ -136,6 +137,25 @@ describe('wind and manoeuvres', () => {
     expect(a.polar!.length).toBeGreaterThan(4)
     const up = a.polar!.find((b) => Math.abs(b.twa - 57.5) < 3)
     expect(kn(up?.speed)).toBeCloseTo(16, 0)
+  })
+})
+
+describe('points of sail', () => {
+  it('keeps the reaching (waiting for friends) out of the upwind and downwind numbers', () => {
+    // Upwind at 55°, then a long while back and forth across the wind (75° and 105°), then downwind at 140°.
+    const legs: SimLeg[] = [...zigzag.slice(0, 4)]
+    for (let k = 0; k < 4; k++) legs.push({ twa: 75, seconds: 60, kn: 15 }, { twa: -105, seconds: 60, kn: 18 })
+    legs.push(...zigzag.slice(4))
+    const tr = simTrack({ windFrom: 270, legs, noiseM: 1, seed: 21 })
+    const a = analyzeTrack(tr, null, { foilOnKn: 7, windOverride: 270 })
+    expect(a.summary.upwindAngle!).toBeGreaterThan(50)
+    expect(a.summary.upwindAngle!).toBeLessThan(60)
+    expect(a.summary.downwindAngle!).toBeGreaterThan(134)
+    expect(a.summary.downwindAngle!).toBeLessThan(146)
+    expect(a.sail?.reach.S?.angle).toBeCloseTo(75, -1)
+    expect(a.sail?.reach.P?.angle).toBeCloseTo(105, -1)
+    expect(bestLegs(a.legs, 'reach', 1)?.legs).toBeGreaterThanOrEqual(6)
+    expect(bestLegs(a.legs, 'up', 1)?.angle).toBeLessThan(60)
   })
 })
 

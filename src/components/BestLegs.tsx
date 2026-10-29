@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { bestLegs, DOWNWIND_MIN, MIN_LEG_SECONDS, UPWIND_MAX, type BestLegs, type Course, type LegAverages } from '../lib/analysis/bestLegs'
+import { bestLegs, MIN_LEG_SECONDS, type BestLegs, type LegAverages } from '../lib/analysis/bestLegs'
+import { DOWNWIND_MIN, UPWIND_MAX, type Course } from '../lib/analysis/pointsOfSail'
 import { useSettings, type Settings } from '../lib/settings'
 import type { Leg } from '../lib/types'
 import { fmtDuration, fmtSpeed, SPEED_SHORT } from '../lib/units'
@@ -12,7 +13,9 @@ const SHARES = [
   { value: 0.1, label: 'Top 10%' },
 ]
 
-const COURSE: Record<Course, string> = { up: 'Bolina', down: 'Poppa' }
+const COURSE: Record<Course, string> = { up: 'Bolina', reach: 'Traverso', down: 'Poppa' }
+/** Bolina and poppa first: they are what the best legs are about; the reaching comes after. */
+const ORDER: Course[] = ['up', 'down', 'reach']
 const deg = (v: number | null | undefined) => (v == null ? '–' : `${Math.round(v)}°`)
 const legsWord = (n: number) => (n === 1 ? 'bordo' : 'bordi')
 
@@ -22,7 +25,9 @@ export function TopShareToggle() {
   return <Segmented label="Quali bordi" value={settings.topShare} onChange={(topShare) => update({ topShare })} options={SHARES} />
 }
 
-const rule = `Bolina: bordi a meno di ${UPWIND_MAX}° dal vento; poppa: oltre ${DOWNWIND_MIN}°. Contano i bordi di almeno ${MIN_LEG_SECONDS} s, per più di metà in foil, ordinati per VMG.`
+const rule =
+  `Bolina: bordi a meno di ${UPWIND_MAX}° dal vento; traverso tra ${UPWIND_MAX}° e ${DOWNWIND_MIN}°; poppa oltre ${DOWNWIND_MIN}°. ` +
+  `Contano i bordi di almeno ${MIN_LEG_SECONDS} s, per più di metà in foil: bolina e poppa ordinati per VMG, il traverso per velocità.`
 
 /** Session page: averages of the best upwind and downwind legs, with all the legs for reference. */
 export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Settings['speedUnit']; onSetWind?: () => void }) {
@@ -43,14 +48,14 @@ export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Set
       </div>
     )
   }
-  const groups = (['up', 'down'] as const).map((course) => ({ course, best: bestLegs(legs, course, share), all: bestLegs(legs, course, 1) }))
+  const groups = ORDER.map((course) => ({ course, best: bestLegs(legs, course, share), all: bestLegs(legs, course, 1) }))
   const ref = (all: BestLegs | null, text: (a: BestLegs) => string) => (share < 1 && all ? `tutti: ${text(all)}` : undefined)
-  const sideRow = (label: string, s: LegAverages | null) => (
+  const sideRow = (label: string, s: LegAverages | null, vmg: boolean) => (
     <tr key={label} className="border-t border-line">
       <td className="px-3 py-2">{label}</td>
       <td className="px-2 py-2 text-right tabular">{deg(s?.angle)}</td>
       <td className="px-2 py-2 text-right tabular">{sp(s?.speed)}</td>
-      <td className="px-2 py-2 text-right tabular">{sp(s?.vmg)}</td>
+      <td className="px-2 py-2 text-right tabular">{vmg ? sp(s?.vmg) : '–'}</td>
       <td className="px-3 py-2 text-right tabular">{s ? s.legs : '–'}</td>
     </tr>
   )
@@ -60,7 +65,7 @@ export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Set
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold">Bordi migliori</p>
-          <p className="text-xs text-ink-2">La media dei bordi con il VMG più alto: gli angoli e le velocità a cui puntare.</p>
+          <p className="text-xs text-ink-2">La media dei bordi migliori: gli angoli e le velocità a cui puntare.</p>
         </div>
         <TopShareToggle />
       </div>
@@ -73,11 +78,18 @@ export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Set
               {best ? `${best.legs} ${legsWord(best.legs)} su ${best.of} · ${fmtDuration(best.seconds)}` : `nessun ${legsWord(1)} in foil`}
             </span>
           </p>
-          {best && (
+          {best && course !== 'reach' && (
             <div className="grid grid-cols-3 gap-2">
               <StatTile label="VMG" value={sp(best.vmg)} unit={u} sub={ref(all, (a) => sp(a.vmg))} />
               <StatTile label="Velocità" value={sp(best.speed)} unit={u} sub={ref(all, (a) => sp(a.speed))} />
               <StatTile label="Angolo" value={deg(best.angle)} sub={ref(all, (a) => deg(a.angle))} />
+            </div>
+          )}
+          {best && all && course === 'reach' && (
+            <div className="grid grid-cols-3 gap-2">
+              <StatTile label="Velocità" value={sp(best.speed)} unit={u} sub={ref(all, (a) => sp(a.speed))} />
+              <StatTile label="Angolo" value={deg(best.angle)} sub={ref(all, (a) => deg(a.angle))} />
+              <StatTile label="Tempo a traverso" value={fmtDuration(all.seconds)} sub={`${all.legs} ${legsWord(all.legs)} in tutto`} />
             </div>
           )}
         </section>
@@ -98,8 +110,8 @@ export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Set
             </thead>
             <tbody>
               {groups.flatMap(({ course, best }) => [
-                sideRow(`${COURSE[course]}, mure a dritta`, best?.byTack.S ?? null),
-                sideRow(`${COURSE[course]}, mure a sinistra`, best?.byTack.P ?? null),
+                sideRow(`${COURSE[course]}, mure a dritta`, best?.byTack.S ?? null, course !== 'reach'),
+                sideRow(`${COURSE[course]}, mure a sinistra`, best?.byTack.P ?? null, course !== 'reach'),
               ])}
             </tbody>
           </table>
@@ -114,9 +126,11 @@ export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Set
   )
 }
 
+type RiderLegs = Record<Course, BestLegs | null> & { reachAll: BestLegs | null }
+
 interface Row {
   label: string
-  get: (s: { up: BestLegs | null; down: BestLegs | null }) => number | null
+  get: (s: RiderLegs) => number | null
   fmt: (v: number | null) => ReactNode
   better?: 'max'
 }
@@ -136,8 +150,13 @@ export function BestLegsCompare({
   const share = settings.topShare
   const u = SPEED_SHORT[unit]
   const sp = (v: number | null) => fmtSpeed(v, unit)
-  const stats = riders.map((r) => ({ up: bestLegs(r.legs, 'up', share), down: bestLegs(r.legs, 'down', share) }))
-  if (stats.every((s) => !s.up && !s.down)) return null
+  const stats: RiderLegs[] = riders.map((r) => ({
+    up: bestLegs(r.legs, 'up', share),
+    down: bestLegs(r.legs, 'down', share),
+    reach: bestLegs(r.legs, 'reach', share),
+    reachAll: bestLegs(r.legs, 'reach', 1),
+  }))
+  if (stats.every((s) => !s.up && !s.down && !s.reach)) return null
   const count = (b: BestLegs | null) => (b ? `${b.legs}/${b.of}` : '–')
   const rows: Row[] = [
     { label: 'Bolina · VMG', get: (s) => s.up?.vmg ?? null, fmt: sp, better: 'max' },
@@ -146,6 +165,8 @@ export function BestLegsCompare({
     { label: 'Poppa · VMG', get: (s) => s.down?.vmg ?? null, fmt: sp, better: 'max' },
     { label: 'Poppa · velocità', get: (s) => s.down?.speed ?? null, fmt: sp, better: 'max' },
     { label: 'Poppa · angolo', get: (s) => s.down?.angle ?? null, fmt: deg },
+    { label: 'Traverso · velocità', get: (s) => s.reach?.speed ?? null, fmt: sp, better: 'max' },
+    { label: 'Tempo a traverso', get: (s) => s.reachAll?.seconds ?? null, fmt: (v) => fmtDuration(v) },
   ]
 
   return (
@@ -187,10 +208,10 @@ export function BestLegsCompare({
             )
           })}
           <tr className="border-t border-line">
-            <td className="px-3 py-2 text-ink-2">Bordi bolina · poppa</td>
+            <td className="px-3 py-2 text-ink-2">Bordi bolina · poppa · traverso</td>
             {stats.map((s, k) => (
               <td key={k} className="px-2 py-2 text-right whitespace-nowrap tabular">
-                {count(s.up)} · {count(s.down)}
+                {count(s.up)} · {count(s.down)} · {count(s.reach)}
               </td>
             ))}
           </tr>

@@ -5,6 +5,22 @@ import { movingAverage, pointWeights, segmentIds, weightedPercentile } from './s
 const POLAR_BIN = 5
 const POLAR_MIN_SECONDS = 5
 
+/**
+ * Points of sail by |TWA|: upwind under UPWIND_MAX, downwind over DOWNWIND_MIN, a reach in between.
+ * Reaching is kept apart: going back and forth across the wind (waiting for friends, say) would
+ * otherwise drag down both the upwind and the downwind numbers.
+ */
+export const UPWIND_MAX = 70
+export const DOWNWIND_MIN = 120
+
+export type Course = 'up' | 'reach' | 'down'
+
+export function courseOf(twa: number | null): Course | null {
+  if (twa == null) return null
+  const a = Math.abs(twa)
+  return a < UPWIND_MAX ? 'up' : a > DOWNWIND_MIN ? 'down' : 'reach'
+}
+
 export interface SailResult {
   twa: Float32Array
   vmg: Float32Array
@@ -32,17 +48,16 @@ export function pointsOfSail(tr: Track, foil: Uint8Array, windDir: number, legs:
   // Smoothed speed for the polar: its 90th percentile would otherwise pick up GPS noise.
   const s3 = movingAverage(tr, spd, 1500)
 
-  const side = (upwind: boolean, tack: Tack): SideStats | null => {
+  const side = (course: Course, tack: Tack): SideStats | null => {
     const angles: [number, number][] = []
     let secs = 0
     let sv = 0
     let svmg = 0
     for (let i = 0; i < n; i++) {
       if (!steady[i] || !(w[i] > 0)) continue
-      const a = Math.abs(twa[i])
-      // Beam reaching (80–110°) is neither: it would blur both the upwind and the downwind angle.
-      if (upwind ? a >= 80 : a <= 110) continue
+      if (courseOf(twa[i]) !== course) continue
       if ((twa[i] > 0 ? 'S' : 'P') !== tack) continue
+      const a = Math.abs(twa[i])
       angles.push([a, w[i]])
       secs += w[i]
       sv += spd[i] * w[i]
@@ -53,8 +68,9 @@ export function pointsOfSail(tr: Track, foil: Uint8Array, windDir: number, legs:
   }
 
   const stats: SailStats = {
-    upwind: { S: side(true, 'S'), P: side(true, 'P') },
-    downwind: { S: side(false, 'S'), P: side(false, 'P') },
+    upwind: { S: side('up', 'S'), P: side('up', 'P') },
+    reach: { S: side('reach', 'S'), P: side('reach', 'P') },
+    downwind: { S: side('down', 'S'), P: side('down', 'P') },
     bestVmgUp: bestVmg(tr, vmg, 1, legs),
     bestVmgDown: bestVmg(tr, vmg, -1, legs),
   }

@@ -54,6 +54,16 @@ describe('best legs', () => {
     expect(bestLegs(upwind, 'down', 0.2)).toBeNull()
   })
 
+  it('puts the reaching in a class of its own, ranked by speed', () => {
+    const legs = [...upwind, leg(75, 9), leg(285, 12), leg(115, 14), leg(90, 11)]
+    // 75° and 115° off the wind are reaches now: neither upwind nor downwind.
+    expect(bestLegs(legs, 'up', 1)!.of).toBe(10)
+    expect(bestLegs(legs, 'down', 1)).toBeNull()
+    const r = bestLegs(legs, 'reach', 0.5)!
+    expect(r.of).toBe(4)
+    expect(r.chosen.map((l) => l.avgSpeed)).toEqual([14, 12])
+  })
+
   it('measures the legs against a shared wind', () => {
     const [l] = legsInWind([leg(50, 10)], 20)
     expect(l.twa).toBeCloseTo(-30)

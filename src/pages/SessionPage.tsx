@@ -9,7 +9,8 @@ import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { btnGhost, btnPrimary, btnSecondary, card, Outcome, StatTile } from '../components/ui'
 import { WindDial } from '../components/WindDial'
 import { rangeStats } from '../lib/analysis/analyze'
-import { bestLegs, courseOf } from '../lib/analysis/bestLegs'
+import { bestLegs } from '../lib/analysis/bestLegs'
+import { courseOf, DOWNWIND_MIN, UPWIND_MAX } from '../lib/analysis/pointsOfSail'
 import { indexAtTime } from '../lib/analysis/series'
 import { heartRateOption, histogramOption, orientationOption, polarOption, speedOption } from '../lib/charts'
 import { analyzeInWorker } from '../lib/engine'
@@ -253,7 +254,7 @@ export function SessionView({
   const share = settings.topShare
   const top = useMemo(() => {
     if (share >= 1) return null
-    const chosen = [...(bestLegs(a.legs, 'up', share)?.chosen ?? []), ...(bestLegs(a.legs, 'down', share)?.chosen ?? [])]
+    const chosen = (['up', 'down', 'reach'] as const).flatMap((c) => bestLegs(a.legs, c, share)?.chosen ?? [])
     return { legs: new Set(chosen), segments: chosen.map((l) => [l.i0, l.i1] as [number, number]) }
   }, [a.legs, share])
   const stopPoints = useMemo(() => a.stops.map((s) => s.i0), [a.stops])
@@ -274,6 +275,13 @@ export function SessionView({
     const i = indexAtTime(tr.t, cursor)
     const twa = a.twa ? Math.round(a.twa[i]) : null
     return `${sp(tr.spd[i])} ${u} · ${a.foil[i] ? 'in foil' : 'giù'}${twa != null ? ` · ${Math.abs(twa)}° ${twa >= 0 ? 'dritta' : 'sinistra'}` : ''}`
+  })()
+
+  // Time on a reach (across the wind), kept out of the upwind and downwind numbers.
+  const reach = (() => {
+    const sides = [a.sail?.reach.S, a.sail?.reach.P].filter((x): x is SideStats => x != null)
+    const seconds = sides.reduce((s, x) => s + x.seconds, 0)
+    return seconds > 0 ? { seconds, speed: sides.reduce((s, x) => s + x.speed * x.seconds, 0) / seconds } : null
   })()
 
   const wind = a.wind
@@ -472,6 +480,9 @@ export function SessionView({
                 sub={`VMG max ${sp(sum.bestVmgDown)} ${u}`}
                 onClick={() => setTab('andature')}
               />
+            )}
+            {reach && (
+              <StatTile label="Traverso" value={fmtDuration(reach.seconds)} sub={`media ${sp(reach.speed)} ${u}`} onClick={() => setTab('andature')} />
             )}
             {sum.longestFlight && (
               <StatTile
@@ -810,12 +821,12 @@ function SailTab({
       </div>
     )
   }
-  const row = (label: string, s: SideStats | null) => (
+  const row = (label: string, s: SideStats | null, vmg = true) => (
     <tr className="border-t border-line">
       <td className="px-3 py-2">{label}</td>
       <td className="px-2 py-2 text-right tabular">{s ? `${Math.round(s.angle)}°` : '–'}</td>
       <td className="px-2 py-2 text-right tabular">{s ? fmtSpeed(s.speed, unit) : '–'}</td>
-      <td className="px-2 py-2 text-right tabular">{s ? fmtSpeed(s.vmg, unit) : '–'}</td>
+      <td className="px-2 py-2 text-right tabular">{s && vmg ? fmtSpeed(s.vmg, unit) : '–'}</td>
       <td className="px-3 py-2 text-right tabular">{s ? fmtDuration(s.seconds) : '–'}</td>
     </tr>
   )
@@ -854,8 +865,14 @@ function SailTab({
             {row('Bolina, mure a sinistra', a.sail.upwind.P)}
             {row('Poppa, mure a dritta', a.sail.downwind.S)}
             {row('Poppa, mure a sinistra', a.sail.downwind.P)}
+            {row('Traverso, mure a dritta', a.sail.reach.S, false)}
+            {row('Traverso, mure a sinistra', a.sail.reach.P, false)}
           </tbody>
         </table>
+        <p className="px-3 pb-3 text-xs text-ink-2">
+          Bolina sotto {UPWIND_MAX}° dal vento, traverso tra {UPWIND_MAX}° e {DOWNWIND_MIN}°, poppa oltre {DOWNWIND_MIN}°: il traverso non pesa su bolina e
+          poppa.
+        </p>
       </div>
     </div>
   )

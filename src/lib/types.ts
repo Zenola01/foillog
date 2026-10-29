@@ -151,6 +151,8 @@ export interface SideStats {
 
 export interface SailStats {
   upwind: { S: SideStats | null; P: SideStats | null }
+  /** Across the wind, between upwind and downwind (VMG means little here). */
+  reach: { S: SideStats | null; P: SideStats | null }
   downwind: { S: SideStats | null; P: SideStats | null }
   bestVmgUp: SpeedRecord | null
   /** v is positive (m/s made good downwind). */
