@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { analyzeTrack } from '../src/lib/analysis/analyze'
 import { processTrack } from '../src/lib/analysis/clean'
+import { tracksFromText } from '../src/lib/clipboardTracks'
 import { parseFile } from '../src/lib/parsers/detect'
 
 // Real sessions kept on this computer only: the folder is git-ignored, so these tests are
@@ -25,6 +26,15 @@ describe.skipIf(files.length === 0)('real sessions', () => {
     expect(kn).toBeGreaterThan(3)
     expect(kn).toBeLessThan(45)
     expect(a.summary.distance).toBeGreaterThan(100)
+  })
+
+  it.each(files)('%s pasted as base64 (the «FoilLog» shortcut) reads like the file itself', async (name) => {
+    const buf = readFileSync(join(DIR, name))
+    const [f] = tracksFromText(buf.toString('base64').replace(/(.{76})/g, '$1\n'))
+    expect(f.name.split('.').pop()).toBe(name.split('.').pop()!.toLowerCase())
+    const pasted = parseFile(f.name, await f.arrayBuffer())
+    const direct = parseFile(name, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer)
+    expect(pasted.track.t.length).toBe(direct.track.t.length)
   })
 
   it('a VKX and its GPX export give the same analysis', () => {

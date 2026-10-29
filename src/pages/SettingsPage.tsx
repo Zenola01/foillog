@@ -144,11 +144,48 @@ export default function SettingsPage() {
 
       <section className={`${card} space-y-4 p-4 text-sm`}>
         <h2 className="text-base font-semibold">Come caricare i file</h2>
-        <div>
+        <div className="space-y-1.5">
           <p className="font-semibold">Dal Vakaros</p>
           <p className="text-ink-2">
-            Nell'app Vakaros Connect apri la sezione delle sessioni, scarica l'uscita dallo strumento e scegli Esporta. Come formato
-            scegli VKX (oppure CSV) e salva il file in File, poi caricalo qui. Il VKX contiene anche sbandamento e beccheggio.
+            Nell'app Vakaros Connect apri la sezione delle sessioni, scarica l'uscita dallo strumento e scegli Esporta, formato VKX
+            (oppure CSV): il VKX contiene anche sbandamento e beccheggio. Poi, senza salvare il file:
+          </p>
+          <ol className="list-decimal space-y-1 pl-5 text-ink-2">
+            <li>
+              nel menu Condividi tocca <b className="text-ink">Copia</b>;
+            </li>
+            <li>
+              apri FoilLog e, nella pagina Uscite, tieni premuto il riquadro <b className="text-ink">Incolla</b> e scegli Incolla.
+            </li>
+          </ol>
+          <p className="text-ink-2">
+            Se l'iPhone non passa il file copiato, usa il comando rapido «FoilLog» qui sotto. Oppure salva il file in File e caricalo con
+            «Scegli i file».
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <p className="font-semibold">Il comando rapido «FoilLog»</p>
+          <p className="text-ink-2">
+            L'iPhone non lascia comparire le web app nel menu Condividi, ma un comando rapido sì: copia la traccia in un formato che FoilLog
+            sa sempre incollare. Si prepara una volta sola, nell'app Comandi:
+          </p>
+          <ol className="list-decimal space-y-1 pl-5 text-ink-2">
+            <li>tocca + e chiama il nuovo comando «FoilLog»;</li>
+            <li>
+              nei dettagli del comando (icona ⓘ) attiva <b className="text-ink">Mostra nel foglio di condivisione</b> e, tra i tipi di
+              contenuto, lascia solo File;
+            </li>
+            <li>
+              aggiungi l'azione che codifica in <b className="text-ink">base64</b> (cercala scrivendo «base64») e fai codificare l'input del
+              comando rapido;
+            </li>
+            <li>
+              aggiungi l'azione <b className="text-ink">Copia negli appunti</b>;
+            </li>
+            <li>se vuoi, aggiungi «Mostra notifica» con il testo «Traccia copiata: apri FoilLog e incollala».</li>
+          </ol>
+          <p className="text-ink-2">
+            Da Vakaros allora tocchi Condividi e poi «FoilLog» in fondo all'elenco; apri FoilLog e incolli nel riquadro Incolla.
           </p>
         </div>
         <div>
