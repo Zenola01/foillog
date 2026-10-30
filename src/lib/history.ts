@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { historyOf, type CloudSession, type HistoryRow } from './cloud'
-import { sessionBand, type PolarSource } from './polars'
+import { bandOfSpeed, type PolarSource } from './polars'
 import type { SessionRecord } from './store'
 import type { SessionGear } from './types'
 
@@ -12,7 +12,7 @@ export interface PastSession extends PolarSource {
 export const pastOfRow = (r: HistoryRow): PastSession => ({
   id: r.id,
   start: Date.parse(r.started_at),
-  band: sessionBand(r.wind_band, r.windSpeed),
+  band: bandOfSpeed(r.wind_speed),
   polar: r.polar,
   vmgUp: r.vmgUp,
   vmgDown: r.vmgDown,
@@ -22,7 +22,7 @@ export const pastOfRow = (r: HistoryRow): PastSession => ({
 export const pastOfRecord = (r: SessionRecord): PastSession => ({
   id: r.id,
   start: r.summary.start,
-  band: sessionBand(r.windBand, r.summary.modelWindSpeed),
+  band: bandOfSpeed(r.windSpeed),
   polar: r.summary.polar,
   vmgUp: r.summary.bestVmgUp,
   vmgDown: r.summary.bestVmgDown,
@@ -32,7 +32,7 @@ export const pastOfRecord = (r: SessionRecord): PastSession => ({
 export const pastOfCloud = (s: CloudSession): PastSession => ({
   id: s.id,
   start: Date.parse(s.started_at),
-  band: sessionBand(s.wind_band, s.summary.modelWindSpeed),
+  band: bandOfSpeed(s.wind_speed),
   polar: s.summary.polar,
   vmgUp: s.summary.bestVmgUp,
   vmgDown: s.summary.bestVmgDown,

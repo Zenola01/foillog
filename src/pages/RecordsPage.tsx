@@ -4,7 +4,7 @@ import { EChart } from '../components/EChart'
 import { BestPolarsCard } from '../components/Polars'
 import { RequireAuth } from '../components/RequireAuth'
 import { TrackThumb } from '../components/TrackThumb'
-import { btnSecondary, card, Segmented, StatTile } from '../components/ui'
+import { btnGhost, btnSecondary, card, Segmented, StatTile } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { progressOption } from '../lib/charts'
 import { listSpots, loadTrack, sessionsAtSpot, sessionsOf, updateSession, type CloudSession } from '../lib/cloud'
@@ -12,10 +12,11 @@ import { bestOf, leaderboard, totals } from '../lib/crewStats'
 import { analyzeInWorker } from '../lib/engine'
 import { pastOfCloud } from '../lib/history'
 import { useLibrary } from '../lib/library'
+import { parseWind } from '../lib/polars'
 import { useSettings, type Settings } from '../lib/settings'
 import { useTheme } from '../lib/theme'
 import type { RecordKey } from '../lib/types'
-import { fmtDist, fmtDuration, fmtPct, fmtShortDate, fmtSpeed, SPEED_SHORT } from '../lib/units'
+import { fmtDist, fmtDuration, fmtPct, fmtShortDate, fmtSpeed, SPEED_SHORT, type SpeedUnit } from '../lib/units'
 
 const RECORDS: { key: RecordKey; label: string }[] = [
   { key: 's2', label: 'Velocità max (2 s)' },
@@ -79,6 +80,9 @@ function Records({ userId }: { userId?: string }) {
   const past = useMemo(() => shown.map(pastOfCloud), [shown])
   // Sessions analysed before polars were kept (with a wind, so they would have one).
   const unpolared = useMemo(() => (rows ?? []).filter((r) => r.summary.polar === undefined && r.summary.windDir != null), [rows])
+  // Sessions without the wind on the water: they stay out of the best polars until it is typed in.
+  const noWind = useMemo(() => (rows ?? []).filter((r) => r.wind_speed == null), [rows])
+  const windSaved = useCallback((id: string, ms: number) => setRows((rs) => rs && rs.map((r) => (r.id === id ? { ...r, wind_speed: ms } : r))), [])
 
   if (error) return <p className={`${card} p-4 text-sm text-critical`}>{error}</p>
   if (!rows) return <p className="py-16 text-center text-ink-2">Carico le uscite…</p>
@@ -148,15 +152,21 @@ function Records({ userId }: { userId?: string }) {
             unit={settings.speedUnit}
             colors={colors}
             footer={
-              unpolared.length > 0 &&
-              (me ? (
-                <AddPolars rows={unpolared} onDone={load} />
+              me ? (
+                <>
+                  {noWind.length > 0 && <EnterWind rows={noWind} unit={settings.speedUnit} onSaved={windSaved} />}
+                  {unpolared.length > 0 && <AddPolars rows={unpolared} onDone={load} />}
+                </>
               ) : (
-                <p className="text-xs text-ink-2">
-                  {unpolared.length === 1 ? 'Un’uscita' : `${unpolared.length} uscite`} di {name} non {unpolared.length === 1 ? 'ha' : 'hanno'} ancora la
-                  polare: si aggiunge quando {name} apre i suoi record.
-                </p>
-              ))
+                (noWind.length > 0 || unpolared.length > 0) && (
+                  <p className="text-xs text-ink-2">
+                    {noWind.length > 0 &&
+                      `${count(noWind.length)} di ${name} senza il vento in acqua ${noWind.length === 1 ? 'resta' : 'restano'} fuori finché ${name} non lo inserisce. `}
+                    {unpolared.length > 0 &&
+                      `${count(unpolared.length)} di ${name} non ${unpolared.length === 1 ? 'ha' : 'hanno'} ancora la polare: si aggiunge quando ${name} apre i suoi record.`}
+                  </p>
+                )
+              )
             }
           />
           {shown.length > 1 && (
@@ -170,6 +180,88 @@ function Records({ userId }: { userId?: string }) {
         </>
       )}
     </div>
+  )
+}
+
+const count = (n: number) => (n === 1 ? 'Un’uscita' : `${n} uscite`)
+
+/** Your sessions without the wind on the water, to type it in one after the other. */
+function EnterWind({ rows, unit, onSaved }: { rows: CloudSession[]; unit: SpeedUnit; onSaved: (id: string, ms: number) => void }) {
+  const [open, setOpen] = useState(false)
+  const n = rows.length
+  return (
+    <div className="space-y-2 rounded-xl bg-surface-2 p-3 text-sm">
+      <p>
+        {n === 1 ? 'Un’uscita non ha' : `${n} uscite non hanno`} il vento medio in acqua: finché non lo inserisci {n === 1 ? 'resta fuori' : 'restano fuori'}{' '}
+        dalle polari migliori.
+      </p>
+      {open ? (
+        <ul className="divide-y divide-[var(--border)]">
+          {rows.map((r) => (
+            <WindRow key={r.id} row={r} unit={unit} onSaved={onSaved} />
+          ))}
+        </ul>
+      ) : (
+        <button type="button" className={btnSecondary} onClick={() => setOpen(true)}>
+          Inserisci il vento
+        </button>
+      )}
+    </div>
+  )
+}
+
+function WindRow({ row, unit, onSaved }: { row: CloudSession; unit: SpeedUnit; onSaved: (id: string, ms: number) => void }) {
+  const library = useLibrary()
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const ms = parseWind(text, unit)
+  const u = SPEED_SHORT[unit]
+  const model = row.summary.modelWindSpeed
+  return (
+    <li className="py-2">
+      <form
+        className="flex items-center gap-2"
+        onSubmit={async (e) => {
+          e.preventDefault()
+          if (ms == null) return
+          setBusy(true)
+          setError(null)
+          try {
+            await updateSession(row.id, { wind_speed: ms })
+            await library.mirror(row.id, { windSpeed: ms })
+            onSaved(row.id, ms)
+          } catch (err) {
+            setError(err instanceof Error ? err.message : String(err))
+            setBusy(false)
+          }
+        }}
+      >
+        <Link to={`/c/${row.id}`} className="min-w-0 flex-1">
+          <span className="block truncate font-medium">
+            {fmtShortDate(Date.parse(row.started_at))} · {row.title}
+          </span>
+          {model != null && (
+            <span className="block text-xs text-ink-2">
+              modello meteo {fmtSpeed(model, unit)} {u}
+            </span>
+          )}
+        </Link>
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          inputMode="decimal"
+          placeholder="15"
+          aria-label={`Vento medio in acqua il ${fmtShortDate(Date.parse(row.started_at))} (${u})`}
+          className="w-16 rounded-lg border border-line bg-surface px-2 py-1.5 text-base"
+        />
+        <span className="text-ink-2">{u}</span>
+        <button type="submit" className={btnGhost} disabled={ms == null || busy}>
+          Salva
+        </button>
+      </form>
+      {error && <p className="mt-1 text-xs text-critical">{error}</p>}
+    </li>
   )
 }
 

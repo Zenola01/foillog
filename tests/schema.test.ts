@@ -143,12 +143,12 @@ describe('supabase schema', () => {
     await expect(as(A, () => db.query(`update public.profiles set gear = '{}' where id = $1`, [A]))).rejects.toThrow(/check/)
   })
 
-  it('stores the wind strength and the gear of a session', async () => {
-    await as(A, () => db.query(`update public.sessions set wind_band = 'medium', gear = $1 where id = $2`, [JSON.stringify([{ id: 'g1' }]), S_CREW]))
-    expect(await as(B, () => rows(`select wind_band, gear from public.sessions where id = $1`, [S_CREW]))).toEqual([
-      { wind_band: 'medium', gear: [{ id: 'g1' }] },
+  it('stores the wind on the water and the gear of a session', async () => {
+    await as(A, () => db.query(`update public.sessions set wind_speed = 8.2, gear = $1 where id = $2`, [JSON.stringify([{ id: 'g1' }]), S_CREW]))
+    expect(await as(B, () => rows(`select wind_speed, gear from public.sessions where id = $1`, [S_CREW]))).toEqual([
+      { wind_speed: 8.2, gear: [{ id: 'g1' }] },
     ])
-    await expect(as(A, () => db.query(`update public.sessions set wind_band = 'tempesta' where id = $1`, [S_CREW]))).rejects.toThrow(/check/)
+    await expect(as(A, () => db.query(`update public.sessions set wind_speed = -3 where id = $1`, [S_CREW]))).rejects.toThrow(/check/)
   })
 
   it('gives anonymous visitors nothing', async () => {

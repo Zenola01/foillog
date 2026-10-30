@@ -4,7 +4,7 @@ import { haversine } from './geo'
 import type { SessionData, SessionRecord } from './store'
 import { supabase } from './supabase'
 import { decodeTrackFile, encodeTrackFile } from './trackCodec'
-import type { GearItem, ModelWind, PolarPoint, SessionGear, SessionSummary, WindBand } from './types'
+import type { GearItem, ModelWind, PolarPoint, SessionGear, SessionSummary } from './types'
 
 // Everything that talks to the crew's Supabase project. Row-level security decides what each
 // query returns, so these functions simply ask for "everything" and get what the rider may see.
@@ -42,8 +42,8 @@ export interface CloudSession {
   track_path: string | null
   wind_override: number | null
   model_wind: ModelWind | null
-  /** Wind strength chosen by the rider; otherwise it comes from the model wind. */
-  wind_band: WindBand | null
+  /** Mean wind on the water as the rider typed it in (m/s). */
+  wind_speed: number | null
   gear: SessionGear[] | null
   created_at: string
   profile: { display_name: string } | null
@@ -63,7 +63,7 @@ export interface Comment {
 // Profiles are embedded through user_id explicitly: kudos and comments also link sessions and
 // profiles (many-to-many), and an unqualified embed is rejected as ambiguous.
 const SESSION_FIELDS =
-  'id, user_id, title, started_at, ended_at, visibility, spot_id, device, format, notes, summary, center_lat, center_lon, preview, track_path, wind_override, model_wind, wind_band, gear, created_at, profile:profiles!user_id(display_name), spot:spots(id, name), kudos(user_id), comments(count)'
+  'id, user_id, title, started_at, ended_at, visibility, spot_id, device, format, notes, summary, center_lat, center_lon, preview, track_path, wind_override, model_wind, wind_speed, gear, created_at, profile:profiles!user_id(display_name), spot:spots(id, name), kudos(user_id), comments(count)'
 
 /** Spots closer than this to a session's centre are taken as its spot. */
 const SPOT_RADIUS_M = 3000
@@ -152,7 +152,7 @@ export async function shareSession(rec: SessionRecord, data: SessionData, userId
     preview: rec.preview,
     wind_override: rec.windOverride,
     model_wind: rec.modelWind,
-    wind_band: rec.windBand ?? null,
+    wind_speed: rec.windSpeed ?? null,
     gear: rec.gear ?? [],
   }
   const saved = check(await supabase.from('sessions').upsert(row, { onConflict: 'user_id,started_at' }).select('id').single()) as { id: string }
@@ -190,11 +190,10 @@ export async function sessionsOf(userId: string): Promise<CloudSession[]> {
 export interface HistoryRow {
   id: string
   started_at: string
-  wind_band: WindBand | null
+  wind_speed: number | null
   gear: SessionGear[] | null
   polar: PolarPoint[] | null
   windDir: number | null
-  windSpeed: number | null
   vmgUp: number | null
   vmgDown: number | null
   foilTime: number
@@ -208,7 +207,7 @@ export async function historyOf(userId: string): Promise<HistoryRow[]> {
     await supabase
       .from('sessions')
       .select(
-        'id, started_at, wind_band, gear, polar:summary->polar, windDir:summary->windDir, windSpeed:summary->modelWindSpeed, vmgUp:summary->bestVmgUp, vmgDown:summary->bestVmgDown, foilTime:summary->foilTime, distance:summary->distance, s10:summary->records->s10',
+        'id, started_at, wind_speed, gear, polar:summary->polar, windDir:summary->windDir, vmgUp:summary->bestVmgUp, vmgDown:summary->bestVmgDown, foilTime:summary->foilTime, distance:summary->distance, s10:summary->records->s10',
       )
       .eq('user_id', userId)
       .order('started_at', { ascending: false }),
@@ -223,7 +222,7 @@ export async function getSession(id: string): Promise<CloudSession | null> {
   return check(await supabase.from('sessions').select(SESSION_FIELDS).eq('id', id).maybeSingle()) as unknown as CloudSession | null
 }
 
-export type SessionPatch = Partial<Pick<CloudSession, 'title' | 'notes' | 'visibility' | 'spot_id' | 'wind_override' | 'wind_band' | 'gear'>> & {
+export type SessionPatch = Partial<Pick<CloudSession, 'title' | 'notes' | 'visibility' | 'spot_id' | 'wind_override' | 'wind_speed' | 'gear'>> & {
   summary?: SessionSummary
 }
 
@@ -318,7 +317,7 @@ export function asRecord(s: CloudSession): SessionRecord {
     foilOnKn: 0,
     windOverride: s.wind_override,
     modelWind: s.model_wind,
-    windBand: s.wind_band ?? null,
+    windSpeed: s.wind_speed ?? null,
     gear: s.gear ?? [],
     summary: s.summary,
     preview: s.preview,

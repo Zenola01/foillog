@@ -5,7 +5,7 @@ import { useConfirm } from '../components/Confirm'
 import { EChart, type Chart } from '../components/EChart'
 import { IconBack, IconEdit, IconTrash } from '../components/icons'
 import { MapView, type MapTrack } from '../components/MapView'
-import { useVsBest, VsBestSummary, whose, WindBandPicker, type VsBest, type Whose } from '../components/Polars'
+import { bandNote, useVsBest, VsBestSummary, whose, WindSpeedField, type VsBest, type Whose } from '../components/Polars'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { SessionGear } from '../components/SessionGear'
 import { TogetherBanner } from '../components/TogetherBanner'
@@ -21,7 +21,7 @@ import { analyzeInWorker } from '../lib/engine'
 import { norm360 } from '../lib/geo'
 import { pastOfRecord, pastOfRow, useHistory, type PastSession } from '../lib/history'
 import { useLibrary } from '../lib/library'
-import { bandName, sessionBand } from '../lib/polars'
+import { bandName, bandOfSpeed, windText } from '../lib/polars'
 import { myName, useSettings, type Settings } from '../lib/settings'
 import { getSessionData, type SessionData, type SessionRecord } from '../lib/store'
 import { isCoarsePointer, useTheme, type ThemeColors } from '../lib/theme'
@@ -58,6 +58,12 @@ const WIND_SOURCE: Record<WindSource, string> = {
 
 export default function SessionPage() {
   const { id = '' } = useParams()
+  // A fresh page for each session: an analysis still running for the previous one must never be
+  // saved as this one's summary.
+  return <LocalSession key={id} id={id} />
+}
+
+function LocalSession({ id }: { id: string }) {
   const navigate = useNavigate()
   const { sessions, updateSession, removeSession } = useLibrary()
   const { settings } = useSettings()
@@ -221,6 +227,8 @@ export function SessionView({
   const [selMnv, setSelMnv] = useState<number | null>(null)
   const [tab, setTab] = useState<Tab>('grafici')
   const [windEdit, setWindEdit] = useState(false)
+  const [speedEdit, setSpeedEdit] = useState(false)
+  const windCard = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(false)
 
   const cursor = replay.playing ? replay.t : (hoverT ?? (replay.touched ? replay.t : null))
@@ -313,10 +321,15 @@ export function SessionView({
   const wind = a.wind
   const lowConfidence = !readOnly && rec.windOverride == null && wind.dir != null && wind.confidence < 0.6
 
-  // The polar against the best of the rider's other sessions in the same wind.
-  const band = sessionBand(rec.windBand, sum.modelWindSpeed)
+  // The polar against the best of the rider's other sessions in the same wind (as typed in).
+  const band = bandOfSpeed(rec.windSpeed)
   const vs = useVsBest(a.polar, band, others)
   const who = whose(riderIsMe, rec.rider)
+  const editWindSpeed = () => {
+    setWindEdit(false)
+    setSpeedEdit(true)
+    windCard.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
 
   return (
     <div className="space-y-4">
@@ -408,7 +421,7 @@ export function SessionView({
               }}
             />
           ) : (
-            <div className={`${card} space-y-2 p-3.5`}>
+            <div ref={windCard} className={`${card} space-y-2 p-3.5`}>
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] text-ink-2">Vento</p>
@@ -432,6 +445,16 @@ export function SessionView({
                   </button>
                 )}
               </div>
+              {(!readOnly || rec.windSpeed != null) && (
+                <WindSpeedField
+                  speed={rec.windSpeed}
+                  unit={unit}
+                  editing={speedEdit}
+                  onEdit={readOnly ? undefined : () => setSpeedEdit(true)}
+                  onClose={() => setSpeedEdit(false)}
+                  onSave={(ms) => onUpdate({ windSpeed: ms })}
+                />
+              )}
               {lowConfidence && (
                 <div className="rounded-xl bg-surface-2 p-3 text-sm">
                   <p>
@@ -599,10 +622,9 @@ export function SessionView({
               onBest={() => setTab('bordi')}
               vs={vs}
               band={band}
-              chosen={rec.windBand != null}
-              modelSpeed={sum.modelWindSpeed}
+              windSpeed={rec.windSpeed ?? null}
               who={who}
-              onBand={readOnly ? undefined : (b) => onUpdate({ windBand: b })}
+              onEditWind={readOnly ? undefined : editWindSpeed}
             />
           )}
           {tab === 'bordi' && (
@@ -854,10 +876,9 @@ function SailTab({
   onBest,
   vs,
   band,
-  chosen,
-  modelSpeed,
+  windSpeed,
   who,
-  onBand,
+  onEditWind,
 }: {
   a: SessionAnalysis
   unit: Settings['speedUnit']
@@ -866,11 +887,10 @@ function SailTab({
   onBest: () => void
   vs: VsBest | null
   band: WindBand | null
-  /** The rider set the wind strength (rather than the weather model). */
-  chosen: boolean
-  modelSpeed: number | null
+  /** Mean wind on the water, as typed in (m/s). */
+  windSpeed: number | null
   who: Whose
-  onBand?: (b: WindBand | null) => void
+  onEditWind?: () => void
 }) {
   const u = SPEED_SHORT[unit]
   const option = useMemo(() => {
@@ -922,7 +942,19 @@ function SailTab({
           <p className="text-sm font-semibold">Polare</p>
           <p className="text-xs text-ink-2">Velocità in foil (90° percentile, {u}) per angolo dal vento. Vento dall'alto.</p>
         </div>
-        <WindBandPicker band={band} chosen={chosen} modelSpeed={modelSpeed} unit={unit} onChange={onBand} />
+        {windSpeed != null && band && (
+          <p className="text-sm">
+            Vento in acqua: <b>{windText(windSpeed, unit)}</b> <span className="text-ink-2">{bandNote(band, unit)}</span>
+            {onEditWind && (
+              <>
+                {' '}
+                <button type="button" className="font-medium text-accent" onClick={onEditWind}>
+                  Cambia
+                </button>
+              </>
+            )}
+          </p>
+        )}
         <div>
           <EChart option={option} height={320} label="Diagramma polare della velocità rispetto al vento" />
           <p className="flex justify-between px-2 text-xs text-ink-2">
@@ -930,7 +962,7 @@ function SailTab({
             <span>mure a dritta →</span>
           </p>
         </div>
-        <VsBestSummary vs={vs} band={band} who={who} unit={unit} />
+        <VsBestSummary vs={vs} band={band} who={who} unit={unit} onEditWind={onEditWind} />
       </div>
       <div className={`${card} overflow-x-auto`}>
         <table className="w-full min-w-[420px] text-sm">

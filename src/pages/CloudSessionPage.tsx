@@ -34,15 +34,16 @@ import { fmtDate, fmtDist, fmtTime } from '../lib/units'
 import { SessionView } from './SessionPage'
 
 export default function CloudSessionPage() {
+  const { id = '' } = useParams()
+  // A fresh loader for each session, so nothing of the previous one carries over.
   return (
     <RequireAuth why="Le uscite della crew si vedono dopo l'accesso.">
-      <CloudSessionLoader />
+      <CloudSessionLoader key={id} id={id} />
     </RequireAuth>
   )
 }
 
-function CloudSessionLoader() {
-  const { id = '' } = useParams()
+function CloudSessionLoader({ id }: { id: string }) {
   const { user } = useAuth()
   const { settings } = useSettings()
   const { colors } = useTheme()
@@ -164,7 +165,7 @@ function CloudSessionLoader() {
         if (patch.title !== undefined) p.title = patch.title
         if (patch.notes !== undefined) p.notes = patch.notes
         if ('windOverride' in patch) p.wind_override = patch.windOverride ?? null
-        if ('windBand' in patch) p.wind_band = patch.windBand ?? null
+        if ('windSpeed' in patch) p.wind_speed = patch.windSpeed ?? null
         if (patch.gear !== undefined) p.gear = patch.gear
         await updateSession(row.id, p)
         await library.mirror(row.id, patch)

@@ -1,5 +1,5 @@
 import { clear, createStore, del, get, set, values, type UseStore } from 'idb-keyval'
-import type { InstrumentWind, ModelWind, SessionGear, SessionSummary, SourceFormat, Track, WindBand } from './types'
+import type { InstrumentWind, ModelWind, SessionGear, SessionSummary, SourceFormat, Track } from './types'
 
 /** What the session list needs; the heavy track lives separately in SessionData. */
 export interface SessionRecord {
@@ -15,8 +15,8 @@ export interface SessionRecord {
   foilOnKn: number
   windOverride: number | null
   modelWind: ModelWind | null
-  /** Wind strength chosen by the rider; otherwise it comes from the model wind. */
-  windBand?: WindBand | null
+  /** Mean wind on the water as the rider typed it in (m/s): it picks the best polar to compare with. */
+  windSpeed?: number | null
   gear?: SessionGear[]
   summary: SessionSummary
   /** Simplified track for thumbnails, [lat, lon]. */

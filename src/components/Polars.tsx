@@ -5,6 +5,7 @@ import { polarOption } from '../lib/charts'
 import type { PastSession } from '../lib/history'
 import {
   bandName,
+  bandOfSpeed,
   bandRange,
   bandText,
   bestPolar,
@@ -12,7 +13,10 @@ import {
   comparePolar,
   isPolarBand,
   MIN_SECTOR_SECONDS,
+  parseWind,
   WIND_BANDS,
+  windText,
+  windValue,
   type BestBin,
   type PolarBand,
   type PolarComparison,
@@ -21,9 +25,8 @@ import type { ThemeColors } from '../lib/theme'
 import type { PolarBin, WindBand } from '../lib/types'
 import { fmtNum, fmtPct, fmtShortDate, fmtSpeed, MS_TO_KN, SPEED_SHORT, toUnit, type SpeedUnit } from '../lib/units'
 import { EChart } from './EChart'
-import { card, Segmented, StatTile } from './ui'
+import { btnGhost, btnPrimary, btnSecondary, card, Segmented, StatTile } from './ui'
 
-const ALL_BANDS: WindBand[] = ['calm', 'light', 'medium', 'strong']
 const COURSE: Record<Course, string> = { up: 'Bolina', reach: 'Traverso', down: 'Poppa' }
 const calmBelow = (unit: SpeedUnit) => `${fmtNum(toUnit(WIND_BANDS[0].fromKn / MS_TO_KN, unit), unit === 'ms' ? 1 : 0)} ${SPEED_SHORT[unit]}`
 
@@ -68,63 +71,165 @@ export function useVsBest(polar: PolarBin[] | null, band: WindBand | null, other
   }, [polar, band, others])
 }
 
-/** The wind strength a session goes under. The rider can correct the weather model. */
-export function WindBandPicker({
-  band,
-  chosen,
-  modelSpeed,
+/** «(fascia 12–18 kn)», «(sotto 7 kn)» */
+export const bandNote = (band: WindBand, unit: SpeedUnit) => `(${band === 'calm' ? '' : 'fascia '}${bandRange(band, unit)} ${SPEED_SHORT[unit]})`
+
+/**
+ * The mean wind on the water, typed in by the rider: it picks the best polar a session is
+ * compared with. The weather model is shown beside it, never used in its place.
+ */
+export function WindSpeedField({
+  speed,
   unit,
-  onChange,
+  editing,
+  onEdit,
+  onClose,
+  onSave,
 }: {
-  band: WindBand | null
-  chosen: boolean
-  modelSpeed: number | null
+  speed: number | null | undefined
   unit: SpeedUnit
+  editing: boolean
   /** Absent on a crewmate's session. */
-  onChange?: (b: WindBand | null) => void
+  onEdit?: () => void
+  onClose: () => void
+  onSave: (ms: number | null) => Promise<void>
 }) {
-  const u = SPEED_SHORT[unit]
-  const model = modelSpeed != null ? `${fmtSpeed(modelSpeed, unit)} ${u}` : null
-  if (!onChange) {
+  const band = bandOfSpeed(speed)
+  if (editing) {
     return (
-      <p className="text-sm text-ink-2">
-        Vento: {band ? bandText(band, unit) : 'intensità non nota'}
-        {band && !chosen && model ? `, dal modello meteo (${model})` : ''}
-      </p>
+      <WindSpeedForm
+        initial={speed ?? null}
+        unit={unit}
+        onCancel={onClose}
+        onSave={async (ms) => {
+          await onSave(ms)
+          onClose()
+        }}
+      />
     )
   }
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs text-ink-2">Intensità del vento ({u})</p>
-      <Segmented compact label="Intensità del vento" value={band} onChange={onChange} options={ALL_BANDS.map((b) => ({ value: b, label: bandRange(b, unit) }))} />
-      <p className="text-xs text-ink-2">
-        {chosen ? (
+    <div className="flex items-center gap-3">
+      <p className="min-w-0 flex-1 text-sm">
+        <span className="text-ink-2">Vento in acqua: </span>
+        {speed != null && band ? (
           <>
-            Scelta da te.
-            {model && (
-              <>
-                {' '}
-                <button type="button" className="font-medium text-accent" onClick={() => onChange(null)}>
-                  Usa il modello meteo ({model})
-                </button>
-              </>
-            )}
+            <b>{windText(speed, unit)}</b> <span className="text-ink-2">{bandNote(band, unit)}</span>
           </>
-        ) : model ? (
-          `Dal modello meteo: ${model} di media. Se in acqua era diverso, scegli tu.`
         ) : (
-          'Il modello meteo non ha dati per questa uscita: scegli tu.'
+          <span className="text-ink-2">non inserito</span>
         )}
       </p>
+      {onEdit && (
+        <button type="button" className={btnGhost} onClick={onEdit}>
+          {speed != null ? 'Cambia' : 'Inserisci'}
+        </button>
+      )}
     </div>
   )
 }
 
+function WindSpeedForm({
+  initial,
+  unit,
+  onCancel,
+  onSave,
+}: {
+  initial: number | null
+  unit: SpeedUnit
+  onCancel: () => void
+  onSave: (ms: number | null) => Promise<void>
+}) {
+  const u = SPEED_SHORT[unit]
+  const [text, setText] = useState(initial != null ? windValue(initial, unit) : '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const ms = parseWind(text, unit)
+  const save = async (v: number | null) => {
+    setBusy(true)
+    setError(null)
+    try {
+      await onSave(v)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <form
+      className="space-y-2 rounded-xl bg-surface-2 p-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (ms != null) void save(ms)
+      }}
+    >
+      <label className="block text-sm">
+        <span className="font-semibold">Vento medio in acqua</span>
+        <span className="block text-xs text-ink-2">
+          Decide con quali uscite si confronta la polare:{' '}
+          {WIND_BANDS.map((b) => `${b.short.toLowerCase()} ${bandRange(b.id, unit)}`).join(', ')} {u}. Sotto {calmBelow(unit)} resta fuori.
+        </span>
+        <span className="mt-2 flex items-center gap-2">
+          <input
+            autoFocus
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            inputMode="decimal"
+            placeholder="15"
+            aria-label={`Vento medio in acqua (${u})`}
+            className="w-24 rounded-lg border border-line bg-surface px-3 py-2 text-base"
+          />
+          <span className="text-ink-2">{u}</span>
+        </span>
+      </label>
+      {text.trim() !== '' && ms == null && <p className="text-xs text-critical">Scrivi un numero, per esempio 15.</p>}
+      {error && <p className="text-sm text-critical">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" className={btnPrimary} disabled={ms == null || busy}>
+          Salva
+        </button>
+        <button type="button" className={btnSecondary} disabled={busy} onClick={onCancel}>
+          Annulla
+        </button>
+        {initial != null && (
+          <button type="button" className={btnGhost} disabled={busy} onClick={() => void save(null)}>
+            Togli
+          </button>
+        )}
+      </div>
+    </form>
+  )
+}
+
 /** Under the session's polar: how close it came to the best, course by course. */
-export function VsBestSummary({ vs, band, who, unit }: { vs: VsBest | null; band: WindBand | null; who: Whose; unit: SpeedUnit }) {
+export function VsBestSummary({
+  vs,
+  band,
+  who,
+  unit,
+  onEditWind,
+}: {
+  vs: VsBest | null
+  band: WindBand | null
+  who: Whose
+  unit: SpeedUnit
+  /** Opens the wind input; absent on a crewmate's session. */
+  onEditWind?: () => void
+}) {
   const note = (text: ReactNode) => <p className="border-t border-line pt-3 text-sm text-ink-2">{text}</p>
   if (band === 'calm') return note(`Sotto i ${calmBelow(unit)} le uscite restano fuori dalle polari migliori.`)
-  if (!isPolarBand(band)) return note(`Scegli l’intensità del vento per confrontare questa polare con ${who.the}.`)
+  if (!isPolarBand(band)) {
+    if (!onEditWind) return note('Manca il vento medio in acqua: senza, questa polare non si confronta.')
+    return (
+      <div className="space-y-2 border-t border-line pt-3">
+        <p className="text-sm text-ink-2">Inserisci il vento medio che c’era in acqua: serve per confrontare questa polare con {who.the}.</p>
+        <button type="button" className={btnSecondary} onClick={onEditWind}>
+          Inserisci il vento
+        </button>
+      </div>
+    )
+  }
   if (!vs) return note('Carico le altre uscite…')
   if (!vs.best.length) return note(`Nessun’altra uscita con ${bandText(band, unit)}: questa farà da riferimento per le prossime.`)
   if (!vs.cmp) {
@@ -189,7 +294,6 @@ export function BestPolarsCard({
     for (const b of best) m.set(b.from.id, { ...b.from, n: (m.get(b.from.id)?.n ?? 0) + 1 })
     return [...m.values()].sort((a, b) => b.n - a.n)
   }, [best])
-  const noBand = sessions.filter((s) => s.band == null && s.polar?.length)
   const calm = sessions.filter((s) => s.band === 'calm').length
   const date = (h: { id: string; start: number }) => (
     <Link key={h.id} to={`/c/${h.id}`} className="font-medium text-accent">
@@ -236,17 +340,6 @@ export function BestPolarsCard({
           {counts[band] === 0
             ? `Nessuna uscita con ${bandName(band).toLowerCase()}.`
             : `Ancora nessuna polare con ${bandName(band).toLowerCase()}: servono tratti in foil di almeno ${MIN_SECTOR_SECONDS} secondi allo stesso angolo dal vento.`}
-        </p>
-      )}
-      {noBand.length > 0 && (
-        <p className="text-xs text-ink-2">
-          {noBand.length === 1 ? 'Un’uscita non ha' : `${noBand.length} uscite non hanno`} l’intensità del vento (il modello meteo non aveva dati): aprila e
-          sceglila in «Andature». {noBand.slice(0, 3).map((s, k) => (
-            <span key={s.id}>
-              {k > 0 && ', '}
-              {date(s)}
-            </span>
-          ))}
         </p>
       )}
       {calm > 0 && <p className="text-xs text-ink-2">{calm === 1 ? 'Un’uscita sotto' : `${calm} uscite sotto`} i {calmBelow(unit)} restano fuori.</p>}

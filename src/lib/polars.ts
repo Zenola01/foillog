@@ -1,6 +1,6 @@
 import { courseOf, type Course } from './analysis/pointsOfSail'
 import type { PolarBin, PolarPoint, WindBand } from './types'
-import { fmtNum, MS_TO_KN, SPEED_SHORT, toUnit, type SpeedUnit } from './units'
+import { fmtNum, fromUnit, MS_TO_KN, SPEED_SHORT, toUnit, type SpeedUnit } from './units'
 
 // The best polar over many sessions, kept apart by wind strength, and how one session compares
 // with it. Pure helpers: the pages feed them what each session stores (polar, wind, best VMG).
@@ -16,6 +16,11 @@ export type PolarBand = (typeof WIND_BANDS)[number]['id']
 
 export const isPolarBand = (b: WindBand | null | undefined): b is PolarBand => b != null && b !== 'calm'
 
+/**
+ * The band of the mean wind the rider typed in for a session. Never the weather model's: near the
+ * coast it is often far from the wind on the water, and one session in the wrong band would set a
+ * best polar nobody can reach.
+ */
 export function bandOfSpeed(ms: number | null | undefined): WindBand | null {
   if (ms == null || !Number.isFinite(ms)) return null
   const kn = ms * MS_TO_KN
@@ -24,9 +29,25 @@ export function bandOfSpeed(ms: number | null | undefined): WindBand | null {
   return band
 }
 
-/** The rider's choice first, then the weather model's mean wind over the session. */
-export const sessionBand = (choice: WindBand | null | undefined, modelSpeed: number | null | undefined): WindBand | null =>
-  choice ?? bandOfSpeed(modelSpeed)
+/** Highest wind speed accepted as typed in (kn). */
+const MAX_WIND_KN = 70
+
+/** A wind speed typed in the rider's unit («15», «15,5»), in m/s; null when empty or not sensible. */
+export function parseWind(text: string, unit: SpeedUnit): number | null {
+  const t = text.trim().replace(',', '.')
+  if (!/^\d+(\.\d+)?$/.test(t)) return null
+  const ms = fromUnit(Number(t), unit)
+  return ms > 0 && ms * MS_TO_KN <= MAX_WIND_KN ? ms : null
+}
+
+/** «16», «15,5»: a wind speed as the rider would type it. */
+export function windValue(ms: number, unit: SpeedUnit): string {
+  const v = Math.round(toUnit(ms, unit) * 10) / 10
+  return fmtNum(v, Number.isInteger(v) ? 0 : 1)
+}
+
+/** «16 kn» */
+export const windText = (ms: number, unit: SpeedUnit) => `${windValue(ms, unit)} ${SPEED_SHORT[unit]}`
 
 export const bandName = (b: WindBand) => (b === 'calm' ? 'Poco vento' : WIND_BANDS.find((x) => x.id === b)!.name)
 

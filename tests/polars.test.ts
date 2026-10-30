@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandOfSpeed, bandRange, bestPolar, bestVmg, comparePolar, fromPoints, sessionBand, type PolarSource } from '../src/lib/polars'
+import { bandOfSpeed, bandRange, bestPolar, bestVmg, comparePolar, fromPoints, parseWind, windText, type PolarSource } from '../src/lib/polars'
 import type { PolarPoint } from '../src/lib/types'
 
 const KN = 1852 / 3600
@@ -15,15 +15,25 @@ const src = (id: string, band: PolarSource['band'], pts: [number, number, number
 })
 
 describe('wind strength', () => {
-  it('puts the model wind in a band from 7 kn up, the rider’s choice first', () => {
+  it('puts the wind typed in for a session in a band from 7 kn up', () => {
     expect(bandOfSpeed(6.9 * KN)).toBe('calm')
     expect(bandOfSpeed(7 * KN)).toBe('light')
     expect(bandOfSpeed(11.9 * KN)).toBe('light')
     expect(bandOfSpeed(12 * KN)).toBe('medium')
     expect(bandOfSpeed(25 * KN)).toBe('strong')
     expect(bandOfSpeed(null)).toBeNull()
-    expect(sessionBand('strong', 9 * KN)).toBe('strong')
-    expect(sessionBand(null, 9 * KN)).toBe('light')
+  })
+
+  it('reads the wind as typed, in the rider’s unit', () => {
+    expect(parseWind(' 16 ', 'kn')! / KN).toBeCloseTo(16)
+    expect(parseWind('15,5', 'kn')! / KN).toBeCloseTo(15.5)
+    expect(parseWind('30', 'kmh')).toBeCloseTo(30 / 3.6)
+    expect(parseWind('', 'kn')).toBeNull()
+    expect(parseWind('forte', 'kn')).toBeNull()
+    expect(parseWind('0', 'kn')).toBeNull()
+    expect(parseWind('120', 'kn')).toBeNull()
+    expect(windText(16 * KN, 'kn')).toBe('16 kn')
+    expect(windText(15.5 * KN, 'kn')).toBe('15,5 kn')
   })
 
   it('names the bands in the rider’s unit', () => {

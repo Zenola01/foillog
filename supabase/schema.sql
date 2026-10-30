@@ -92,11 +92,13 @@ create table if not exists public.comments (
 );
 create index if not exists comments_session_idx on public.comments (session_id, created_at);
 
--- Added in October 2026 (wind strength for the polars, gear): re-running the file adds them to
--- databases created before.
+-- Added in October 2026 (gear, and the mean wind on the water in m/s, typed in by the rider for
+-- the polars): re-running the file adds them to databases created before.
 alter table public.profiles add column if not exists gear jsonb not null default '[]' check (jsonb_typeof(gear) = 'array');
 alter table public.sessions add column if not exists gear jsonb not null default '[]' check (jsonb_typeof(gear) = 'array');
-alter table public.sessions add column if not exists wind_band text check (wind_band in ('calm', 'light', 'medium', 'strong'));
+alter table public.sessions add column if not exists wind_speed double precision check (wind_speed > 0 and wind_speed < 40);
+-- The wind strength first came as one of four ranges; the typed-in speed above replaced it.
+alter table public.sessions drop column if exists wind_band;
 
 -- ─────────────────────────────────────────── Funzioni
 -- They run as the owner (security definer) so the policies can look at crew membership
