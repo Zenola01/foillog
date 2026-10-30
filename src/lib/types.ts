@@ -167,6 +167,28 @@ export interface PolarBin {
   seconds: number
 }
 
+/** A polar bin as kept in the stored summary, compact: [signed TWA (deg), speed (m/s), seconds]. */
+export type PolarPoint = [twa: number, speed: number, seconds: number]
+
+/** Wind strength the polars are kept apart by; `calm` (under 7 kn) stays out of them. */
+export type WindBand = 'calm' | 'light' | 'medium' | 'strong'
+
+export type GearKind = 'wing' | 'board' | 'foil' | 'other'
+
+export interface GearItem {
+  id: string
+  kind: GearKind
+  /** Brand and model, e.g. «Duotone Unit». */
+  name: string
+  /** As typed: «5», «85», «1100», or with its unit. */
+  size: string
+  /** No longer used: kept for old sessions, left out when picking. */
+  retired?: boolean
+}
+
+/** What a session keeps of each piece of gear, so it still reads right after the list changes. */
+export type SessionGear = Pick<GearItem, 'id' | 'kind' | 'name' | 'size'>
+
 export interface SessionSummary {
   start: number
   end: number
@@ -198,6 +220,11 @@ export interface SessionSummary {
   bestVmgDown: number | null
   avgHr: number | null
   maxHr: number | null
+  /**
+   * The polar, so the best one over many sessions comes from the summaries alone. Missing on
+   * sessions analysed before it was kept; null without a wind direction.
+   */
+  polar?: PolarPoint[] | null
   /** [lat, lon] */
   center: [number, number]
   /** [minLat, minLon, maxLat, maxLon] */

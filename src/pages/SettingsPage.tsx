@@ -79,6 +79,16 @@ export default function SettingsPage() {
         )}
       </section>
 
+      <Link to="/attrezzatura" className={`${card} flex items-center gap-3 p-4`}>
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-semibold">Attrezzatura</span>
+          <span className="block text-sm text-ink-2">Ali, tavole e foil da scegliere in ogni uscita</span>
+        </span>
+        <span aria-hidden className="text-accent">
+          →
+        </span>
+      </Link>
+
       <section className={`${card} divide-y divide-[var(--border)]`}>
         {!user && (
           <label className="block p-4">

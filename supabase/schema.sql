@@ -92,6 +92,12 @@ create table if not exists public.comments (
 );
 create index if not exists comments_session_idx on public.comments (session_id, created_at);
 
+-- Added in October 2026 (wind strength for the polars, gear): re-running the file adds them to
+-- databases created before.
+alter table public.profiles add column if not exists gear jsonb not null default '[]' check (jsonb_typeof(gear) = 'array');
+alter table public.sessions add column if not exists gear jsonb not null default '[]' check (jsonb_typeof(gear) = 'array');
+alter table public.sessions add column if not exists wind_band text check (wind_band in ('calm', 'light', 'medium', 'strong'));
+
 -- ─────────────────────────────────────────── Funzioni
 -- They run as the owner (security definer) so the policies can look at crew membership
 -- without recursing into their own rules. Every name is schema-qualified (search_path = '').

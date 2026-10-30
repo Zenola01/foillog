@@ -134,6 +134,23 @@ describe('supabase schema', () => {
     expect(await names(C)).toEqual([])
   })
 
+  it('keeps the gear in the profile, readable by the crew and changed only by its owner', async () => {
+    const gear = [{ id: 'g1', kind: 'wing', name: 'Ala', size: '5' }]
+    await as(A, () => db.query(`update public.profiles set gear = $1 where id = $2`, [JSON.stringify(gear), A]))
+    expect(await as(B, () => rows(`select gear from public.profiles where id = $1`, [A]))).toEqual([{ gear }])
+    const changed = await as(B, () => db.query(`update public.profiles set gear = '[]' where id = $1`, [A]))
+    expect(changed.affectedRows).toBe(0)
+    await expect(as(A, () => db.query(`update public.profiles set gear = '{}' where id = $1`, [A]))).rejects.toThrow(/check/)
+  })
+
+  it('stores the wind strength and the gear of a session', async () => {
+    await as(A, () => db.query(`update public.sessions set wind_band = 'medium', gear = $1 where id = $2`, [JSON.stringify([{ id: 'g1' }]), S_CREW]))
+    expect(await as(B, () => rows(`select wind_band, gear from public.sessions where id = $1`, [S_CREW]))).toEqual([
+      { wind_band: 'medium', gear: [{ id: 'g1' }] },
+    ])
+    await expect(as(A, () => db.query(`update public.sessions set wind_band = 'tempesta' where id = $1`, [S_CREW]))).rejects.toThrow(/check/)
+  })
+
   it('gives anonymous visitors nothing', async () => {
     await expect(as(null, () => rows(`select * from public.sessions`))).rejects.toThrow(/permission denied/)
     await expect(as(null, () => rows(`select public.crew_name_by_code('X')`))).rejects.toThrow(/permission denied/)

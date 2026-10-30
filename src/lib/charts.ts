@@ -297,33 +297,50 @@ export function heartRateOption(tr: Track, c: ThemeColors, coarse: boolean): ECh
   }
 }
 
+/** A polar line; `dashed` marks a reference (the best so far) behind the session's own line. */
+export interface PolarLine {
+  name: string
+  color: string
+  bins: (PolarBin & { note?: string })[]
+  dashed?: boolean
+}
+
 /**
  * Polar: speed (90th percentile) against true wind angle, wind from the top, starboard tack on
  * the right and port on the left. Each tack is its own line so the no-go zone stays open.
  */
-export function polarOption(sessions: { name: string; color: string; bins: PolarBin[] }[], unit: SpeedUnit, c: ThemeColors): EChartsCoreOption {
+export function polarOption(sessions: PolarLine[], unit: SpeedUnit, c: ThemeColors): EChartsCoreOption {
   const u = SPEED_SHORT[unit]
   const series = sessions.flatMap((s) =>
     (['S', 'P'] as const).map((side) => ({
       type: 'line',
       name: s.name,
       coordinateSystem: 'polar',
+      z: s.dashed ? 1 : 2,
       showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2, color: s.color },
-      itemStyle: { color: s.color, borderColor: c.surface, borderWidth: 2 },
+      symbolSize: s.dashed ? 5 : 6,
+      lineStyle: { width: 2, color: s.color, type: s.dashed ? 'dashed' : 'solid' },
+      // Hollow markers on a reference line: told apart by more than its colour.
+      itemStyle: s.dashed ? { color: c.surface, borderColor: s.color, borderWidth: 1.5 } : { color: s.color, borderColor: c.surface, borderWidth: 2 },
       emphasis: { disabled: true },
       data: s.bins
         .filter((b) => (side === 'S' ? b.twa > 0 : b.twa < 0))
         .sort((x, y) => Math.abs(x.twa) - Math.abs(y.twa))
-        .map((b) => ({ value: [Math.round(toUnit(b.speed, unit) * 10) / 10, b.twa >= 0 ? b.twa : 360 + b.twa], twa: b.twa })),
+        .map((b) => ({ value: [Math.round(toUnit(b.speed, unit) * 10) / 10, b.twa >= 0 ? b.twa : 360 + b.twa], twa: b.twa, note: b.note })),
     })),
   )
   return {
     animation: false,
     legend:
       sessions.length > 1
-        ? { top: 0, left: 'center', icon: 'roundRect', itemWidth: 14, itemHeight: 3, textStyle: { color: c.ink2 } }
+        ? {
+            top: 0,
+            left: 'center',
+            // The default key draws each line with its marker: a reference reads dashed and hollow.
+            itemWidth: 22,
+            itemHeight: 8,
+            textStyle: { color: c.ink2 },
+          }
         : undefined,
     polar: { radius: '74%', center: ['50%', sessions.length > 1 ? '56%' : '52%'] },
     angleAxis: {
@@ -349,10 +366,10 @@ export function polarOption(sessions: { name: string; color: string; bins: Polar
     tooltip: {
       ...tooltipBase(c),
       trigger: 'item',
-      formatter: (p: { seriesName: string; color: string; data: { value: [number, number]; twa: number } }) =>
-        `${sessions.length > 1 ? lineKey(p.color) : ''}<b style="font-size:15px">${fmtNum(p.data.value[0])} ${u}</b><br><span style="color:${c.ink2}">${Math.abs(
+      formatter: (p: { seriesName: string; color: string; data: { value: [number, number]; twa: number; note?: string } }) =>
+        `${sessions.length > 1 ? lineKey(sessions.find((s) => s.name === p.seriesName)?.color ?? p.color) : ''}<b style="font-size:15px">${fmtNum(p.data.value[0])} ${u}</b><br><span style="color:${c.ink2}">${Math.abs(
           Math.round(p.data.twa),
-        )}° dal vento · mure a ${p.data.twa >= 0 ? 'dritta' : 'sinistra'}${sessions.length > 1 ? ` · ${esc(p.seriesName)}` : ''}</span>`,
+        )}° dal vento · mure a ${p.data.twa >= 0 ? 'dritta' : 'sinistra'}${sessions.length > 1 ? ` · ${esc(p.seriesName)}` : ''}${p.data.note ? ` · ${esc(p.data.note)}` : ''}</span>`,
     },
     series,
   }

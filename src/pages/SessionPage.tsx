@@ -5,7 +5,9 @@ import { useConfirm } from '../components/Confirm'
 import { EChart, type Chart } from '../components/EChart'
 import { IconBack, IconEdit, IconTrash } from '../components/icons'
 import { MapView, type MapTrack } from '../components/MapView'
+import { useVsBest, VsBestSummary, whose, WindBandPicker, type VsBest, type Whose } from '../components/Polars'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
+import { SessionGear } from '../components/SessionGear'
 import { TogetherBanner } from '../components/TogetherBanner'
 import { btnGhost, btnPrimary, btnSecondary, card, Outcome, StatTile } from '../components/ui'
 import { WindDial } from '../components/WindDial'
@@ -13,14 +15,17 @@ import { rangeStats } from '../lib/analysis/analyze'
 import { bestLegs } from '../lib/analysis/bestLegs'
 import { courseOf, DOWNWIND_MIN, UPWIND_MAX } from '../lib/analysis/pointsOfSail'
 import { hasHeartRate, indexAtTime } from '../lib/analysis/series'
-import { heartRateOption, histogramOption, orientationOption, polarOption, speedOption } from '../lib/charts'
+import { useAuth } from '../lib/auth'
+import { heartRateOption, histogramOption, orientationOption, polarOption, speedOption, type PolarLine } from '../lib/charts'
 import { analyzeInWorker } from '../lib/engine'
 import { norm360 } from '../lib/geo'
+import { pastOfRecord, pastOfRow, useHistory, type PastSession } from '../lib/history'
 import { useLibrary } from '../lib/library'
-import { useSettings, type Settings } from '../lib/settings'
+import { bandName, sessionBand } from '../lib/polars'
+import { myName, useSettings, type Settings } from '../lib/settings'
 import { getSessionData, type SessionData, type SessionRecord } from '../lib/store'
 import { isCoarsePointer, useTheme, type ThemeColors } from '../lib/theme'
-import type { Leg, Maneuver, SessionAnalysis, SideStats, WindSource } from '../lib/types'
+import type { Leg, Maneuver, SessionAnalysis, SideStats, WindBand, WindSource } from '../lib/types'
 import {
   compass,
   fmtDate,
@@ -28,6 +33,7 @@ import {
   fmtDuration,
   fmtNum,
   fmtPct,
+  fmtShortDate,
   fmtSpeed,
   fmtTime,
   fmtTimeSec,
@@ -55,9 +61,19 @@ export default function SessionPage() {
   const navigate = useNavigate()
   const { sessions, updateSession, removeSession } = useLibrary()
   const { settings } = useSettings()
+  const { user, profile } = useAuth()
   const { colors } = useTheme()
   const confirm = useConfirm()
   const rec = sessions?.find((s) => s.id === id) ?? null
+  // Your sessions are compared with your others, here and in the crew; a friend's with theirs here.
+  const mine = !!rec && !rec.demo && (rec.rider === myName(settings) || rec.rider === profile?.display_name)
+  const withCloud = mine && !!user
+  const cloudRows = useHistory(withCloud ? user!.id : null)
+  const others = useMemo<PastSession[] | null>(() => {
+    if (!rec || !sessions || !cloudRows) return null
+    const local = sessions.filter((s) => s.id !== rec.id && !s.demo && s.rider === rec.rider && !(withCloud && s.cloudId))
+    return [...local.map(pastOfRecord), ...cloudRows.map(pastOfRow)]
+  }, [rec, sessions, cloudRows, withCloud])
   const [data, setData] = useState<SessionData | null>(null)
   const [analysis, setAnalysis] = useState<SessionAnalysis | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -97,7 +113,8 @@ export default function SessionPage() {
           s.windDir !== a.summary.windDir ||
           s.jibes !== a.summary.jibes ||
           s.tacks !== a.summary.tacks ||
-          s.foilTime !== a.summary.foilTime
+          s.foilTime !== a.summary.foilTime ||
+          s.polar === undefined
         if (changed) void updateSession(r.id, { summary: a.summary, foilOnKn: settings.foilOnKn })
       })
       .catch((e: Error) => alive && setError(e.message))
@@ -138,6 +155,8 @@ export default function SessionPage() {
       a={analysis}
       settings={settings}
       colors={colors}
+      others={others}
+      riderIsMe={mine}
       onUpdate={(patch) => updateSession(rec.id, patch)}
       onDelete={async () => {
         if (!(await confirm('Eliminare questa uscita da questo dispositivo?', { confirmLabel: 'Elimina', danger: true }))) return
@@ -161,12 +180,18 @@ export function SessionView({
   compareId,
   meta,
   below,
+  others,
+  riderIsMe = true,
 }: {
   rec: SessionRecord
   data: SessionData
   a: SessionAnalysis
   settings: Settings
   colors: ThemeColors
+  /** The rider's other sessions (polar comparison, gear picker); null while loading. */
+  others: PastSession[] | null
+  /** Your own session: compared with your best, and sailed with your gear. */
+  riderIsMe?: boolean
   onUpdate: (patch: Partial<SessionRecord>) => Promise<void>
   onDelete: () => void
   /** A crewmate's session: nothing to edit. */
@@ -287,6 +312,11 @@ export function SessionView({
 
   const wind = a.wind
   const lowConfidence = !readOnly && rec.windOverride == null && wind.dir != null && wind.confidence < 0.6
+
+  // The polar against the best of the rider's other sessions in the same wind.
+  const band = sessionBand(rec.windBand, sum.modelWindSpeed)
+  const vs = useVsBest(a.polar, band, others)
+  const who = whose(riderIsMe, rec.rider)
 
   return (
     <div className="space-y-4">
@@ -426,6 +456,8 @@ export function SessionView({
             </div>
           )}
 
+          <SessionGear gear={rec.gear ?? []} editable={!readOnly && riderIsMe} start={sum.start} past={others} onSave={(gear) => onUpdate({ gear })} />
+
           {/* Key numbers */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <StatTile label="Distanza" value={fmtDist(sum.distance, settings.distUnit)} sub={`in foil ${fmtDist(sum.foilDistance, settings.distUnit)}`} />
@@ -482,6 +514,14 @@ export function SessionView({
             )}
             {reach && (
               <StatTile label="Traverso" value={fmtDuration(reach.seconds)} sub={`media ${sp(reach.speed)} ${u}`} onClick={() => setTab('andature')} />
+            )}
+            {vs?.cmp && (
+              <StatTile
+                label="Polare"
+                value={fmtPct(vs.cmp.overall.ratio)}
+                sub={`${who.of}, ${bandName(vs.band).toLowerCase()}`}
+                onClick={() => setTab('andature')}
+              />
             )}
             {sum.longestFlight && (
               <StatTile
@@ -550,7 +590,21 @@ export function SessionView({
           )}
 
           {tab === 'manovre' && <ManeuversTab a={a} unit={unit} selected={selMnv} onPick={pickManeuver} tr={tr} />}
-          {tab === 'andature' && <SailTab a={a} unit={unit} colors={colors} onSetWind={() => setWindEdit(true)} onBest={() => setTab('bordi')} />}
+          {tab === 'andature' && (
+            <SailTab
+              a={a}
+              unit={unit}
+              colors={colors}
+              onSetWind={() => setWindEdit(true)}
+              onBest={() => setTab('bordi')}
+              vs={vs}
+              band={band}
+              chosen={rec.windBand != null}
+              modelSpeed={sum.modelWindSpeed}
+              who={who}
+              onBand={readOnly ? undefined : (b) => onUpdate({ windBand: b })}
+            />
+          )}
           {tab === 'bordi' && (
             <div className="space-y-4">
               <BestLegsCard legs={a.legs} unit={unit} onSetWind={readOnly ? undefined : () => setWindEdit(true)} />
@@ -798,18 +852,33 @@ function SailTab({
   colors,
   onSetWind,
   onBest,
+  vs,
+  band,
+  chosen,
+  modelSpeed,
+  who,
+  onBand,
 }: {
   a: SessionAnalysis
   unit: Settings['speedUnit']
   colors: ThemeColors
   onSetWind: () => void
   onBest: () => void
+  vs: VsBest | null
+  band: WindBand | null
+  /** The rider set the wind strength (rather than the weather model). */
+  chosen: boolean
+  modelSpeed: number | null
+  who: Whose
+  onBand?: (b: WindBand | null) => void
 }) {
   const u = SPEED_SHORT[unit]
-  const option = useMemo(
-    () => (a.polar ? polarOption([{ name: 'Questa uscita', color: colors.series[0], bins: a.polar }], unit, colors) : null),
-    [a.polar, unit, colors],
-  )
+  const option = useMemo(() => {
+    if (!a.polar) return null
+    const lines: PolarLine[] = [{ name: 'Questa uscita', color: colors.series[0], bins: a.polar }]
+    if (vs?.best.length) lines.push({ name: who.title, color: colors.ink2, bins: vs.best.map((b) => ({ ...b, note: fmtShortDate(b.from.start) })), dashed: true })
+    return polarOption(lines, unit, colors)
+  }, [a.polar, vs, who.title, unit, colors])
   if (!a.sail || !option) {
     return (
       <div className={`${card} space-y-2 p-4 text-sm`}>
@@ -832,20 +901,36 @@ function SailTab({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
-        <StatTile label="Miglior VMG in bolina" value={fmtSpeed(a.sail.bestVmgUp?.v, unit)} unit={u} sub="media su 10 s" />
-        <StatTile label="Miglior VMG in poppa" value={fmtSpeed(a.sail.bestVmgDown?.v, unit)} unit={u} sub="media su 10 s" />
+        <StatTile
+          label="Miglior VMG in bolina"
+          value={fmtSpeed(a.sail.bestVmgUp?.v, unit)}
+          unit={u}
+          sub={vs?.vmg.up ? `${who.short}: ${fmtSpeed(vs.vmg.up.v, unit)} ${u}` : 'media su 10 s'}
+        />
+        <StatTile
+          label="Miglior VMG in poppa"
+          value={fmtSpeed(a.sail.bestVmgDown?.v, unit)}
+          unit={u}
+          sub={vs?.vmg.down ? `${who.short}: ${fmtSpeed(vs.vmg.down.v, unit)} ${u}` : 'media su 10 s'}
+        />
         <button type="button" className={`${btnGhost} col-span-2 justify-self-start`} onClick={onBest}>
           Bordi migliori di bolina e poppa →
         </button>
       </div>
-      <div className={`${card} p-3`}>
-        <p className="text-sm font-semibold">Polare</p>
-        <p className="text-xs text-ink-2">Velocità in foil (90° percentile, {u}) per angolo dal vento. Vento dall'alto.</p>
-        <EChart option={option} height={320} label="Diagramma polare della velocità rispetto al vento" />
-        <p className="flex justify-between px-2 text-xs text-ink-2">
-          <span>← mure a sinistra</span>
-          <span>mure a dritta →</span>
-        </p>
+      <div className={`${card} space-y-3 p-3`}>
+        <div>
+          <p className="text-sm font-semibold">Polare</p>
+          <p className="text-xs text-ink-2">Velocità in foil (90° percentile, {u}) per angolo dal vento. Vento dall'alto.</p>
+        </div>
+        <WindBandPicker band={band} chosen={chosen} modelSpeed={modelSpeed} unit={unit} onChange={onBand} />
+        <div>
+          <EChart option={option} height={320} label="Diagramma polare della velocità rispetto al vento" />
+          <p className="flex justify-between px-2 text-xs text-ink-2">
+            <span>← mure a sinistra</span>
+            <span>mure a dritta →</span>
+          </p>
+        </div>
+        <VsBestSummary vs={vs} band={band} who={who} unit={unit} />
       </div>
       <div className={`${card} overflow-x-auto`}>
         <table className="w-full min-w-[420px] text-sm">

@@ -137,6 +137,12 @@ describe('wind and manoeuvres', () => {
     expect(a.polar!.length).toBeGreaterThan(4)
     const up = a.polar!.find((b) => Math.abs(b.twa - 57.5) < 3)
     expect(kn(up?.speed)).toBeCloseTo(16, 0)
+    // The summary keeps the same polar, compact, for the best polars over many sessions.
+    expect(a.summary.polar).toHaveLength(a.polar!.length)
+    const kept = a.summary.polar!.find(([twa]) => twa === up!.twa)!
+    expect(kept[1]).toBeCloseTo(up!.speed, 2)
+    expect(kept[2]).toBe(Math.round(up!.seconds))
+    expect(analyzeTrack(tr, null, { foilOnKn: 7, windOverride: null }).summary.polar === undefined).toBe(false)
   })
 })
 

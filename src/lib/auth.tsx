@@ -28,6 +28,8 @@ export function friendlyError(e: unknown): string {
   if (/password should be at least|weak password/i.test(msg)) return 'La password deve avere almeno 6 caratteri.'
   if (/unable to validate email|invalid email|email address .* is invalid/i.test(msg)) return 'Controlla l’indirizzo email.'
   if (/rate limit|too many/i.test(msg)) return 'Troppi tentativi: riprova tra qualche minuto.'
+  if (/column .* does not exist|could not find the .* column/i.test(msg))
+    return 'Il database della crew va aggiornato: chi l’ha creato deve rieseguire in Supabase lo script supabase/schema.sql.'
   if (/failed to fetch|network|load failed|fetch failed/i.test(msg))
     return 'Il server della crew non risponde. Controlla la connessione; se nessuno usa FoilLog da 7 giorni, il progetto Supabase va riattivato dalla sua pagina.'
   return msg || 'Qualcosa non ha funzionato.'

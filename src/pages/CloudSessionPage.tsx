@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useConfirm } from '../components/Confirm'
 import { KudosButton } from '../components/FeedCard'
@@ -24,6 +24,7 @@ import {
 import { dayKey } from '../lib/crewStats'
 import { analyzeInWorker } from '../lib/engine'
 import { haversine } from '../lib/geo'
+import { pastOfRow, useHistory } from '../lib/history'
 import { useLibrary } from '../lib/library'
 import { useSettings } from '../lib/settings'
 import type { SessionData } from '../lib/store'
@@ -82,6 +83,9 @@ function CloudSessionLoader() {
   }, [trackKey])
 
   const owner = !!row && row.user_id === user?.id
+  // The rider's other sessions: their best polars and their last gear.
+  const history = useHistory(row?.user_id)
+  const others = useMemo(() => (row && history ? history.filter((h) => h.id !== row.id).map(pastOfRow) : null), [row, history])
   const windOverride = row?.wind_override ?? null
   const modelDir = row?.model_wind?.dir ?? null
   useEffect(() => {
@@ -93,7 +97,7 @@ function CloudSessionLoader() {
         setA(res)
         const s = row.summary
         // The owner's copy keeps the stored numbers in step with the analysis (wind, threshold).
-        if (owner && (s.windDir !== res.summary.windDir || s.jibes !== res.summary.jibes || s.foilTime !== res.summary.foilTime)) {
+        if (owner && (s.windDir !== res.summary.windDir || s.jibes !== res.summary.jibes || s.foilTime !== res.summary.foilTime || s.polar === undefined)) {
           void updateSession(row.id, { summary: res.summary }).catch(() => {})
         }
       })
@@ -151,6 +155,8 @@ function CloudSessionLoader() {
       colors={colors}
       readOnly={!owner}
       riderEditable={false}
+      others={others}
+      riderIsMe={owner}
       compareId={`c:${row.id}`}
       meta={meta}
       onUpdate={async (patch) => {
@@ -158,6 +164,8 @@ function CloudSessionLoader() {
         if (patch.title !== undefined) p.title = patch.title
         if (patch.notes !== undefined) p.notes = patch.notes
         if ('windOverride' in patch) p.wind_override = patch.windOverride ?? null
+        if ('windBand' in patch) p.wind_band = patch.windBand ?? null
+        if (patch.gear !== undefined) p.gear = patch.gear
         await updateSession(row.id, p)
         await library.mirror(row.id, patch)
         await reload()

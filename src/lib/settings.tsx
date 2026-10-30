@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { DEFAULT_FOIL_KN } from './analysis/analyze'
+import type { GearItem } from './types'
 import type { DistUnit, SpeedUnit } from './units'
 
 /** Numbers that can be shown live over the map while replaying several riders. */
@@ -15,6 +16,8 @@ export interface Settings {
   trailMode: 'full' | 'tail'
   /** Share of the upwind and downwind legs, best first, behind the "best legs" averages (1 = all). */
   topShare: number
+  /** Gear list while signed out; signed in, it lives in the profile. */
+  gear: GearItem[]
 }
 
 const KEY = 'foillog.settings'
@@ -26,6 +29,7 @@ const DEFAULTS: Settings = {
   liveMetrics: ['spd', 'vmg'],
   trailMode: 'full',
   topShare: 0.2,
+  gear: [],
 }
 
 function load(): Settings {

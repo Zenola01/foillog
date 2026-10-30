@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { EChart } from '../components/EChart'
+import { BestPolarsCard } from '../components/Polars'
 import { RequireAuth } from '../components/RequireAuth'
 import { TrackThumb } from '../components/TrackThumb'
-import { card, Segmented, StatTile } from '../components/ui'
+import { btnSecondary, card, Segmented, StatTile } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { progressOption } from '../lib/charts'
-import { listSpots, sessionsAtSpot, sessionsOf, type CloudSession } from '../lib/cloud'
+import { listSpots, loadTrack, sessionsAtSpot, sessionsOf, updateSession, type CloudSession } from '../lib/cloud'
 import { bestOf, leaderboard, totals } from '../lib/crewStats'
+import { analyzeInWorker } from '../lib/engine'
+import { pastOfCloud } from '../lib/history'
+import { useLibrary } from '../lib/library'
 import { useSettings, type Settings } from '../lib/settings'
 import { useTheme } from '../lib/theme'
 import type { RecordKey } from '../lib/types'
@@ -41,11 +45,16 @@ function Records({ userId }: { userId?: string }) {
   const [error, setError] = useState<string | null>(null)
   const [period, setPeriod] = useState<'season' | 'all'>('season')
 
+  const load = useCallback(
+    () =>
+      sessionsOf(uid)
+        .then(setRows)
+        .catch((e: Error) => setError(e.message)),
+    [uid],
+  )
   useEffect(() => {
-    sessionsOf(uid)
-      .then(setRows)
-      .catch((e: Error) => setError(e.message))
-  }, [uid])
+    void load()
+  }, [load])
 
   const year = new Date().getFullYear()
   const shown = useMemo(
@@ -67,6 +76,9 @@ function Records({ userId }: { userId?: string }) {
   )
   const name = me ? (profile?.display_name ?? 'Io') : (rows?.[0]?.profile?.display_name ?? 'Rider')
   const u = SPEED_SHORT[settings.speedUnit]
+  const past = useMemo(() => shown.map(pastOfCloud), [shown])
+  // Sessions analysed before polars were kept (with a wind, so they would have one).
+  const unpolared = useMemo(() => (rows ?? []).filter((r) => r.summary.polar === undefined && r.summary.windDir != null), [rows])
 
   if (error) return <p className={`${card} p-4 text-sm text-critical`}>{error}</p>
   if (!rows) return <p className="py-16 text-center text-ink-2">Carico le uscite…</p>
@@ -75,7 +87,17 @@ function Records({ userId }: { userId?: string }) {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{me ? 'I tuoi record' : `Record di ${name}`}</h1>
-        <p className="text-sm text-ink-2">Dalle uscite condivise nella crew{me ? '' : ' che puoi vedere'}.</p>
+        <p className="text-sm text-ink-2">
+          Dalle uscite condivise nella crew{me ? '' : ' che puoi vedere'}.
+          {me && (
+            <>
+              {' '}
+              <Link to="/attrezzatura" className="font-medium text-accent">
+                La tua attrezzatura →
+              </Link>
+            </>
+          )}
+        </p>
       </div>
       <Segmented
         label="Periodo"
@@ -121,6 +143,22 @@ function Records({ userId }: { userId?: string }) {
               </tbody>
             </table>
           </div>
+          <BestPolarsCard
+            sessions={past}
+            unit={settings.speedUnit}
+            colors={colors}
+            footer={
+              unpolared.length > 0 &&
+              (me ? (
+                <AddPolars rows={unpolared} onDone={load} />
+              ) : (
+                <p className="text-xs text-ink-2">
+                  {unpolared.length === 1 ? 'Un’uscita' : `${unpolared.length} uscite`} di {name} non {unpolared.length === 1 ? 'ha' : 'hanno'} ancora la
+                  polare: si aggiunge quando {name} apre i suoi record.
+                </p>
+              ))
+            }
+          />
           {shown.length > 1 && (
             <div className={`${card} p-3`}>
               <p className="text-sm font-semibold">Progressi</p>
@@ -131,6 +169,45 @@ function Records({ userId }: { userId?: string }) {
           <SessionList rows={shown} settings={settings} />
         </>
       )}
+    </div>
+  )
+}
+
+/** Analyses again the sessions uploaded before polars were kept, so they join the best polars. */
+function AddPolars({ rows, onDone }: { rows: CloudSession[]; onDone: () => void }) {
+  const { settings } = useSettings()
+  const library = useLibrary()
+  const [done, setDone] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const run = async () => {
+    setError(null)
+    setDone(0)
+    try {
+      for (const [k, r] of rows.entries()) {
+        const d = await loadTrack(r)
+        const a = await analyzeInWorker(d.track, d.wind, { foilOnKn: settings.foilOnKn, windOverride: r.wind_override, modelWind: r.model_wind })
+        await updateSession(r.id, { summary: a.summary })
+        await library.mirror(r.id, { summary: a.summary, foilOnKn: settings.foilOnKn })
+        setDone(k + 1)
+      }
+      onDone()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDone(null)
+    }
+  }
+  const n = rows.length
+  return (
+    <div className="space-y-2 rounded-xl bg-surface-2 p-3 text-sm">
+      <p>
+        {n === 1 ? 'Un’uscita è stata caricata' : `${n} uscite sono state caricate`} prima delle polari: per aggiungerle, FoilLog ne scarica le tracce e le
+        analizza di nuovo.
+      </p>
+      <button type="button" className={btnSecondary} disabled={done != null} onClick={run}>
+        {done == null ? `Aggiungi ${n === 1 ? 'l’uscita' : `le ${n} uscite`}` : `Analizzo ${done + 1} di ${n}…`}
+      </button>
+      {error && <p className="text-critical">{error}</p>}
     </div>
   )
 }

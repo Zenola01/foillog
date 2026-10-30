@@ -48,14 +48,18 @@ export function Segmented<T extends string | number>({
   options,
   onChange,
   label,
+  compact = false,
 }: {
-  value: T
+  /** Null: none chosen yet. */
+  value: T | null
   options: { value: T; label: string }[]
   onChange: (v: T) => void
   label: string
+  /** Tighter, for four or more options on a phone. */
+  compact?: boolean
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-xl bg-surface-2 p-1">
+    <div role="radiogroup" aria-label={label} className="inline-flex max-w-full rounded-xl bg-surface-2 p-1">
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -63,7 +67,7 @@ export function Segmented<T extends string | number>({
           role="radio"
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
-          className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+          className={`rounded-lg py-1.5 font-medium whitespace-nowrap transition ${compact ? 'px-2.5 text-[13px]' : 'px-3 text-sm'} ${
             o.value === value ? 'bg-surface text-ink shadow-sm' : 'text-ink-2 hover:text-ink'
           }`}
         >

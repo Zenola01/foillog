@@ -5,6 +5,7 @@ import { ConfirmProvider } from './components/Confirm'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { btnSecondary, card } from './components/ui'
 import { AuthProvider } from './lib/auth'
+import { GearProvider } from './lib/gearList'
 import { LibraryProvider } from './lib/library'
 import { SettingsProvider } from './lib/settings'
 import HomePage from './pages/HomePage'
@@ -19,6 +20,7 @@ const DayPage = lazy(() => import('./pages/DayPage'))
 const RecordsPage = lazy(() => import('./pages/RecordsPage'))
 const SpotPage = lazy(() => import('./pages/RecordsPage').then((m) => ({ default: m.SpotPage })))
 const CrewPage = lazy(() => import('./pages/CrewPage'))
+const GearPage = lazy(() => import('./pages/GearPage'))
 const JoinPage = lazy(() => import('./pages/CrewPage').then((m) => ({ default: m.JoinPage })))
 
 // Hash routes (#/s/…) because GitHub Pages cannot route a single-page app's paths.
@@ -26,6 +28,7 @@ export default function App() {
   return (
     <SettingsProvider>
       <AuthProvider>
+        <GearProvider>
         <LibraryProvider>
           <HashRouter>
             <ConfirmProvider>
@@ -46,6 +49,7 @@ export default function App() {
                       <Route path="/record" element={<RecordsPage />} />
                       <Route path="/rider/:id" element={<RecordsPage />} />
                       <Route path="/spot/:id" element={<SpotPage />} />
+                      <Route path="/attrezzatura" element={<GearPage />} />
                       <Route
                         path="*"
                         element={
@@ -64,6 +68,7 @@ export default function App() {
             </ConfirmProvider>
           </HashRouter>
         </LibraryProvider>
+        </GearProvider>
       </AuthProvider>
     </SettingsProvider>
   )
