@@ -251,12 +251,11 @@ function WindRow({ row, unit, onSaved }: { row: CloudSession; unit: SpeedUnit; o
           value={text}
           onChange={(e) => setText(e.target.value)}
           inputMode="decimal"
-          placeholder="15"
           aria-label={`Vento medio in acqua il ${fmtShortDate(Date.parse(row.started_at))} (${u})`}
           className="w-16 rounded-lg border border-line bg-surface px-2 py-1.5 text-base"
         />
         <span className="text-ink-2">{u}</span>
-        <button type="submit" className={btnGhost} disabled={ms == null || busy}>
+        <button type="submit" className={`${btnGhost} disabled:opacity-40 disabled:hover:bg-transparent`} disabled={ms == null || busy}>
           Salva
         </button>
       </form>
@@ -293,8 +292,9 @@ function AddPolars({ rows, onDone }: { rows: CloudSession[]; onDone: () => void 
   return (
     <div className="space-y-2 rounded-xl bg-surface-2 p-3 text-sm">
       <p>
-        {n === 1 ? 'Un’uscita è stata caricata' : `${n} uscite sono state caricate`} prima delle polari: per aggiungerle, FoilLog ne scarica le tracce e le
-        analizza di nuovo.
+        {n === 1
+          ? 'Un’uscita è stata caricata prima delle polari: per aggiungerla, FoilLog ne scarica la traccia e la analizza di nuovo.'
+          : `${n} uscite sono state caricate prima delle polari: per aggiungerle, FoilLog ne scarica le tracce e le analizza di nuovo.`}
       </p>
       <button type="button" className={btnSecondary} disabled={done != null} onClick={run}>
         {done == null ? `Aggiungi ${n === 1 ? 'l’uscita' : `le ${n} uscite`}` : `Analizzo ${done + 1} di ${n}…`}

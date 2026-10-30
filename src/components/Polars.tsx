@@ -176,7 +176,7 @@ function WindSpeedForm({
             value={text}
             onChange={(e) => setText(e.target.value)}
             inputMode="decimal"
-            placeholder="15"
+            placeholder="es. 15"
             aria-label={`Vento medio in acqua (${u})`}
             className="w-24 rounded-lg border border-line bg-surface px-3 py-2 text-base"
           />
@@ -311,7 +311,7 @@ export function BestPolarsCard({
       </div>
       <Segmented label="Intensità del vento" value={band} onChange={setPicked} options={WIND_BANDS.map((b) => ({ value: b.id, label: b.short }))} />
       <p className="text-sm">
-        {bandName(band)}, {bandRange(band, unit)} {u}: {counts[band] === 1 ? '1 uscita' : `${counts[band]} uscite`}
+        {bandName(band)}, {bandRange(band, unit)} {u}: {counts[band] === 0 ? 'nessuna uscita' : counts[band] === 1 ? '1 uscita' : `${counts[band]} uscite`}
       </p>
       {option ? (
         <>
@@ -336,11 +336,11 @@ export function BestPolarsCard({
           </p>
         </>
       ) : (
-        <p className="text-sm text-ink-2">
-          {counts[band] === 0
-            ? `Nessuna uscita con ${bandName(band).toLowerCase()}.`
-            : `Ancora nessuna polare con ${bandName(band).toLowerCase()}: servono tratti in foil di almeno ${MIN_SECTOR_SECONDS} secondi allo stesso angolo dal vento.`}
-        </p>
+        counts[band] > 0 && (
+          <p className="text-sm text-ink-2">
+            Ancora nessuna polare con {bandName(band).toLowerCase()}: servono tratti in foil di almeno {MIN_SECTOR_SECONDS} secondi allo stesso angolo dal vento.
+          </p>
+        )
       )}
       {calm > 0 && <p className="text-xs text-ink-2">{calm === 1 ? 'Un’uscita sotto' : `${calm} uscite sotto`} i {calmBelow(unit)} restano fuori.</p>}
       {footer}
