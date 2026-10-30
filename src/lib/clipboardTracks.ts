@@ -28,13 +28,23 @@ export function tracksFromText(text: string): File[] {
   return []
 }
 
-/** Tracks in a paste: copied files first, then text. */
+/**
+ * The name of a track file pasted without its content: Chrome pastes a file copied in the Finder as
+ * its name and its icon only.
+ */
+export function fileNameOnly(text: string): string | null {
+  const t = text.trim()
+  return /^[^\n/\\]{1,200}\.(gpx|vkx|csv)$/i.test(t) ? t : null
+}
+
+/** Tracks in a paste: copied files first, then text. Images are never tracks (a file's icon). */
 export function tracksFromPaste(dt: DataTransfer): File[] {
-  const files = [...dt.files]
+  const notImage = (f: File) => !f.type.startsWith('image/')
+  const files = [...dt.files].filter(notImage)
   if (!files.length) {
     for (const it of Array.from(dt.items)) {
       const f = it.kind === 'file' ? it.getAsFile() : null
-      if (f) files.push(f)
+      if (f && notImage(f)) files.push(f)
     }
   }
   return files.length ? files : tracksFromText(dt.getData('text/plain'))

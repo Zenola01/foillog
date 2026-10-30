@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { tracksFromPaste } from '../lib/clipboardTracks'
+import { fileNameOnly, tracksFromPaste } from '../lib/clipboardTracks'
 import { isCoarsePointer } from '../lib/theme'
 import { IconPaste, IconUpload } from './icons'
 import { btnPrimary, card } from './ui'
@@ -16,17 +16,30 @@ export function FileDrop({ onFiles, compact }: { onFiles: (files: File[]) => voi
   const coarse = useMemo(isCoarsePointer, [])
   const onFilesRef = useRef(onFiles)
   onFilesRef.current = onFiles
+  /** Pastes the tracks on the clipboard; true when it was meant as one, even if unusable. */
+  const pasteRef = useRef((dt: DataTransfer, quiet: boolean) => {
+    const files = tracksFromPaste(dt)
+    if (files.length) {
+      setHint(null)
+      onFilesRef.current(files)
+      return true
+    }
+    const name = fileNameOnly(dt.getData('text/plain'))
+    if (name) {
+      setHint(`Questo browser ha incollato solo il nome del file «${name}», non il contenuto: trascina il file qui oppure usa «Scegli i file».`)
+      return true
+    }
+    if (!quiet)
+      setHint('Negli appunti non c’è una traccia. In Vakaros tocca Condividi e poi Copia; se non funziona, usa il comando rapido «FoilLog» (guida in Impostazioni).')
+    return false
+  })
 
   // ⌘V anywhere on the page, unless it is meant for a text field; clipboards without a track are left alone.
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       if (e.defaultPrevented || !e.clipboardData) return
       if ((e.target as Element | null)?.closest?.('input, textarea, [contenteditable="true"]')) return
-      const files = tracksFromPaste(e.clipboardData)
-      if (!files.length) return
-      e.preventDefault()
-      setHint(null)
-      onFilesRef.current(files)
+      if (pasteRef.current(e.clipboardData, true)) e.preventDefault()
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)
@@ -71,14 +84,7 @@ export function FileDrop({ onFiles, compact }: { onFiles: (files: File[]) => voi
           onPaste={(e) => {
             e.preventDefault()
             e.stopPropagation()
-            const files = tracksFromPaste(e.clipboardData)
-            if (files.length) {
-              setHint(null)
-              onFiles(files)
-            } else
-              setHint(
-                'Negli appunti non c’è una traccia. In Vakaros tocca Condividi e poi Copia; se non funziona, usa il comando rapido «FoilLog» (guida in Impostazioni).',
-              )
+            pasteRef.current(e.clipboardData, false)
           }}
           onInput={(e) => {
             e.currentTarget.textContent = ''
