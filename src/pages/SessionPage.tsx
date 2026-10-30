@@ -12,7 +12,7 @@ import { WindDial } from '../components/WindDial'
 import { rangeStats } from '../lib/analysis/analyze'
 import { bestLegs } from '../lib/analysis/bestLegs'
 import { courseOf, DOWNWIND_MIN, UPWIND_MAX } from '../lib/analysis/pointsOfSail'
-import { indexAtTime } from '../lib/analysis/series'
+import { hasHeartRate, indexAtTime } from '../lib/analysis/series'
 import { heartRateOption, histogramOption, orientationOption, polarOption, speedOption } from '../lib/charts'
 import { analyzeInWorker } from '../lib/engine'
 import { norm360 } from '../lib/geo'
@@ -545,7 +545,7 @@ export function SessionView({
               </div>
               <Histogram tr={tr} a={a} unit={unit} colors={colors} />
               {(tr.roll || tr.pitch) && <Orientation data={data} colors={colors} coarse={coarse} />}
-              {tr.hr && <HeartRate data={data} colors={colors} coarse={coarse} />}
+              {hasHeartRate(tr) && <HeartRate data={data} colors={colors} coarse={coarse} />}
             </div>
           )}
 

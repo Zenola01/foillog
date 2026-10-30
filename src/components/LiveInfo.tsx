@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
-import { indexAtTime } from '../lib/analysis/series'
+import { hasHeartRate, indexAtTime, MIN_HR } from '../lib/analysis/series'
 import { norm180, RAD } from '../lib/geo'
 import { useSettings, type LiveMetric, type Settings } from '../lib/settings'
 import type { Track } from '../lib/types'
@@ -94,8 +94,8 @@ const METRICS: MetricDef[] = [
     key: 'hr',
     label: 'Battito',
     head: () => 'Battito',
-    available: (r) => r.track.hr != null,
-    value: (r, i) => whole(r.track.hr![i]),
+    available: (r) => hasHeartRate(r.track),
+    value: (r, i) => (r.track.hr![i] > MIN_HR ? whole(r.track.hr![i]) : '–'),
   },
   {
     key: 'heel',

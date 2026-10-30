@@ -82,3 +82,9 @@ export function pointWeights(tr: Track): Float32Array {
   }
   return w
 }
+
+/** Below this a heart rate is not a reading (some apps write 0 when the watch has no sensor on). */
+export const MIN_HR = 30
+
+/** True when the track has real heart-rate readings. Older sessions may hold a column of zeros. */
+export const hasHeartRate = (tr: Pick<Track, 'hr'>) => tr.hr != null && tr.hr.some((v) => v > MIN_HR)

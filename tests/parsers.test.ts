@@ -51,6 +51,25 @@ describe('GPX', () => {
   })
 })
 
+describe('heart rate written as 0', () => {
+  // Waterspeed without a heart-rate sensor writes <gpxtpx:hr>0</gpxtpx:hr> on every point.
+  const pt = (k: number, hr: number) =>
+    `<trkpt lat="45.67${k}" lon="13.75${k}"><time>2026-09-21T14:03:3${k}.000+0000</time><extensions><gpxtpx:TrackPointExtension><gpxtpx:speed>1.0</gpxtpx:speed><gpxtpx:hr>${hr}</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions></trkpt>`
+  const file = (hrs: number[]) =>
+    `<?xml version="1.0"?>\r\n<gpx \r\nversion="1.1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"><trk><trkseg>${hrs.map((h, k) => pt(k, h)).join('\r\n')}</trkseg></trk></gpx>`
+
+  it('is no heart rate at all', () => {
+    expect(parseGpx(file([0, 0, 0, 0])).track.hr).toBeNull()
+  })
+
+  it('is a missing reading among real ones', () => {
+    const hr = parseGpx(file([0, 120, 0, 125])).track.hr!
+    expect(Number.isNaN(hr[0])).toBe(true)
+    expect(hr[1]).toBe(120)
+    expect(Number.isNaN(hr[2])).toBe(true)
+  })
+})
+
 describe('VKX', () => {
   const t0 = Date.UTC(2026, 6, 15, 12, 0, 0)
   const rows = Array.from({ length: 100 }, (_, k) => ({

@@ -13,7 +13,7 @@ import type {
 import { detectFoil } from './foil'
 import { findLegs, findManeuvers, findStops, findTurns, tackOf, type RawLeg } from './maneuvers'
 import { pointsOfSail } from './pointsOfSail'
-import { segmentIds } from './series'
+import { MIN_HR, segmentIds } from './series'
 import { bestDistanceWindow, bestNTimeWindows, bestTimeWindow } from './speed'
 import { estimateWind } from './wind'
 
@@ -80,7 +80,7 @@ export function analyzeTrack(tr: Track, instrument: InstrumentWind | null, opts:
   let hrMax = -Infinity
   if (tr.hr) {
     for (const v of tr.hr) {
-      if (!(v > 30)) continue
+      if (!(v > MIN_HR)) continue
       hrSum += v
       hrN++
       hrMax = Math.max(hrMax, v)

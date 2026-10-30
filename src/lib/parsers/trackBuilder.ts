@@ -23,6 +23,8 @@ export class TrackBuilder {
   }
 
   build(): RawTrack {
+    // A heart rate of 0 is not a reading: apps write it when the watch has no sensor on.
+    this.opt.hr = this.opt.hr.map((v) => (v > 0 ? v : NaN))
     const col = (k: OptionalField) => (this.opt[k].some(Number.isFinite) ? Float32Array.from(this.opt[k]) : null)
     return {
       t: Float64Array.from(this.t),

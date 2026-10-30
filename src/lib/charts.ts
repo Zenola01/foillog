@@ -1,5 +1,5 @@
 import type { EChartsCoreOption } from 'echarts/core'
-import { pointWeights } from './analysis/series'
+import { MIN_HR, pointWeights } from './analysis/series'
 import type { ThemeColors } from './theme'
 import type { PolarBin, SessionAnalysis, Track } from './types'
 import { fmtClockDuration, fmtNum, fmtTime, fmtTimeSec, MS_TO_KN, SPEED_SHORT, toUnit, type SpeedUnit } from './units'
@@ -52,7 +52,8 @@ function timeAxis(c: ThemeColors, relative: boolean) {
     axisLabel: {
       color: c.muted,
       hideOverlap: true,
-      formatter: (v: number) => (relative ? fmtClockDuration(v / 1000) : fmtTime(v)),
+      // An axis without data asks for labels at NaN.
+      formatter: (v: number) => (!Number.isFinite(v) ? '' : relative ? fmtClockDuration(v / 1000) : fmtTime(v)),
     },
     splitLine: { show: false },
   }
@@ -267,7 +268,7 @@ export function orientationOption(tr: Track, c: ThemeColors, coarse: boolean): E
 
 export function heartRateOption(tr: Track, c: ThemeColors, coarse: boolean): EChartsCoreOption {
   const data: [number, number][] = []
-  for (let i = 0; i < tr.t.length; i++) if (tr.hr && tr.hr[i] > 30) data.push([tr.t[i], Math.round(tr.hr[i])])
+  for (let i = 0; i < tr.t.length; i++) if (tr.hr && tr.hr[i] > MIN_HR) data.push([tr.t[i], Math.round(tr.hr[i])])
   return {
     animation: false,
     grid: { left: 40, right: 14, top: 26, bottom: 62 },

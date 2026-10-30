@@ -61,10 +61,13 @@ const shortDateFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: '
 const timeFmt = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' })
 const timeSecFmt = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
-export const fmtDate = (ms: number) => dateFmt.format(ms)
-export const fmtShortDate = (ms: number) => shortDateFmt.format(ms)
-export const fmtTime = (ms: number) => timeFmt.format(ms)
-export const fmtTimeSec = (ms: number) => timeSecFmt.format(ms)
+/** A dash for a missing time: Intl throws on NaN, which would take the whole page down. */
+const safe = (f: Intl.DateTimeFormat) => (ms: number) => (Number.isFinite(ms) ? f.format(ms) : '–')
+
+export const fmtDate = safe(dateFmt)
+export const fmtShortDate = safe(shortDateFmt)
+export const fmtTime = safe(timeFmt)
+export const fmtTimeSec = safe(timeSecFmt)
 
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO']
 
