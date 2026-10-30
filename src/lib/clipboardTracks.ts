@@ -1,6 +1,6 @@
 // Tracks handed over through the clipboard. iPhone does not let a web app appear in the share
-// sheet, so the file is copied instead (in Vakaros: Condividi → Copia, or with the «FoilLog»
-// shortcut) and pasted here.
+// sheet, and it does not hand copied files to web pages either: the «FoilLog» shortcut copies the
+// file as base64 text, which pastes everywhere. On a computer a copied file pastes as it is.
 
 const NAME = 'traccia incollata'
 
@@ -48,4 +48,30 @@ export function tracksFromPaste(dt: DataTransfer): File[] {
     }
   }
   return files.length ? files : tracksFromText(dt.getData('text/plain'))
+}
+
+/**
+ * Tracks on the clipboard, read on a tap (iPhone first shows its own «Incolla» bubble). Text works
+ * everywhere; files only where the browser hands them over. Rejects if reading is not allowed.
+ */
+export async function readClipboard(): Promise<{ files: File[]; name: string | null }> {
+  const files: File[] = []
+  let name: string | null = null
+  const fromText = (text: string) => {
+    const f = tracksFromText(text)
+    if (f.length) files.push(...f)
+    else name ??= fileNameOnly(text)
+  }
+  if (navigator.clipboard?.read) {
+    for (const item of await navigator.clipboard.read()) {
+      for (const type of item.types) {
+        if (type.startsWith('image/') || type === 'text/html' || type === 'text/uri-list') continue
+        const blob = await item.getType(type)
+        if (type === 'text/plain') fromText(await blob.text())
+        else files.push(new File([blob], NAME, { type }))
+      }
+      if (files.length) break
+    }
+  } else if (navigator.clipboard?.readText) fromText(await navigator.clipboard.readText())
+  return { files, name }
 }

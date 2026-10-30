@@ -148,32 +148,27 @@ export default function SettingsPage() {
           <p className="font-semibold">Dal Vakaros</p>
           <p className="text-ink-2">
             Nell'app Vakaros Connect apri la sezione delle sessioni, scarica l'uscita dallo strumento e scegli Esporta, formato VKX
-            (oppure CSV): il VKX contiene anche sbandamento e beccheggio. Poi, senza salvare il file:
+            (oppure CSV): il VKX contiene anche sbandamento e beccheggio. Poi:
           </p>
-          <ol className="list-decimal space-y-1 pl-5 text-ink-2">
+          <ul className="list-disc space-y-1 pl-5 text-ink-2">
             <li>
-              nel menu Condividi tocca <b className="text-ink">Copia</b>;
+              sull'iPhone, senza salvare il file: Condividi → <b className="text-ink">FoilLog</b> (il comando rapido qui sotto), poi in
+              FoilLog tocca <b className="text-ink">Incolla</b>;
             </li>
-            <li>
-              apri FoilLog e, nella pagina Uscite, tieni premuto il riquadro <b className="text-ink">Incolla</b> e scegli Incolla.
-            </li>
-          </ol>
-          <p className="text-ink-2">
-            Se l'iPhone non passa il file copiato, usa il comando rapido «FoilLog» qui sotto. Oppure salva il file in File e caricalo con
-            «Scegli i file».
-          </p>
+            <li>oppure salva il file in File e caricalo con «Scegli i file»;</li>
+            <li>sul Mac puoi anche copiare il file e incollarlo in FoilLog con ⌘V.</li>
+          </ul>
         </div>
         <div className="space-y-1.5">
           <p className="font-semibold">Il comando rapido «FoilLog»</p>
           <p className="text-ink-2">
-            L'iPhone non lascia comparire le web app nel menu Condividi, ma un comando rapido sì: copia la traccia in un formato che FoilLog
-            sa sempre incollare. Si prepara una volta sola, nell'app Comandi:
+            L'iPhone non lascia comparire le web app nel menu Condividi e non passa loro i file copiati. Un comando rapido sì: copia la
+            traccia come testo, che FoilLog sa sempre incollare. Si prepara una volta sola, nell'app Comandi:
           </p>
           <ol className="list-decimal space-y-1 pl-5 text-ink-2">
             <li>tocca + e chiama il nuovo comando «FoilLog»;</li>
             <li>
-              nei dettagli del comando (icona ⓘ) attiva <b className="text-ink">Mostra nel foglio di condivisione</b> e, tra i tipi di
-              contenuto, lascia solo File;
+              nei dettagli del comando (icona ⓘ) attiva <b className="text-ink">Mostra nel foglio di condivisione</b>;
             </li>
             <li>
               aggiungi l'azione che codifica in <b className="text-ink">base64</b> (cercala scrivendo «base64») e fai codificare l'input del
@@ -182,10 +177,11 @@ export default function SettingsPage() {
             <li>
               aggiungi l'azione <b className="text-ink">Copia negli appunti</b>;
             </li>
-            <li>se vuoi, aggiungi «Mostra notifica» con il testo «Traccia copiata: apri FoilLog e incollala».</li>
+            <li>se vuoi, aggiungi «Mostra notifica» con il testo «Traccia copiata: apri FoilLog e tocca Incolla».</li>
           </ol>
           <p className="text-ink-2">
-            Da Vakaros allora tocchi Condividi e poi «FoilLog» in fondo all'elenco; apri FoilLog e incolli nel riquadro Incolla.
+            Da Vakaros allora tocchi Condividi e poi «FoilLog» (nell'elenco delle azioni, in fondo al menu); apri FoilLog e tocca Incolla. Se
+            non lo trovi, in fondo al menu Condividi tocca «Modifica azioni» e aggiungilo.
           </p>
         </div>
         <div>
