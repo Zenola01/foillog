@@ -9,7 +9,6 @@ import { EChart, type Chart } from './EChart'
 import { btnGhost, card, LineKey, Outcome, Segmented, StatTile } from './ui'
 
 type Kind = Maneuver['kind']
-type Side = 'all' | Tack
 type Track = SessionData['track']
 
 const KIND_NAME: Record<Kind, string> = { jibe: 'Strambata', tack: 'Virata' }
@@ -160,22 +159,24 @@ function Overlay({
 }) {
   const u = SPEED_SHORT[unit]
   const all = useMemo(() => details.filter((d): d is ManeuverDetail => d != null), [details])
-  const count = (k: Kind) => all.filter((d) => d.maneuver.kind === k).length
+  const count = (k: Kind, from?: Tack) => all.filter((d) => d.maneuver.kind === k && (!from || d.maneuver.from === from)).length
   const [kind, setKind] = useState<Kind>(() => (count('jibe') >= count('tack') ? 'jibe' : 'tack'))
-  const [side, setSide] = useState<Side>('all')
+  const [wantedSide, setSide] = useState<Tack>(() => (count(kind, 'S') >= count(kind, 'P') ? 'S' : 'P'))
+  // A kind of manoeuvre may have been sailed from one side only.
+  const side: Tack = count(kind, wantedSide) > 0 ? wantedSide : wantedSide === 'S' ? 'P' : 'S'
   const [source, setSource] = useState<RateSource>(tr.hdg ? 'compass' : 'track')
-  // A manoeuvre picked elsewhere (the map, the table) brings its own group into view.
+  // A manoeuvre picked elsewhere (the map) brings its own group into view.
   const [seen, setSeen] = useState(selected)
   if (selected !== seen) {
     setSeen(selected)
     const m = selected != null ? details[selected]?.maneuver : null
     if (m) {
       setKind(m.kind)
-      if (side !== 'all' && side !== m.from) setSide('all')
+      setSide(m.from)
     }
   }
 
-  const shown = useMemo(() => all.filter((d) => d.maneuver.kind === kind && (side === 'all' || d.maneuver.from === side)), [all, kind, side])
+  const shown = useMemo(() => all.filter((d) => d.maneuver.kind === kind && d.maneuver.from === side), [all, kind, side])
   const best = useMemo(() => bestManeuver(shown), [shown])
   const picked = selected != null ? (shown.find((d) => d.index === selected) ?? null) : null
   const focus = picked ?? best ?? shown[0] ?? null
@@ -232,9 +233,7 @@ function Overlay({
       <div className={`${card} space-y-3 p-3`}>
         <div>
           <p className="text-sm font-semibold">Traiettorie sovrapposte</p>
-          <p className="text-xs text-ink-2">
-            Allineate {PASSAGE[kind]} (il pallino). Tocca una linea per i numeri.{side === 'all' && ' Quelle da dritta sono specchiate.'}
-          </p>
+          <p className="text-xs text-ink-2">Allineate {PASSAGE[kind]} (il pallino). Tocca una linea per i numeri.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Segmented label="Tipo di manovra" value={kind} onChange={setKind} options={kinds.map((k) => ({ value: k, label: `${PLURAL[k]} (${count(k)})` }))} />
@@ -243,15 +242,14 @@ function Overlay({
             value={side}
             onChange={setSide}
             options={[
-              { value: 'all', label: 'Tutte' },
-              { value: 'S', label: 'Da dritta' },
-              { value: 'P', label: 'Da sinistra' },
+              { value: 'S', label: `Da dritta (${count(kind, 'S')})` },
+              { value: 'P', label: `Da sinistra (${count(kind, 'P')})` },
             ]}
           />
         </div>
-        {shown.length ? (
+        {shown.length > 0 && (
           <>
-            <PathsPlot drawn={drawn} focus={focus} focusColor={focusColor} mirror={side === 'all'} colors={colors} tr={tr} unit={unit} onPick={onSelect} />
+            <PathsPlot drawn={drawn} focus={focus} focusColor={focusColor} colors={colors} tr={tr} unit={unit} onPick={onSelect} />
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-2">
               {foiled.length > 0 && (
                 <span className="inline-flex items-center gap-1.5">
@@ -292,8 +290,6 @@ function Overlay({
               />
             )}
           </>
-        ) : (
-          <p className="text-sm text-ink-2">Nessuna manovra di questo tipo da questo lato.</p>
         )}
         {pickedFall && <p className="text-sm text-ink-2">Caduta: traiettoria non disegnata.</p>}
         {!pickedFall && falls > 0 && <p className="text-xs text-ink-2">{falls === 1 ? 'Una caduta non disegnata.' : `${falls} cadute non disegnate.`}</p>}
@@ -464,7 +460,6 @@ function PathsPlot({
   drawn,
   focus,
   focusColor,
-  mirror,
   colors,
   tr,
   unit,
@@ -473,7 +468,6 @@ function PathsPlot({
   drawn: Drawn[]
   focus: ManeuverDetail | null
   focusColor: string
-  mirror: boolean
   colors: ThemeColors
   tr: Track
   unit: SpeedUnit
@@ -491,11 +485,9 @@ function PathsPlot({
   }, [])
 
   const geo = useMemo(() => {
-    const X = (d: ManeuverDetail, i: number) => (mirror && d.maneuver.from === 'S' ? -d.x[i] : d.x[i])
     // What most paths need: one very long turn must not shrink all the others.
-    const xs = drawn.map(({ d }) => d.x.map((_, i) => X(d, i)))
-    const x0 = Math.min(quantile(xs.map((v) => Math.min(...v)), 0.1), 0)
-    const x1 = Math.max(quantile(xs.map((v) => Math.max(...v)), 0.9), 0)
+    const x0 = Math.min(quantile(drawn.map(({ d }) => Math.min(...d.x)), 0.1), 0)
+    const x1 = Math.max(quantile(drawn.map(({ d }) => Math.max(...d.x)), 0.9), 0)
     const y0 = Math.min(quantile(drawn.map(({ d }) => Math.min(...d.y)), 0.1), 0)
     const y1 = Math.max(quantile(drawn.map(({ d }) => Math.max(...d.y)), 0.9), 0)
     // Room beyond the passage, on the side the paths leave free, for the wind and the scale.
@@ -513,12 +505,12 @@ function PathsPlot({
     const paths = new Map(
       drawn.map(({ d }) => [
         d,
-        d.t.map((_, i) => [toX(X(d, i)), toY(d.y[i])] as [number, number]),
+        d.t.map((_, i) => [toX(d.x[i]), toY(d.y[i])] as [number, number]),
       ]),
     )
     const scale = [5, 10, 20, 25, 50, 100, 200, 500].filter((m) => m * s <= w * 0.3).pop() ?? 5
     return { h, s, paths, ox: toX(0), oy: toY(0), onLeft, scale }
-  }, [drawn, mirror, w])
+  }, [drawn, w])
 
   const nearest = (e: MouseEvent, within: number) => {
     const r = box.current!.getBoundingClientRect()
