@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
-import { bestManeuver, maneuverDetails, rateAverages, rateSeriesOf, ratesOf, type ManeuverDetail, type PhaseRate, type RateSource } from '../lib/analysis/maneuverDetail'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { bestManeuver, detailAverages, maneuverDetails, rateSeriesOf, type ManeuverDetail, type RateSource } from '../lib/analysis/maneuverDetail'
 import { maneuverOption, type ManeuverLine } from '../lib/charts'
 import type { SessionData } from '../lib/store'
 import type { ThemeColors } from '../lib/theme'
@@ -74,11 +74,11 @@ function Analysis({
   const u = SPEED_SHORT[unit]
   const ms = a.maneuvers
   const details = useMemo(() => maneuverDetails(tr, ms, windDir), [tr, ms, windDir])
-  const [source, setSource] = useState<RateSource>(tr.hdg ? 'compass' : 'track')
   const hasHeel = details.some((d) => d?.heelIn != null)
 
   const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : NaN)
   const jibes = ms.filter((m) => m.kind === 'jibe')
+  const turnSeconds = (d: ManeuverDetail) => d.turnEnd - d.turnStart
   const rows = (['jibe', 'tack'] as const)
     .flatMap((kind) =>
       (['S', 'P'] as const).map((from) => {
@@ -87,10 +87,7 @@ function Analysis({
           label: `${PLURAL[kind]} da ${from === 'S' ? 'dritta' : 'sinistra'}`,
           n: xs.length,
           ok: xs.filter((m) => m.foiled).length,
-          rates: rateAverages(
-            details.filter((d): d is ManeuverDetail => d != null && d.maneuver.kind === kind && d.maneuver.from === from),
-            source,
-          ),
+          avg: detailAverages(details.filter((d): d is ManeuverDetail => d != null && d.maneuver.kind === kind && d.maneuver.from === from)),
         }
       }),
     )
@@ -100,11 +97,15 @@ function Analysis({
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
         <StatTile label="Velocità minima in strambata" value={fmtSpeed(avg(jibes.filter((m) => !m.fell).map((m) => m.minSpeed)), unit)} unit={u} sub="media, senza le cadute" />
-        <StatTile label="Durata media strambata" value={jibes.length ? `${fmtNum(avg(jibes.filter((m) => !m.fell).map((m) => m.duration)), 0)} s` : '–'} sub="senza le cadute" />
+        <StatTile
+          label="Durata media strambata"
+          value={jibes.length ? `${fmtNum(avg(details.flatMap((d) => (d?.maneuver.kind === 'jibe' ? turnSeconds(d) : []))), 0)} s` : '–'}
+          sub="la curva, senza le cadute"
+        />
         <StatTile label="Cadute o soste" value={String(a.summary.falls)} sub={`${ms.filter((m) => m.fell).length} durante una manovra`} />
       </div>
 
-      <Overlay details={details} tr={tr} unit={unit} colors={colors} selected={selected} onSelect={onSelect} source={source} onSource={setSource} />
+      <Overlay details={details} tr={tr} unit={unit} colors={colors} selected={selected} onSelect={onSelect} />
 
       <div className={`${card} overflow-x-auto`}>
         <table className="w-full text-sm">
@@ -112,9 +113,8 @@ function Analysis({
           <thead className="text-xs text-ink-2">
             <tr>
               <th className="px-3 py-2 text-left font-medium" />
-              <th className="px-2 py-2 text-right font-medium">Poggiata</th>
-              <th className="px-2 py-2 text-right font-medium">Orzata</th>
-              {hasHeel && <th className="px-3 py-2 text-right font-medium">Inclinaz.</th>}
+              <th className="px-3 py-2 text-right font-medium">Vel. angolare</th>
+              {hasHeel && <th className="px-3 py-2 text-right font-medium">Inclinazione</th>}
             </tr>
           </thead>
           <tbody>
@@ -126,38 +126,35 @@ function Analysis({
                     {r.ok}/{r.n} in foil · <span className="font-semibold text-ink">{fmtPct(r.ok / r.n)}</span>
                   </span>
                 </td>
-                <td className="px-2 py-2 text-right tabular">{rateText(r.rates.bearAway)}</td>
-                <td className="px-2 py-2 text-right tabular">{rateText(r.rates.luff)}</td>
-                {hasHeel && <td className="px-3 py-2 text-right tabular">{r.rates.heelIn == null ? '–' : `${fmtNum(r.rates.heelIn, 0)}°`}</td>}
+                <td className="px-3 py-2 text-right tabular">{rateText(r.avg.turnRate)}</td>
+                {hasHeel && <td className="px-3 py-2 text-right tabular">{r.avg.heelIn == null ? '–' : `${fmtNum(r.avg.heelIn, 0)}°`}</td>}
               </tr>
             ))}
           </tbody>
         </table>
         <p className="px-3 pb-3 text-xs text-ink-2">
-          Poggiata e orzata: media dei massimi di ogni manovra, in °/s.{hasHeel && ' Inclinazione: media dei massimi verso l’interno della curva.'}
+          Medie delle manovre. Velocità angolare in °/s: angolo girato diviso il tempo della curva.{hasHeel && ' Inclinazione: la massima verso l’interno della curva.'}
         </p>
       </div>
 
       <div className={`${card} overflow-x-auto`}>
-        <table className="w-full min-w-[620px] text-sm">
+        <table className="w-full min-w-[580px] text-sm">
           <caption className="px-3 pt-3 text-left text-sm font-semibold">Tutte le manovre ({u})</caption>
           <thead className="text-xs text-ink-2">
             <tr>
               <th className="py-2 pr-1 pl-3 text-left font-medium">Ora</th>
               <th className="px-2 py-2 text-left font-medium">Manovra</th>
-              <th className="px-2 py-2 text-right font-medium">Poggiata</th>
-              <th className="px-2 py-2 text-right font-medium">Orzata</th>
+              <th className="px-2 py-2 text-right font-medium">Vel. ang.</th>
               {hasHeel && <th className="px-2 py-2 text-right font-medium">Inclinaz.</th>}
               <th className="px-2 py-2 text-right font-medium">Minima</th>
               <th className="px-2 py-2 text-right font-medium">Entrata</th>
               <th className="px-2 py-2 text-right font-medium">Uscita</th>
-              <th className="px-3 py-2 text-right font-medium">Durata</th>
+              <th className="px-3 py-2 text-right font-medium">Curva</th>
             </tr>
           </thead>
           <tbody>
             {ms.map((m, k) => {
               const d = details[k]
-              const r = d && ratesOf(d, source)
               return (
                 <tr
                   key={k}
@@ -171,21 +168,20 @@ function Analysis({
                       <Outcome ok={m.foiled} fell={m.fell} />
                     </span>
                   </td>
-                  <td className="px-2 py-2 text-right tabular">{rateText(r?.bearAway?.peak)}</td>
-                  <td className="px-2 py-2 text-right tabular">{rateText(r?.luff?.peak)}</td>
+                  <td className="px-2 py-2 text-right tabular">{rateText(d?.turnRate)}</td>
                   {hasHeel && <td className="px-2 py-2 text-right tabular">{d?.heelIn == null ? '–' : `${fmtNum(d.heelIn, 0)}°`}</td>}
                   <td className="px-2 py-2 text-right font-semibold tabular">{fmtSpeed(m.minSpeed, unit)}</td>
                   <td className="px-2 py-2 text-right tabular">{fmtSpeed(m.entrySpeed, unit)}</td>
                   <td className="px-2 py-2 text-right tabular">{fmtSpeed(m.exitSpeed, unit)}</td>
-                  <td className="px-3 py-2 text-right tabular">{fmtNum(m.duration, 0)} s</td>
+                  <td className="px-3 py-2 text-right tabular">{d && turnSeconds(d) === 0 ? '–' : `${fmtNum(d ? turnSeconds(d) : m.duration, 0)} s`}</td>
                 </tr>
               )
             })}
           </tbody>
         </table>
         <p className="px-3 pb-3 text-xs text-ink-2">
-          D→S: da mure a dritta a mure a sinistra. Poggiata e orzata: massimi in °/s{hasHeel && '; inclinazione: massima verso l’interno della curva'}. Tocca una riga per
-          vederla sulla mappa.
+          D→S: da mure a dritta a mure a sinistra. Vel. ang.: velocità angolare in °/s, angolo girato diviso il tempo della curva.
+          {hasHeel && ' Inclinazione: la massima verso l’interno della curva.'} Tocca una riga per vederla sulla mappa.
         </p>
       </div>
     </div>
@@ -200,8 +196,6 @@ function Overlay({
   colors,
   selected,
   onSelect,
-  source,
-  onSource,
 }: {
   details: (ManeuverDetail | null)[]
   tr: Track
@@ -209,14 +203,13 @@ function Overlay({
   colors: ThemeColors
   selected: number | null
   onSelect: (k: number) => void
-  source: RateSource
-  onSource: (s: RateSource) => void
 }) {
   const u = SPEED_SHORT[unit]
   const all = useMemo(() => details.filter((d): d is ManeuverDetail => d != null), [details])
   const count = (k: Kind) => all.filter((d) => d.maneuver.kind === k).length
   const [kind, setKind] = useState<Kind>(() => (count('jibe') >= count('tack') ? 'jibe' : 'tack'))
   const [side, setSide] = useState<Side>('all')
+  const [source, setSource] = useState<RateSource>(tr.hdg ? 'compass' : 'track')
   // A manoeuvre picked elsewhere (the map, the table) brings its own group into view.
   const [seen, setSeen] = useState(selected)
   if (selected !== seen) {
@@ -279,7 +272,6 @@ function Overlay({
 
   const steps = (all[0].t.length > 1 ? all.map((d) => d.t[1] - d.t[0]) : [0]).sort((p, q) => p - q)
   const coarse = steps[steps.length >> 1] >= COARSE_POINT_S
-  const [before, after] = kind === 'jibe' ? ['poggiata', 'orzata'] : ['orzata', 'poggiata']
   const kinds = (['jibe', 'tack'] as const).filter((k) => count(k) > 0)
   const touched = shown.some((d) => !d.maneuver.foiled)
 
@@ -332,7 +324,7 @@ function Overlay({
                 </span>
               )}
             </p>
-            {focus && <Readout d={focus} isBest={!picked && focus === best} source={source} unit={unit} tr={tr} />}
+            {focus && <Readout d={focus} isBest={!picked && focus === best} unit={unit} tr={tr} />}
           </>
         ) : (
           <p className="text-sm text-ink-2">Nessuna manovra di questo tipo da questo lato.</p>
@@ -350,18 +342,18 @@ function Overlay({
                 <p className="text-xs text-ink-2">
                   {tr.hdg
                     ? source === 'compass'
-                      ? 'Quanto ruota la tavola, dalla bussola del dispositivo.'
-                      : 'Quanto curva la rotta, dal GPS: si confronta con chi non ha la bussola.'
-                    : 'Quanto curva la rotta, dal GPS.'}{' '}
+                      ? 'Secondo per secondo, quanto ruota la tavola (bussola).'
+                      : 'Secondo per secondo, quanto curva la rotta (GPS).'
+                    : 'Secondo per secondo, quanto curva la rotta (GPS).'}{' '}
                   Sopra lo zero gira nel verso della manovra.
                 </p>
               </div>
               {tr.hdg && (
                 <Segmented
                   compact
-                  label="Da dove viene la velocità angolare"
+                  label="Da dove viene la curva della velocità angolare"
                   value={source}
-                  onChange={onSource}
+                  onChange={setSource}
                   options={[
                     { value: 'compass', label: 'Prua' },
                     { value: 'track', label: 'Traccia' },
@@ -369,12 +361,8 @@ function Overlay({
                 />
               )}
             </div>
-            <p className="flex justify-between px-1 text-xs text-ink-2">
-              <span>← {before}</span>
-              <span>{after} →</span>
-            </p>
             <TimeChart lines={rateLines} seconds={seconds} unit="°/s" yMin={-20} colors={colors} onPick={onSelect} height={190} label="Velocità angolare nel tempo, attorno al passaggio" />
-            {coarse && <p className="text-xs text-ink-2">Questa traccia ha un punto al secondo: i massimi risultano un po’ più bassi di quelli reali.</p>}
+            {coarse && <p className="text-xs text-ink-2">Questa traccia ha un punto al secondo: nel grafico i picchi risultano un po’ più bassi di quelli reali.</p>}
           </div>
 
           {heelLines.length > 0 ? (
@@ -433,15 +421,9 @@ function TimeChart({
 }
 
 /** The numbers of the manoeuvre in evidence. */
-function Readout({ d, isBest, source, unit, tr }: { d: ManeuverDetail; isBest: boolean; source: RateSource; unit: SpeedUnit; tr: Track }) {
+function Readout({ d, isBest, unit, tr }: { d: ManeuverDetail; isBest: boolean; unit: SpeedUnit; tr: Track }) {
   const m = d.maneuver
-  const r = ratesOf(d, source)
   const u = SPEED_SHORT[unit]
-  const tile = (name: string, p: PhaseRate | null) => (
-    <StatTile label={name} value={p ? fmtNum(p.peak, 0) : '–'} unit={p ? '°/s' : undefined} sub={p ? `massima · media ${fmtNum(p.mean, 0)}°/s` : 'tratto troppo breve'} />
-  )
-  const poggiata = tile('Poggiata', r.bearAway)
-  const orzata = tile('Orzata', r.luff)
   return (
     <div className="space-y-2 border-t border-line pt-3">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -454,8 +436,7 @@ function Readout({ d, isBest, source, unit, tr }: { d: ManeuverDetail; isBest: b
       </p>
       {isBest && <p className="text-xs text-ink-2">La velocità minima più alta rimanendo in foil.</p>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {m.kind === 'jibe' ? poggiata : orzata}
-        {m.kind === 'jibe' ? orzata : poggiata}
+        <StatTile label="Velocità angolare" value={rateText(d.turnRate)} unit={d.turnRate == null ? undefined : '°/s'} sub="angolo girato diviso il tempo della curva" />
         {d.heelIn != null && (
           <StatTile
             label="Inclinazione"
@@ -524,8 +505,9 @@ function PathsPlot({
   const box = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(340)
   const [hover, setHover] = useState<{ d: ManeuverDetail; x: number; y: number } | null>(null)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = box.current!
+    setW(el.clientWidth)
     const ro = new ResizeObserver(() => setW(el.clientWidth))
     ro.observe(el)
     return () => ro.disconnect()
@@ -600,7 +582,7 @@ function PathsPlot({
   return (
     <div
       ref={box}
-      className="relative cursor-pointer"
+      className="relative cursor-pointer overflow-hidden"
       onClick={(e) => {
         const hit = nearest(e, 30)
         if (hit) onPick(hit.d.index)
@@ -673,7 +655,7 @@ function PathsPlot({
           <br />
           <span className="text-ink-2">
             minima {fmtSpeed(hover.d.maneuver.minSpeed, unit)} {SPEED_SHORT[unit]}
-            {hover.d.radius != null && ` · raggio ${fmtNum(hover.d.radius, 0)} m`}
+            {hover.d.turnRate != null && ` · ${fmtNum(hover.d.turnRate, 0)}°/s`}
           </span>
         </div>
       )}

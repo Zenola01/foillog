@@ -2,12 +2,16 @@ import { angDiff, bearing, EARTH_RADIUS, RAD } from '../geo'
 import type { Maneuver, Track } from '../types'
 
 // What happens inside each manoeuvre: its path seen with the wind from the top, and how fast the
-// rider bears away and luffs up. Worked out on demand for the manoeuvres tab.
+// rider turns. Worked out on demand for the manoeuvres tab.
 
-/** Turning slower than this (°/s) is not part of the turn. */
+/** Roughly, on the smoothed course: turning slower than this (°/s) is not part of the turn. */
 const TURN_MIN_RATE = 5
 /** A slower moment inside a turn, up to this long, does not end it. */
 const TURN_MAX_DIP_MS = 1000
+/** Then sharply, on the track: the turn runs while the rate is at least this (°/s)… */
+const TURN_FLOOR_RATE = 8
+/** …and at least this share of its peak. */
+const TURN_FLOOR_SHARE = 0.2
 /** Stretch kept before and after the turn, to show the way in and out. */
 const CONTEXT_MS = 3000
 /** Furthest point kept from the passage through the wind. */
@@ -18,26 +22,10 @@ const RATE_HALF_MS = 600
 const HEEL_HALF_MS = 500
 /** Below this speed (m/s) positions say nothing about the course. */
 const MIN_COURSE_SPEED = 1.5
-/** Under this many degrees a side of the turn is too small to speak of a rate. */
-const MIN_PHASE_ANGLE = 10
-/** Under this many degrees a turn has no radius to speak of. */
-const MIN_RADIUS_ANGLE = 30
+/** Under this many degrees a turn has no rate or radius to speak of. */
+const MIN_TURN_ANGLE = 30
 
-export interface PhaseRate {
-  /** Highest rate (°/s), read over about a second. */
-  peak: number
-  /** Angle turned over the time taken (°/s). */
-  mean: number
-}
-
-export interface TurnRates {
-  /** Bearing away: the angle from the wind growing. */
-  bearAway: PhaseRate | null
-  /** Luffing up: the angle from the wind shrinking. */
-  luff: PhaseRate | null
-}
-
-/** Where the rate comes from: how the GPS track bends, or how the board itself rotates (compass). */
+/** What a rate curve follows: how the GPS track bends, or how the board itself rotates (compass). */
 export type RateSource = 'track' | 'compass'
 
 export interface ManeuverDetail {
@@ -62,8 +50,11 @@ export interface ManeuverDetail {
   /** Seconds from the passage at which the turn starts (negative) and ends. */
   turnStart: number
   turnEnd: number
-  rates: TurnRates
-  yawRates: TurnRates | null
+  /**
+   * How fast it turned (°/s): the angle turned over the time taken. Unlike a peak it hardly changes
+   * between GPS and compass or with the sampling rate, so it compares across devices.
+   */
+  turnRate: number | null
   /** Most heel towards the inside while turning (deg); negative if it never leaned in. */
   heelIn: number | null
   heelAtPassage: number | null
@@ -114,28 +105,6 @@ function swept(angle: ArrayLike<number>, from: number, to: number, dir: number):
   return sum
 }
 
-/** Rates of one side of the turn: the angle over [from, to], the peak over the points that belong to this side. */
-function phaseRate(
-  t: Float64Array,
-  angle: ArrayLike<number>,
-  rate: (i: number) => number,
-  from: number,
-  to: number,
-  peakFrom: number,
-  peakTo: number,
-  dir: number,
-): PhaseRate | null {
-  const secs = (t[to] - t[from]) / 1000
-  const turned = secs > 0 ? swept(angle, from, to, dir) : 0
-  if (turned < MIN_PHASE_ANGLE) return null
-  let peak = -Infinity
-  for (let i = peakFrom; i <= peakTo; i++) {
-    const r = rate(i)
-    if (r > peak) peak = r
-  }
-  return { peak: Number.isFinite(peak) ? peak : turned / secs, mean: turned / secs }
-}
-
 /**
  * The details of every manoeuvre, in the same order; null for a fall, whose path says nothing about
  * how to turn. `windDir` is the direction the wind blows from.
@@ -167,17 +136,33 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
 
   const dir: 1 | -1 = swept(crs, m.i0, m.i1, 1) < 0 ? -1 : 1
 
-  // The turn itself: outwards from the passage while the course keeps turning the same way.
+  // The turn, roughly: outwards from the passage while the smoothed course keeps turning the same way.
   const turning = (i: number) => spd[i] >= MIN_COURSE_SPEED && angleRate(t, crs, i, lo, hi) * dir >= TURN_MIN_RATE
-  let i0 = at
+  let rough0 = at
   for (let i = at; i >= lo; i--) {
-    if (turning(i)) i0 = i
-    else if (t[i0] - t[i] > TURN_MAX_DIP_MS) break
+    if (turning(i)) rough0 = i
+    else if (t[rough0] - t[i] > TURN_MAX_DIP_MS) break
   }
-  let i1 = at
+  let rough1 = at
   for (let i = at; i <= hi; i++) {
-    if (turning(i)) i1 = i
-    else if (t[i] - t[i1] > TURN_MAX_DIP_MS) break
+    if (turning(i)) rough1 = i
+    else if (t[i] - t[rough1] > TURN_MAX_DIP_MS) break
+  }
+
+  // Then sharply, on the track itself: the smoothing stretches a short turn by a second or two, and
+  // it would read slower than it was. How long it lasts then agrees between 5 Hz and 1 Hz.
+  const rateAt = (i: number) => trackRate(tr, i, lo, hi) * dir
+  let peak = 0
+  for (let i = rough0; i <= rough1; i++) peak = Math.max(peak, rateAt(i) || 0)
+  const floor = Math.max(TURN_FLOOR_RATE, peak * TURN_FLOOR_SHARE)
+  let i0 = rough0
+  while (i0 < rough1 && !(rateAt(i0) >= floor)) i0++
+  let i1 = rough1
+  while (i1 > i0 && !(rateAt(i1) >= floor)) i1--
+  if (i1 === i0) {
+    // Never really turning (a slow change of tack): the rough window is all there is.
+    i0 = rough0
+    i1 = rough1
   }
 
   // The passage through the wind, between two points when the course crosses it there.
@@ -209,8 +194,8 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
   const cosW = Math.cos(windDir * RAD)
   const sinW = Math.sin(windDir * RAD)
 
-  const d0 = reach(t, i0, CONTEXT_MS, -1, lo, hi)
-  const d1 = reach(t, i1, CONTEXT_MS, 1, lo, hi)
+  const d0 = reach(t, rough0, CONTEXT_MS, -1, lo, hi)
+  const d1 = reach(t, rough1, CONTEXT_MS, 1, lo, hi)
   const out: ManeuverDetail = {
     index: k,
     maneuver: m,
@@ -224,8 +209,7 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
     heel: tr.roll ? [] : null,
     turnStart: (t[i0] - t0) / 1000,
     turnEnd: (t[i1] - t0) / 1000,
-    rates: { bearAway: null, luff: null },
-    yawRates: null,
+    turnRate: null,
     heelIn: null,
     heelAtPassage: null,
     radius: null,
@@ -250,21 +234,10 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
     out.x.push(dx * cosW - dy * sinW)
     out.y.push(dx * sinW + dy * cosW)
     out.speed.push(spd[i])
-    out.rate.push(trackRate(tr, i, lo, hi) * dir)
+    out.rate.push(rateAt(i))
     out.yaw?.push(angleRate(t, tr.hdg!, i, lo, hi) * dir)
     out.heel?.push(heelAt(i))
   }
-
-  // Before the passage a jibe bears away and a tack luffs up; after it, the other way round. The
-  // point at the passage counts on one side only: at 1 Hz it would often be the peak of both.
-  const lastBefore = v === at && u < at ? at - 1 : at
-  const sides = (angle: ArrayLike<number>, rate: (i: number) => number): TurnRates => {
-    const before = phaseRate(t, angle, rate, i0, at, i0, lastBefore, dir)
-    const after = phaseRate(t, angle, rate, at, i1, lastBefore + 1, i1, dir)
-    return m.kind === 'jibe' ? { bearAway: before, luff: after } : { bearAway: after, luff: before }
-  }
-  out.rates = sides(crs, (i) => trackRate(tr, i, lo, hi) * dir)
-  if (tr.hdg) out.yawRates = sides(tr.hdg, (i) => angleRate(t, tr.hdg!, i, lo, hi) * dir)
 
   if (tr.roll && i1 > i0) {
     let most = -Infinity
@@ -277,29 +250,32 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
     out.heelAtPassage = Number.isFinite(h) ? h : null
   }
 
-  const turned = swept(crs, i0, i1, dir)
-  if (turned >= MIN_RADIUS_ANGLE) out.radius = (dist[i1] - dist[i0]) / (turned * RAD)
+  // The angle turned, from the same rate as the turn's ends (the smoothed course lags behind them).
+  let sum = 0
+  let count = 0
+  for (let i = i0; i <= i1; i++) {
+    const r = rateAt(i)
+    if (Number.isFinite(r)) {
+      sum += r
+      count++
+    }
+  }
+  const secs = (t[i1] - t[i0]) / 1000
+  const rate = count ? sum / count : 0
+  if (secs > 0 && rate * secs >= MIN_TURN_ANGLE) {
+    out.turnRate = rate
+    out.radius = (dist[i1] - dist[i0]) / (rate * secs * RAD)
+  }
   return out
 }
-
-export const ratesOf = (d: ManeuverDetail, source: RateSource): TurnRates => (source === 'compass' && d.yawRates) || d.rates
 
 export const rateSeriesOf = (d: ManeuverDetail, source: RateSource): number[] => (source === 'compass' && d.yaw) || d.rate
 
 const meanOf = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null)
 
-export interface RateAverages {
-  /** Mean of the peaks (°/s). */
-  bearAway: number | null
-  luff: number | null
-  /** Mean of the most heel into each turn (deg). */
-  heelIn: number | null
-}
-
 /** Averages over some manoeuvres, to compare one side with the other. */
-export function rateAverages(ds: ManeuverDetail[], source: RateSource): RateAverages {
-  const of = (pick: (r: TurnRates) => PhaseRate | null) => meanOf(ds.flatMap((d) => pick(ratesOf(d, source))?.peak ?? []))
-  return { bearAway: of((r) => r.bearAway), luff: of((r) => r.luff), heelIn: meanOf(ds.flatMap((d) => d.heelIn ?? [])) }
+export function detailAverages(ds: ManeuverDetail[]): { turnRate: number | null; heelIn: number | null } {
+  return { turnRate: meanOf(ds.flatMap((d) => d.turnRate ?? [])), heelIn: meanOf(ds.flatMap((d) => d.heelIn ?? [])) }
 }
 
 /** The one that kept the most speed while staying on the foil: the reference to read the others against. */

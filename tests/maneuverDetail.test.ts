@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { analyzeTrack } from '../src/lib/analysis/analyze'
-import { bestManeuver, maneuverDetails, rateAverages, rateSeriesOf, ratesOf } from '../src/lib/analysis/maneuverDetail'
+import { bestManeuver, detailAverages, maneuverDetails, rateSeriesOf } from '../src/lib/analysis/maneuverDetail'
 import type { SimLeg } from '../src/lib/sim'
 import type { Track } from '../src/lib/types'
 import { simTrack } from './helpers'
@@ -78,49 +78,57 @@ describe('path of a manoeuvre', () => {
   })
 })
 
-describe('turn rates', () => {
-  it('measures a turn of known speed', () => {
-    // 80° in 6 s on an S curve: 13°/s on average, 20°/s at the fastest.
+describe('turn rate', () => {
+  it('gives one figure for the whole turn: the angle turned over the time taken', () => {
+    // 80° in 6 s on an S curve: 13°/s over the whole of it, a little more without its slow ends.
     const d = oneTurn(140, -140)
     expect(d.dir).toBe(-1)
-    expect(d.rates.bearAway!.peak).toBeGreaterThan(17)
-    expect(d.rates.bearAway!.peak).toBeLessThan(23)
-    expect(d.rates.luff!.peak).toBeGreaterThan(17)
-    expect(d.rates.luff!.peak).toBeLessThan(23)
-    expect(d.rates.bearAway!.mean).toBeGreaterThan(10)
-    expect(d.rates.bearAway!.mean).toBeLessThan(18)
     expect(d.turnEnd - d.turnStart).toBeGreaterThan(3.5)
     expect(d.turnEnd - d.turnStart).toBeLessThan(7.5)
-    const p = at(d, 0)
-    expect(d.rate[p]).toBeGreaterThan(15)
+    expect(d.turnRate).toBeGreaterThan(12)
+    expect(d.turnRate).toBeLessThan(19)
+    // The same turn in half the time is about twice as fast.
+    const quick = oneTurn(140, -140, 3)
+    expect(quick.turnRate! / d.turnRate!).toBeGreaterThan(1.6)
+    expect(quick.turnRate! / d.turnRate!).toBeLessThan(2.4)
   })
 
-  it('in a jibe bears away before the passage and luffs up after it', () => {
-    // 30° before dead downwind and 80° after it, in the same 6 s.
-    const d = oneTurn(150, -100)
-    expect(d.maneuver.kind).toBe('jibe')
-    expect(d.rates.bearAway!.mean).toBeLessThan(d.rates.luff!.mean)
-    expect(d.turnEnd).toBeGreaterThan(-d.turnStart)
+  it('reads about the same at one point per second as at five', () => {
+    for (const [twaA, twaB, seconds] of [
+      [140, -140, 3],
+      [140, -140, 6],
+      [50, -50, 3],
+      [50, -50, 5],
+    ]) {
+      const legs: SimLeg[] = [
+        { twa: twaA, seconds: 40, kn: 20 },
+        { twa: twaB, seconds: 40, kn: 20 },
+      ]
+      const rate = (hz: number) => {
+        const tr = simTrack({ windFrom: WIND, hz, legs, turns: { 0: { seconds, minKn: 15 } } })
+        return maneuverDetails(tr, analyzeTrack(tr, null, { foilOnKn: 7, windOverride: WIND }).maneuvers, WIND)[0]!.turnRate!
+      }
+      expect(rate(1) / rate(5)).toBeGreaterThan(0.8)
+      expect(rate(1) / rate(5)).toBeLessThan(1.25)
+    }
   })
 
-  it('in a tack luffs up before the passage and bears away after it', () => {
-    // 40° up to head to wind and 120° after it, in the same 6 s.
+  it('does the same for a tack, whatever the share before and after the passage', () => {
     const d = oneTurn(40, -120)
     expect(d.maneuver.kind).toBe('tack')
-    expect(d.rates.luff!.mean).toBeLessThan(d.rates.bearAway!.mean)
-    expect(d.rates.bearAway!.peak).toBeGreaterThan(32)
-    expect(d.rates.bearAway!.peak).toBeLessThan(45)
+    // 160° in 6 s.
+    expect(d.turnRate).toBeGreaterThan(25)
+    expect(d.turnRate).toBeLessThan(38)
   })
 
-  it('at one point per second counts the point at the passage on one side only', () => {
-    const legs: SimLeg[] = [
-      { twa: 150, seconds: 40, kn: 20 },
-      { twa: -100, seconds: 40, kn: 20 },
-    ]
-    const tr = simTrack({ windFrom: WIND, legs, turns: { 0: { seconds: 6, minKn: 15 } } })
-    const a = analyzeTrack(tr, null, { foilOnKn: 7, windOverride: WIND })
-    const d = maneuverDetails(tr, a.maneuvers, WIND)[0]!
-    expect(d.rates.bearAway!.peak).not.toBe(d.rates.luff!.peak)
+  it('follows the turn second by second in the rate curve', () => {
+    // At the passage an S curve of 80° in 6 s turns at 20°/s.
+    const d = oneTurn(140, -140)
+    const p = at(d, 0)
+    expect(d.rate[p]).toBeGreaterThan(15)
+    expect(d.rate[p]).toBeLessThan(23)
+    // Well before the turn the track is straight.
+    expect(Math.abs(d.rate[0])).toBeLessThan(2)
   })
 
   it('gives the radius of the turn', () => {
@@ -130,16 +138,15 @@ describe('turn rates', () => {
     expect(d.radius).toBeLessThan(40)
   })
 
-  it('reads the board’s rotation from the compass when the device has one', () => {
+  it('draws the rate curve from the compass when the device has one', () => {
     const d = oneTurn(140, -140, 6, (tr) => ({ ...tr, hdg: Float32Array.from(tr.crs) }))
-    expect(d.yawRates!.bearAway!.mean).toBeCloseTo(d.rates.bearAway!.mean, 0)
-    expect(ratesOf(d, 'compass')).toBe(d.yawRates)
-    expect(ratesOf(d, 'track')).toBe(d.rates)
+    expect(d.yaw).not.toBeNull()
     expect(rateSeriesOf(d, 'compass')).toBe(d.yaw)
+    expect(rateSeriesOf(d, 'track')).toBe(d.rate)
     // Without a compass both read the track.
     const g = oneTurn(140, -140)
     expect(g.yaw).toBeNull()
-    expect(ratesOf(g, 'compass')).toBe(g.rates)
+    expect(rateSeriesOf(g, 'compass')).toBe(g.rate)
   })
 })
 
@@ -163,11 +170,11 @@ describe('heel in a manoeuvre', () => {
 })
 
 describe('comparing manoeuvres', () => {
-  it('averages the peaks and picks the one that kept the most speed on the foil', () => {
+  it('averages the turn rate and picks the one that kept the most speed on the foil', () => {
     const a = oneTurn(140, -140)
     const b = oneTurn(140, -140, 3)
-    const avg = rateAverages([a, b], 'track')
-    expect(avg.bearAway).toBeCloseTo((a.rates.bearAway!.peak + b.rates.bearAway!.peak) / 2, 5)
+    const avg = detailAverages([a, b])
+    expect(avg.turnRate).toBeCloseTo((a.turnRate! + b.turnRate!) / 2, 5)
     expect(avg.heelIn).toBeNull()
     const slow = { ...a, maneuver: { ...a.maneuver, minSpeed: 5 } }
     const fast = { ...b, maneuver: { ...b.maneuver, minSpeed: 8 } }

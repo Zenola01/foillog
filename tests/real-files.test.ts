@@ -6,6 +6,7 @@ import { processTrack } from '../src/lib/analysis/clean'
 import { maneuverDetails } from '../src/lib/analysis/maneuverDetail'
 import { tracksFromText } from '../src/lib/clipboardTracks'
 import { parseFile } from '../src/lib/parsers/detect'
+import { TrackBuilder } from '../src/lib/parsers/trackBuilder'
 
 // Real sessions kept on this computer only: the folder is git-ignored, so these tests are
 // skipped anywhere else (including the online build).
@@ -46,13 +47,31 @@ describe.skipIf(files.length === 0)('real sessions', () => {
       // The passage is at the origin, within a couple of GPS points.
       const p = d.t.reduce((b, x, i) => (Math.abs(x) < Math.abs(d.t[b]) ? i : b), 0)
       expect(Math.hypot(d.x[p], d.y[p])).toBeLessThan(25)
-      for (const r of [d.rates.bearAway, d.rates.luff]) {
-        if (!r) continue
-        expect(r.peak).toBeGreaterThan(0)
-        expect(r.peak).toBeLessThan(250)
-        expect(r.mean).toBeLessThan(r.peak + 30)
+      if (d.turnRate != null) {
+        expect(d.turnRate).toBeGreaterThan(3)
+        expect(d.turnRate).toBeLessThan(120)
       }
       if (d.radius != null) expect(d.radius).toBeGreaterThan(1)
+    }
+  })
+
+  it('the same track at 1 Hz gives about the same turn rate as at 5 Hz', () => {
+    const name = files.find((f) => f.endsWith('.vkx'))
+    if (!name) return
+    const { track, a } = load(name)
+    const b = new TrackBuilder()
+    for (let i = 0; i < track.t.length; i += 5) b.push(track.t[i], track.lat[i], track.lon[i])
+    const slow = processTrack(b.build()).track
+    const sa = analyzeTrack(slow, null, { foilOnKn: 7, windOverride: 60 })
+    const coarse = maneuverDetails(slow, sa.maneuvers, 60)
+    const pairs = maneuverDetails(track, a.maneuvers, 60).flatMap((d) => {
+      const m = d && coarse.find((x) => x && Math.abs(slow.t[x.maneuver.at] - track.t[d.maneuver.at]) < 3000)
+      return d?.turnRate && m && m.turnRate ? [m.turnRate / d.turnRate] : []
+    })
+    expect(pairs.length).toBeGreaterThan(3)
+    for (const r of pairs) {
+      expect(r).toBeGreaterThan(0.8)
+      expect(r).toBeLessThan(1.25)
     }
   })
 
