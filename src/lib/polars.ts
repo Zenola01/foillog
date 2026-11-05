@@ -23,7 +23,8 @@ export const isPolarBand = (b: WindBand | null | undefined): b is PolarBand => b
  */
 export function bandOfSpeed(ms: number | null | undefined): WindBand | null {
   if (ms == null || !Number.isFinite(ms)) return null
-  const kn = ms * MS_TO_KN
+  // Rounded: 12 kn typed in and turned into m/s comes back as 11.999…, which is not the band below.
+  const kn = Math.round(ms * MS_TO_KN * 100) / 100
   let band: WindBand = 'calm'
   for (const b of WIND_BANDS) if (kn >= b.fromKn) band = b.id
   return band

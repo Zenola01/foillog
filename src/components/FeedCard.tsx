@@ -96,7 +96,7 @@ export function FeedCard({
         )}
       </div>
       <Link to={`/c/${s.id}`} className="mt-2.5 flex items-center gap-3">
-        <ScoredThumb s={s} />
+        <ScoredThumb s={s} windSpeed={s.wind_speed} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{s.title}</p>
           <p className="mt-0.5 flex flex-wrap gap-x-3 text-sm">

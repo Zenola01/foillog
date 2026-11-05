@@ -8,13 +8,47 @@ import { simTrack } from './helpers'
 
 const kn = (v: number) => v / MS_TO_KN
 
-/** The session the scale was set on: 22 October 2026, as analysed. */
-const reference: SessionPerf = {
-  up: { vmg: kn(12.747), sog: kn(17.864), twa: 44.27 },
-  down: { vmg: kn(20.804), sog: kn(25.184), twa: 145.78 },
-  tack: { n: 30, minSog: kn(10.202) },
-  jibe: { n: 29, minSog: kn(14.594) },
-}
+const MEDIUM = kn(15)
+const STRONG = kn(22)
+const LIGHT = kn(9)
+
+/** The sessions the scale was fitted on, as analysed, with their known scores. */
+const known: { name: string; wind: number; perf: SessionPerf; scores: { up: number; down: number; tack: number; jibe: number } }[] = [
+  {
+    name: '22/10/2026, medium wind',
+    wind: MEDIUM,
+    perf: {
+      up: { vmg: kn(12.747), sog: kn(17.864), twa: 44.27 },
+      down: { vmg: kn(20.804), sog: kn(25.184), twa: 145.78 },
+      tack: { n: 30, minSog: kn(10.202) },
+      jibe: { n: 29, minSog: kn(14.594) },
+    },
+    scores: { up: 89, down: 83, tack: 89, jibe: 85 },
+  },
+  {
+    name: '29/10/2026, medium wind',
+    wind: MEDIUM,
+    perf: {
+      up: { vmg: kn(13.435), sog: kn(18.421), twa: 43.05 },
+      down: { vmg: kn(19.787), sog: kn(25.158), twa: 141.83 },
+      tack: { n: 28, minSog: kn(9.149) },
+      jibe: { n: 39, minSog: kn(14.486) },
+    },
+    scores: { up: 90, down: 80, tack: 86, jibe: 80 },
+  },
+  {
+    name: '18/10/2026, strong wind',
+    wind: STRONG,
+    perf: {
+      up: { vmg: kn(13.444), sog: kn(17.445), twa: 39.09 },
+      down: { vmg: kn(20.67), sog: kn(24.751), twa: 147 },
+      tack: { n: 22, minSog: kn(9.277) },
+      jibe: { n: 29, minSog: kn(12.462) },
+    },
+    scores: { up: 85, down: 79, tack: 80, jibe: 76 },
+  },
+]
+const reference = known[0].perf
 
 function leg(twa: number, knots: number, duration = 30): Leg {
   const speed = kn(knots)
@@ -36,27 +70,54 @@ function leg(twa: number, knots: number, duration = 30): Leg {
 const turn = (kind: Maneuver['kind'], knots: number) => ({ kind, minSpeed: kn(knots) }) as Maneuver
 
 describe('session scores', () => {
-  it('gives the known scores on the session the scale was set on', () => {
-    expect(sessionScores(reference)).toEqual({ overall: 86, up: 89, down: 83, tack: 89, jibe: 85 })
+  it.each(known)('stays close to the known scores of $name', ({ perf, wind, scores }) => {
+    const s = sessionScores(perf, wind)!
+    for (const k of ['up', 'down', 'tack', 'jibe'] as const) {
+      expect(Math.abs(s[k]! - scores[k])).toBeLessThanOrEqual(3)
+    }
+  })
+
+  it('gives the known overall', () => {
+    expect(sessionScores(reference, MEDIUM)!.overall).toBe(86)
+  })
+
+  it('asks for more the stronger the wind', () => {
+    const light = sessionScores(reference, LIGHT)!
+    const medium = sessionScores(reference, MEDIUM)!
+    const strong = sessionScores(reference, STRONG)!
+    for (const k of ['overall', 'up', 'down', 'tack', 'jibe'] as const) {
+      expect(light[k]!).toBeGreaterThan(medium[k]!)
+      expect(medium[k]!).toBeGreaterThan(strong[k]!)
+    }
+  })
+
+  it('counts a session without the wind typed in as a medium wind', () => {
+    expect(sessionScores(reference, null)).toEqual(sessionScores(reference, MEDIUM))
+    expect(sessionScores(reference, undefined)).toEqual(sessionScores(reference, MEDIUM))
   })
 
   it('rewards VMG the most, and speed and angle less', () => {
-    const base = sessionScores(reference)!
+    const base = sessionScores(reference, MEDIUM)!
     const up = reference.up!
-    const betterVmg = sessionScores({ ...reference, up: { ...up, vmg: up.vmg * 1.1 } })!
-    const betterSpeed = sessionScores({ ...reference, up: { ...up, sog: up.sog * 1.1 } })!
-    const higher = sessionScores({ ...reference, up: { ...up, twa: up.twa * 0.9 } })!
+    const betterVmg = sessionScores({ ...reference, up: { ...up, vmg: up.vmg * 1.1 } }, MEDIUM)!
+    const betterSpeed = sessionScores({ ...reference, up: { ...up, sog: up.sog * 1.1 } }, MEDIUM)!
+    const higher = sessionScores({ ...reference, up: { ...up, twa: up.twa * 0.9 } }, MEDIUM)!
     expect(betterVmg.up! - base.up!).toBeGreaterThan(betterSpeed.up! - base.up!)
     expect(betterSpeed.up!).toBeGreaterThan(base.up!)
     expect(higher.up!).toBeGreaterThan(base.up!)
   })
 
   it('measures the downwind angle from dead downwind', () => {
-    const base = sessionScores(reference)!
-    const deeper = sessionScores({ ...reference, down: { ...reference.down!, twa: 155 } })!
-    const shallower = sessionScores({ ...reference, down: { ...reference.down!, twa: 130 } })!
+    const base = sessionScores(reference, MEDIUM)!
+    const deeper = sessionScores({ ...reference, down: { ...reference.down!, twa: 155 } }, MEDIUM)!
+    const shallower = sessionScores({ ...reference, down: { ...reference.down!, twa: 130 } }, MEDIUM)!
     expect(deeper.down!).toBeGreaterThan(base.down!)
     expect(shallower.down!).toBeLessThan(base.down!)
+  })
+
+  it('stays low for a rider who falls in every turn', () => {
+    const falls = sessionScores({ ...reference, tack: { n: 5, minSog: kn(0.9) } }, MEDIUM)!
+    expect(falls.tack!).toBeLessThan(30)
   })
 
   it('stays between 1 and 100', () => {
@@ -66,24 +127,25 @@ describe('session scores', () => {
       tack: { n: 5, minSog: kn(30) },
       jibe: { n: 5, minSog: kn(30) },
     }
-    expect(sessionScores(fast)).toEqual({ overall: 100, up: 100, down: 100, tack: 100, jibe: 100 })
+    expect(sessionScores(fast, STRONG)).toEqual({ overall: 100, up: 100, down: 100, tack: 100, jibe: 100 })
     const stopped: SessionPerf = { up: null, down: null, tack: { n: 3, minSog: 0 }, jibe: null }
-    expect(sessionScores(stopped)).toEqual({ overall: 1, up: null, down: null, tack: 1, jibe: null })
+    expect(sessionScores(stopped, MEDIUM)).toEqual({ overall: 1, up: null, down: null, tack: 1, jibe: null })
   })
 
   it('leaves out of the overall what has no score, with the weights in proportion', () => {
-    const s = sessionScores({ ...reference, tack: null, jibe: null })!
+    const all = sessionScores(reference, MEDIUM)!
+    const s = sessionScores({ ...reference, tack: null, jibe: null }, MEDIUM)!
     expect(s.tack).toBeNull()
     expect(s.jibe).toBeNull()
-    expect(s.overall).toBe(86)
-    const legsOnly = sessionScores({ ...reference, down: null, jibe: null })!
-    expect(legsOnly.overall).toBe(89)
+    expect(Math.abs(s.overall - (all.up! + all.down!) / 2)).toBeLessThanOrEqual(1)
+    const one = sessionScores({ up: reference.up, down: null, tack: null, jibe: null }, MEDIUM)!
+    expect(one.overall).toBe(one.up)
   })
 
-  it('has no scores without a wind or with nothing to score', () => {
-    expect(sessionScores(null)).toBeNull()
-    expect(sessionScores(undefined)).toBeNull()
-    expect(sessionScores({ up: null, down: null, tack: null, jibe: null })).toBeNull()
+  it('has no scores without a wind direction or with nothing to score', () => {
+    expect(sessionScores(null, MEDIUM)).toBeNull()
+    expect(sessionScores(undefined, MEDIUM)).toBeNull()
+    expect(sessionScores({ up: null, down: null, tack: null, jibe: null }, MEDIUM)).toBeNull()
   })
 })
 
@@ -122,7 +184,7 @@ describe('what a session is scored on', () => {
     expect(perf!.down!.twa).toBeCloseTo(140, 0)
     expect(perf!.tack!.n).toBe(3)
     expect(perf!.jibe!.n).toBe(3)
-    expect(sessionScores(perf)!.overall).toBeGreaterThan(1)
+    expect(sessionScores(perf, MEDIUM)!.overall).toBeGreaterThan(1)
 
     const adrift = simTrack({ windFrom: 0, legs: [{ twa: 90, seconds: 20, kn: 2 }], noiseM: 0 })
     const unknown = analyzeTrack(adrift, null, { foilOnKn: 7 }).summary

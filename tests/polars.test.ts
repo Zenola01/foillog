@@ -20,6 +20,8 @@ describe('wind strength', () => {
     expect(bandOfSpeed(7 * KN)).toBe('light')
     expect(bandOfSpeed(11.9 * KN)).toBe('light')
     expect(bandOfSpeed(12 * KN)).toBe('medium')
+    // A value typed in can come back from storage a hair under what was typed.
+    expect(bandOfSpeed(18 * KN - 1e-12)).toBe('strong')
     expect(bandOfSpeed(25 * KN)).toBe('strong')
     expect(bandOfSpeed(null)).toBeNull()
   })

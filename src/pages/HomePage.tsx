@@ -289,6 +289,7 @@ export default function HomePage() {
                   key={e.row.id}
                   to={`/c/${e.row.id}`}
                   s={e.row}
+                  windSpeed={e.row.wind_speed}
                   about={aboutLine(e.row, e.row.spot?.name, e.row.visibility === 'private' && 'solo per te')}
                   settings={settings}
                 />
@@ -362,6 +363,7 @@ function DemoCard({ busy, onDemo }: { busy: boolean; onDemo: () => void }) {
 function OutingCard({
   to,
   s,
+  windSpeed,
   about,
   settings,
   selected,
@@ -371,6 +373,7 @@ function OutingCard({
 }: {
   to: string
   s: Pick<SessionRecord, 'title' | 'preview' | 'summary'>
+  windSpeed: number | null | undefined
   /** The line under the title. */
   about: string
   settings: Settings
@@ -387,7 +390,7 @@ function OutingCard({
     <li className={`${card} p-2.5 ${selected ? 'ring-2 ring-[var(--series-1)]' : ''}`}>
       <div className="flex items-center gap-3">
         <Link to={to} className="flex min-w-0 flex-1 items-center gap-3">
-          <ScoredThumb s={s} />
+          <ScoredThumb s={s} windSpeed={windSpeed} />
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold">{s.title}</p>
             {about && <p className="truncate text-sm text-ink-2">{about}</p>}
@@ -445,7 +448,7 @@ function LocalCard({
   onShare: () => void
 }) {
   return (
-    <OutingCard to={`/s/${s.id}`} s={s} about={aboutLine(s, showRider && s.rider, s.demo && 'esempio')} {...rest}>
+    <OutingCard to={`/s/${s.id}`} s={s} windSpeed={s.windSpeed} about={aboutLine(s, showRider && s.rider, s.demo && 'esempio')} {...rest}>
       {canShare && (
         <div className="mt-2 flex items-center gap-2 border-t border-line pt-2">
           <button type="button" className={btnGhost} onClick={onShare} disabled={sharing === 'busy'}>

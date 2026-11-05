@@ -376,7 +376,7 @@ export function SessionView({
         )}
       </div>
 
-      <ScoreCard perf={sum.perf} />
+      <ScoreCard perf={sum.perf} windSpeed={rec.windSpeed} />
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-5">
         {/* Map and replay */}
