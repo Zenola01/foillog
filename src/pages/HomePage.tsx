@@ -9,7 +9,7 @@ import { useAuth } from '../lib/auth'
 import { feed, myCrews, type CloudSession } from '../lib/cloud'
 import { byDay } from '../lib/crewStats'
 import { useLibrary, type ImportJob } from '../lib/library'
-import { useMissingScores } from '../lib/missingScores'
+import { useMissingScores, useOthersPerf } from '../lib/missingScores'
 import { isMyName, useSettings, type Settings } from '../lib/settings'
 import type { SessionRecord } from '../lib/store'
 import { together, type Span } from '../lib/together'
@@ -110,13 +110,17 @@ export default function HomePage() {
     setLoaded((l) => ({ mine: patch(l.mine), feed: patch(l.feed) }))
   }, [])
   useMissingScores(loaded.mine, local, scored)
+  const othersPerf = useOthersPerf(loaded.feed, userId)
   const days = useMemo(() => {
     const entries: Entry[] = [
-      ...(rows ?? []).map((row) => ({ at: Date.parse(row.started_at), row })),
+      ...(rows ?? []).map((r) => ({
+        at: Date.parse(r.started_at),
+        row: r.summary.perf === undefined && othersPerf.has(r.id) ? { ...r, summary: { ...r.summary, perf: othersPerf.get(r.id) } } : r,
+      })),
       ...(view === 'mine' ? myLocal : local).map((rec) => ({ at: rec.summary.start, rec })),
     ]
     return byDay(entries, (e) => e.at)
-  }, [rows, view, myLocal, local])
+  }, [rows, othersPerf, view, myLocal, local])
 
   const onFiles = async (files: File[]) => {
     const created = await importFiles(files)
