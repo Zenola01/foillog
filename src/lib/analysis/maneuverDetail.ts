@@ -66,7 +66,6 @@ export interface ManeuverDetail {
   exitAngle: number | null
   /** Most heel towards the inside while turning (deg); negative if it never leaned in. */
   heelIn: number | null
-  heelAtPassage: number | null
   /** Mean radius of the turn (m). */
   radius: number | null
 }
@@ -223,7 +222,6 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
     entryAngle: null,
     exitAngle: null,
     heelIn: null,
-    heelAtPassage: null,
     radius: null,
   }
 
@@ -258,8 +256,6 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
       if (h > most) most = h
     }
     out.heelIn = Number.isFinite(most) ? most : null
-    const h = heelAt(at)
-    out.heelAtPassage = Number.isFinite(h) ? h : null
   }
 
   // Read from the track itself: the smoothed course already leans into the turn before it starts.

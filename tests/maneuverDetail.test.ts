@@ -211,7 +211,6 @@ describe('heel in a manoeuvre', () => {
     const inward = oneTurn(140, -140, 6, (tr) => ({ ...tr, roll: Float32Array.from(tr.t, () => -15) }))
     expect(inward.dir).toBe(-1)
     expect(inward.heelIn).toBeCloseTo(15, 1)
-    expect(inward.heelAtPassage).toBeCloseTo(15, 1)
     expect(inward.heel![0]).toBeCloseTo(15, 1)
     const outward = oneTurn(140, -140, 6, (tr) => ({ ...tr, roll: Float32Array.from(tr.t, () => 15) }))
     expect(outward.heelIn).toBeCloseTo(-15, 1)

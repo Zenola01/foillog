@@ -6,7 +6,7 @@ import type { ThemeColors } from '../lib/theme'
 import type { Maneuver, SessionAnalysis, Tack } from '../lib/types'
 import { fmtNum, fmtPct, fmtSpeed, fmtTimeSec, SPEED_SHORT, toUnit, type SpeedUnit } from '../lib/units'
 import { EChart, type Chart } from './EChart'
-import { card, LineKey, Outcome, Segmented, StatTile } from './ui'
+import { btnGhost, card, LineKey, Outcome, Segmented, StatTile } from './ui'
 
 type Kind = Maneuver['kind']
 type Side = 'all' | Tack
@@ -14,7 +14,7 @@ type Track = SessionData['track']
 
 const KIND_NAME: Record<Kind, string> = { jibe: 'Strambata', tack: 'Virata' }
 const PLURAL: Record<Kind, string> = { jibe: 'Strambate', tack: 'Virate' }
-const PASSAGE: Record<Kind, string> = { jibe: 'la poppa piena', tack: 'la prua al vento' }
+const PASSAGE: Record<Kind, string> = { jibe: 'alla poppa piena', tack: 'alla prua al vento' }
 const arrow = (from: Tack) => (from === 'S' ? 'D→S' : 'S→D')
 const rateText = (v: number | null | undefined) => (v == null ? '–' : fmtNum(v, 0))
 const angleText = (v: number | null | undefined) => (v == null ? '–' : `${fmtNum(v, 0)}°`)
@@ -23,9 +23,6 @@ const anglesText = (entry: number | null | undefined, exit: number | null | unde
 /** «140→120°», for the narrow columns of a table on a phone. */
 const anglesShort = (entry: number | null | undefined, exit: number | null | undefined) =>
   entry == null && exit == null ? '–' : `${entry == null ? '–' : fmtNum(entry, 0)}→${exit == null ? '–' : fmtNum(exit, 0)}°`
-
-/** Below about one point per this many seconds the peaks come out blunter than they were. */
-const COARSE_POINT_S = 0.8
 
 /** A manoeuvre as drawn: the colour says how much speed it kept, dashes that it touched the water. */
 interface Drawn {
@@ -101,25 +98,24 @@ function Analysis({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
-        <StatTile label="Velocità minima in strambata" value={fmtSpeed(avg(jibes.filter((m) => !m.fell).map((m) => m.minSpeed)), unit)} unit={u} sub="media, senza le cadute" />
+        <StatTile label="Velocità minima in strambata" value={fmtSpeed(avg(jibes.filter((m) => !m.fell).map((m) => m.minSpeed)), unit)} unit={u} sub="media" />
         <StatTile
           label="Durata media strambata"
           value={jibes.length ? `${fmtNum(avg(details.flatMap((d) => (d?.maneuver.kind === 'jibe' ? d.turnSeconds : []))), 0)} s` : '–'}
-          sub="la curva, senza le cadute"
         />
-        <StatTile label="Cadute o soste" value={String(a.summary.falls)} sub={`${ms.filter((m) => m.fell).length} durante una manovra`} />
+        <StatTile label="Cadute o soste" value={String(a.summary.falls)} sub={`${ms.filter((m) => m.fell).length} in manovra`} />
       </div>
 
-      <Overlay details={details} tr={tr} unit={unit} colors={colors} selected={selected} onSelect={onSelect} />
+      <Overlay details={details} tr={tr} unit={unit} colors={colors} selected={selected} onSelect={onSelect} onPick={onPick} />
 
       <div className={`${card} overflow-x-auto`}>
         <table className="w-full text-sm">
-          <caption className="px-3 pt-3 text-left text-sm font-semibold">Per lato</caption>
+          <caption className="px-3 pt-3 text-left text-sm font-semibold">Medie per lato</caption>
           <thead className="text-xs text-ink-2">
             <tr>
               <th className="py-2 pr-1 pl-3 text-left font-medium" />
-              <th className="px-2 py-2 text-right font-medium">Vel. ang.</th>
-              <th className="px-2 py-2 text-right font-medium">Angolo</th>
+              <th className="px-2 py-2 text-right font-medium">Vel. ang. °/s</th>
+              <th className="px-2 py-2 text-right font-medium">Angolo vento</th>
               {hasHeel && <th className="py-2 pr-3 pl-2 text-right font-medium">Inclinaz.</th>}
             </tr>
           </thead>
@@ -139,60 +135,6 @@ function Analysis({
             ))}
           </tbody>
         </table>
-        <p className="px-3 pb-3 text-xs text-ink-2">
-          Medie delle manovre. Vel. ang.: velocità angolare in °/s, angolo girato diviso il tempo della curva. Angolo: al vento, in ingresso → in uscita.
-          {hasHeel && ' Inclinaz.: la massima verso l’interno della curva.'}
-        </p>
-      </div>
-
-      <div className={`${card} overflow-x-auto`}>
-        <table className="w-full min-w-[650px] text-sm">
-          <caption className="px-3 pt-3 text-left text-sm font-semibold">Tutte le manovre ({u})</caption>
-          <thead className="text-xs text-ink-2">
-            <tr>
-              <th className="py-2 pr-1 pl-3 text-left font-medium">Ora</th>
-              <th className="px-2 py-2 text-left font-medium">Manovra</th>
-              <th className="px-2 py-2 text-right font-medium">Vel. ang.</th>
-              <th className="px-2 py-2 text-right font-medium">Angolo</th>
-              {hasHeel && <th className="px-2 py-2 text-right font-medium">Inclinaz.</th>}
-              <th className="px-2 py-2 text-right font-medium">Minima</th>
-              <th className="px-2 py-2 text-right font-medium">Entrata</th>
-              <th className="px-2 py-2 text-right font-medium">Uscita</th>
-              <th className="px-3 py-2 text-right font-medium">Curva</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ms.map((m, k) => {
-              const d = details[k]
-              return (
-                <tr
-                  key={k}
-                  onClick={() => onPick(k)}
-                  className={`cursor-pointer border-t border-line ${selected === k ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
-                >
-                  <td className="py-2 pr-1 pl-3 tabular">{fmtTimeSec(tr.t[m.i0])}</td>
-                  <td className="px-2 py-2 whitespace-nowrap">
-                    {KIND_NAME[m.kind]} <span className="text-ink-2">{arrow(m.from)}</span>
-                    <span className="block">
-                      <Outcome ok={m.foiled} fell={m.fell} />
-                    </span>
-                  </td>
-                  <td className="px-2 py-2 text-right tabular">{rateText(d?.turnRate)}</td>
-                  <td className="px-2 py-2 text-right whitespace-nowrap tabular">{anglesShort(d?.entryAngle, d?.exitAngle)}</td>
-                  {hasHeel && <td className="px-2 py-2 text-right tabular">{angleText(d?.heelIn)}</td>}
-                  <td className="px-2 py-2 text-right font-semibold tabular">{fmtSpeed(m.minSpeed, unit)}</td>
-                  <td className="px-2 py-2 text-right tabular">{fmtSpeed(m.entrySpeed, unit)}</td>
-                  <td className="px-2 py-2 text-right tabular">{fmtSpeed(m.exitSpeed, unit)}</td>
-                  <td className="px-3 py-2 text-right tabular">{d?.turnSeconds === 0 ? '–' : `${fmtNum(d ? d.turnSeconds : m.duration, 0)} s`}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-        <p className="px-3 pb-3 text-xs text-ink-2">
-          D→S: da mure a dritta a mure a sinistra. Vel. ang.: velocità angolare in °/s, angolo girato diviso il tempo della curva. Angolo: al vento, in ingresso → in uscita.
-          {hasHeel && ' Inclinaz.: la massima verso l’interno della curva.'} Tocca una riga per vederla sulla mappa.
-        </p>
       </div>
     </div>
   )
@@ -206,6 +148,7 @@ function Overlay({
   colors,
   selected,
   onSelect,
+  onPick,
 }: {
   details: (ManeuverDetail | null)[]
   tr: Track
@@ -213,6 +156,7 @@ function Overlay({
   colors: ThemeColors
   selected: number | null
   onSelect: (k: number) => void
+  onPick: (k: number) => void
 }) {
   const u = SPEED_SHORT[unit]
   const all = useMemo(() => details.filter((d): d is ManeuverDetail => d != null), [details])
@@ -280,8 +224,6 @@ function Overlay({
   const pickedFall = selected != null && details[selected] == null
   if (!all.length) return <p className={`${card} p-4 text-sm text-ink-2`}>Solo cadute in questa uscita: nessuna traiettoria da confrontare.</p>
 
-  const steps = (all[0].t.length > 1 ? all.map((d) => d.t[1] - d.t[0]) : [0]).sort((p, q) => p - q)
-  const coarse = steps[steps.length >> 1] >= COARSE_POINT_S
   const kinds = (['jibe', 'tack'] as const).filter((k) => count(k) > 0)
   const touched = shown.some((d) => !d.maneuver.foiled)
 
@@ -291,8 +233,7 @@ function Overlay({
         <div>
           <p className="text-sm font-semibold">Traiettorie sovrapposte</p>
           <p className="text-xs text-ink-2">
-            Vento dall’alto. Ogni linea è una manovra, allineata dove passa {PASSAGE[kind]} (il pallino). Tocca una linea per leggerne i numeri.
-            {side === 'all' && ' Quelle da mure a dritta sono specchiate, per sovrapporle.'}
+            Allineate {PASSAGE[kind]} (il pallino). Tocca una linea per i numeri.{side === 'all' && ' Quelle da dritta sono specchiate.'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -330,34 +271,39 @@ function Overlay({
               )}
               {focus && (
                 <span className="inline-flex items-center gap-1.5">
-                  <LineKey color={focusColor} /> {picked ? 'selezionata' : focus === best ? 'la migliore' : 'in evidenza'}
+                  <LineKey color={focusColor} /> {picked ? 'selezionata' : focus === best ? 'la migliore (minima più alta)' : 'in evidenza'}
                 </span>
               )}
             </p>
-            {focus && <Readout d={focus} isBest={!picked && focus === best} unit={unit} tr={tr} />}
+            {focus && (
+              <Readout
+                d={focus}
+                isBest={!picked && focus === best}
+                unit={unit}
+                tr={tr}
+                position={shown.indexOf(focus)}
+                count={shown.length}
+                onStep={(by) => onSelect(shown[(shown.indexOf(focus) + by + shown.length) % shown.length].index)}
+                onMap={() => {
+                  onPick(focus.index)
+                  // On a phone the map is up above; on a large screen it stays beside the charts.
+                  if (!window.matchMedia('(min-width: 1024px)').matches) window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+              />
+            )}
           </>
         ) : (
           <p className="text-sm text-ink-2">Nessuna manovra di questo tipo da questo lato.</p>
         )}
-        {pickedFall && <p className="text-sm text-ink-2">La manovra selezionata è una caduta: la sua traiettoria non è disegnata.</p>}
-        {!pickedFall && falls > 0 && <p className="text-xs text-ink-2">{falls === 1 ? 'Una caduta non è disegnata.' : `${falls} cadute non sono disegnate.`}</p>}
+        {pickedFall && <p className="text-sm text-ink-2">Caduta: traiettoria non disegnata.</p>}
+        {!pickedFall && falls > 0 && <p className="text-xs text-ink-2">{falls === 1 ? 'Una caduta non disegnata.' : `${falls} cadute non disegnate.`}</p>}
       </div>
 
       {shown.length > 0 && (
         <>
           <div className={`${card} space-y-2 p-3`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">Velocità angolare (°/s)</p>
-                <p className="text-xs text-ink-2">
-                  {tr.hdg
-                    ? source === 'compass'
-                      ? 'Secondo per secondo, quanto ruota la tavola (bussola).'
-                      : 'Secondo per secondo, quanto curva la rotta (GPS).'
-                    : 'Secondo per secondo, quanto curva la rotta (GPS).'}{' '}
-                  Sopra lo zero gira nel verso della manovra.
-                </p>
-              </div>
+              <p className="text-sm font-semibold">Velocità angolare (°/s)</p>
               {tr.hdg && (
                 <Segmented
                   compact
@@ -365,26 +311,20 @@ function Overlay({
                   value={source}
                   onChange={setSource}
                   options={[
-                    { value: 'compass', label: 'Prua' },
-                    { value: 'track', label: 'Traccia' },
+                    { value: 'compass', label: 'Prua (bussola)' },
+                    { value: 'track', label: 'Traccia (GPS)' },
                   ]}
                 />
               )}
             </div>
             <TimeChart lines={rateLines} seconds={seconds} unit="°/s" yMin={-20} colors={colors} onPick={onSelect} height={190} label="Velocità angolare nel tempo, attorno al passaggio" />
-            {coarse && <p className="text-xs text-ink-2">Questa traccia ha un punto al secondo: nel grafico i picchi risultano un po’ più bassi di quelli reali.</p>}
           </div>
 
-          {heelLines.length > 0 ? (
+          {heelLines.length > 0 && (
             <div className={`${card} space-y-2 p-3`}>
-              <div>
-                <p className="text-sm font-semibold">Inclinazione (°)</p>
-                <p className="text-xs text-ink-2">Sbandamento della tavola: sopra lo zero verso l’interno della curva, sotto verso l’esterno.</p>
-              </div>
+              <p className="text-sm font-semibold">Inclinazione verso l’interno della curva (°)</p>
               <TimeChart lines={heelLines} seconds={seconds} unit="°" colors={colors} onPick={onSelect} height={170} label="Inclinazione nel tempo, attorno al passaggio" />
             </div>
-          ) : (
-            <p className="px-1 text-xs text-ink-2">L’inclinazione richiede un dispositivo che la misura, come il Vakaros.</p>
           )}
 
           <div className={`${card} space-y-2 p-3`}>
@@ -431,30 +371,56 @@ function TimeChart({
 }
 
 /** The numbers of the manoeuvre in evidence. */
-function Readout({ d, isBest, unit, tr }: { d: ManeuverDetail; isBest: boolean; unit: SpeedUnit; tr: Track }) {
+function Readout({
+  d,
+  isBest,
+  unit,
+  tr,
+  position,
+  count,
+  onStep,
+  onMap,
+}: {
+  d: ManeuverDetail
+  isBest: boolean
+  unit: SpeedUnit
+  tr: Track
+  /** Where it stands among those shown, in time order. */
+  position: number
+  count: number
+  onStep: (by: 1 | -1) => void
+  onMap: () => void
+}) {
   const m = d.maneuver
   const u = SPEED_SHORT[unit]
   return (
     <div className="space-y-2 border-t border-line pt-3">
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         <span className="font-semibold">
           {isBest && 'La migliore: '}
           {KIND_NAME[m.kind]} {arrow(m.from)}
         </span>
         <span className="text-ink-2 tabular">{fmtTimeSec(tr.t[m.i0])}</span>
         <Outcome ok={m.foiled} />
-      </p>
-      {isBest && <p className="text-xs text-ink-2">La velocità minima più alta rimanendo in foil.</p>}
+        <span className="ml-auto inline-flex items-center">
+          <button type="button" className={`${btnGhost} text-lg leading-none`} aria-label="Manovra precedente" onClick={() => onStep(-1)}>
+            ‹
+          </button>
+          <span className="text-xs text-ink-2 tabular">
+            {position + 1}/{count}
+          </span>
+          <button type="button" className={`${btnGhost} text-lg leading-none`} aria-label="Manovra successiva" onClick={() => onStep(1)}>
+            ›
+          </button>
+          <button type="button" className={btnGhost} onClick={onMap}>
+            Sulla mappa
+          </button>
+        </span>
+      </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <StatTile label="Velocità angolare" value={rateText(d.turnRate)} unit={d.turnRate == null ? undefined : '°/s'} sub="angolo girato diviso il tempo della curva" />
-        <StatTile label="Angolo al vento" value={anglesText(d.entryAngle, d.exitAngle)} sub="in ingresso → in uscita" />
-        {d.heelIn != null && (
-          <StatTile
-            label="Inclinazione"
-            value={`${fmtNum(d.heelIn, 0)}°`}
-            sub={`massima verso l’interno${d.heelAtPassage != null ? ` · al passaggio ${fmtNum(d.heelAtPassage, 0)}°` : ''}`}
-          />
-        )}
+        <StatTile label="Velocità angolare" value={rateText(d.turnRate)} unit={d.turnRate == null ? undefined : '°/s'} sub="media della curva" />
+        <StatTile label="Angolo al vento" value={anglesText(d.entryAngle, d.exitAngle)} sub="ingresso → uscita" />
+        {d.heelIn != null && <StatTile label="Inclinazione" value={`${fmtNum(d.heelIn, 0)}°`} sub="massima verso l’interno" />}
         <StatTile label="Raggio" value={d.radius == null ? '–' : fmtNum(d.radius, 0)} unit={d.radius == null ? undefined : 'm'} sub={`curva di ${fmtNum(d.turnSeconds, 0)} s`} />
         <StatTile label="Velocità minima" value={fmtSpeed(m.minSpeed, unit)} unit={u} sub={`entrata ${fmtSpeed(m.entrySpeed, unit)} · uscita ${fmtSpeed(m.exitSpeed, unit)}`} />
       </div>
