@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { analyzeTrack } from '../src/lib/analysis/analyze'
 import { processTrack } from '../src/lib/analysis/clean'
+import { maneuverDetails } from '../src/lib/analysis/maneuverDetail'
 import { tracksFromText } from '../src/lib/clipboardTracks'
 import { parseFile } from '../src/lib/parsers/detect'
 
@@ -35,6 +36,24 @@ describe.skipIf(files.length === 0)('real sessions', () => {
     const pasted = parseFile(f.name, await f.arrayBuffer())
     const direct = parseFile(name, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer)
     expect(pasted.track.t.length).toBe(direct.track.t.length)
+  })
+
+  it.each(files)('%s gives plausible manoeuvre details', (name) => {
+    const { track, a } = load(name)
+    const ds = maneuverDetails(track, a.maneuvers, 60).filter((d) => d != null)
+    expect(ds.length).toBeGreaterThan(0)
+    for (const d of ds) {
+      // The passage is at the origin, within a couple of GPS points.
+      const p = d.t.reduce((b, x, i) => (Math.abs(x) < Math.abs(d.t[b]) ? i : b), 0)
+      expect(Math.hypot(d.x[p], d.y[p])).toBeLessThan(25)
+      for (const r of [d.rates.bearAway, d.rates.luff]) {
+        if (!r) continue
+        expect(r.peak).toBeGreaterThan(0)
+        expect(r.peak).toBeLessThan(250)
+        expect(r.mean).toBeLessThan(r.peak + 30)
+      }
+      if (d.radius != null) expect(d.radius).toBeGreaterThan(1)
+    }
   })
 
   it('a VKX and its GPX export give the same analysis', () => {

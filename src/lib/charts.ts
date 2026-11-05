@@ -375,6 +375,67 @@ export function polarOption(sessions: PolarLine[], unit: SpeedUnit, c: ThemeColo
   }
 }
 
+/** One manoeuvre in a chart aligned on the passage through the wind: [seconds from it, value]. */
+export interface ManeuverLine {
+  id: number
+  /** Shown in the tooltip. */
+  name: string
+  color: string
+  /** A manoeuvre that touched the water. */
+  dashed: boolean
+  /** The one being read: drawn thicker, on top, and the one the tooltip speaks of. */
+  focus: boolean
+  data: [number, number | null][]
+}
+
+/** Manoeuvres overlaid in time, centred on the passage through the wind. */
+export function maneuverOption(p: { lines: ManeuverLine[]; seconds: number; unit: string; digits?: number; yMin?: number; c: ThemeColors }): EChartsCoreOption {
+  const { lines, c } = p
+  const focus = lines.find((l) => l.focus)
+  return {
+    animation: false,
+    grid: { left: 38, right: 12, top: 12, bottom: 24 },
+    xAxis: {
+      type: 'value',
+      min: -p.seconds,
+      max: p.seconds,
+      axisLine: { lineStyle: { color: c.axis } },
+      axisTick: { show: false },
+      axisLabel: { color: c.muted, hideOverlap: true, formatter: (v: number) => `${v > 0 ? '+' : ''}${v} s` },
+      splitLine: { show: false },
+    },
+    yAxis: valueAxis(c, '', { scale: true, min: p.yMin }),
+    tooltip: {
+      ...tooltipBase(c),
+      trigger: 'axis',
+      axisPointer: { type: 'line', lineStyle: { color: c.axis } },
+      formatter: (ps: { seriesId?: string; value: [number, number | null] }[]) => {
+        const q = ps.find((x) => x.seriesId === String(focus?.id))
+        if (!q || q.value[1] == null) return ''
+        return `<b style="font-size:15px">${fmtNum(q.value[1], p.digits ?? 0)} ${esc(p.unit)}</b><br><span style="color:${c.ink2}">${q.value[0] > 0 ? '+' : ''}${fmtNum(q.value[0], 1)} s · ${esc(focus!.name)}</span>`
+      },
+    },
+    series: lines
+      .slice()
+      .sort((a, b) => Number(a.focus) - Number(b.focus))
+      .map((l, k) => ({
+        type: 'line',
+        id: String(l.id),
+        name: l.name,
+        data: l.data,
+        showSymbol: false,
+        triggerLineEvent: true,
+        // The more lines, the fainter: the one being read must stand out of the bundle.
+        lineStyle: { color: l.color, width: l.focus ? 2.5 : 1.2, type: l.dashed ? 'dashed' : 'solid', opacity: l.focus ? 1 : lines.length > 15 ? 0.4 : 0.75 },
+        itemStyle: { color: l.color },
+        emphasis: { disabled: true },
+        // The passage through the wind.
+        markLine:
+          k === 0 ? { silent: true, symbol: 'none', animation: false, label: { show: false }, lineStyle: { color: c.axis, type: 'dashed', width: 1 }, data: [{ xAxis: 0 }] } : undefined,
+      })),
+  }
+}
+
 /** Speed of several sessions on a shared clock (time of day, or time since each start). */
 export function compareSpeedOption(
   sessions: { name: string; color: string; tr: Track; offset: number }[],

@@ -4,12 +4,13 @@ import { BestLegsCard } from '../components/BestLegs'
 import { useConfirm } from '../components/Confirm'
 import { EChart, type Chart } from '../components/EChart'
 import { IconBack, IconEdit, IconTrash } from '../components/icons'
+import { ManeuversTab } from '../components/Maneuvers'
 import { MapView, type MapTrack } from '../components/MapView'
 import { bandNote, useVsBest, VsBestSummary, whose, WindSpeedField, type VsBest, type Whose } from '../components/Polars'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { SessionGear } from '../components/SessionGear'
 import { TogetherBanner } from '../components/TogetherBanner'
-import { btnGhost, btnPrimary, btnSecondary, card, Outcome, StatTile } from '../components/ui'
+import { btnGhost, btnPrimary, btnSecondary, card, StatTile } from '../components/ui'
 import { WindDial } from '../components/WindDial'
 import { rangeStats } from '../lib/analysis/analyze'
 import { bestLegs } from '../lib/analysis/bestLegs'
@@ -25,7 +26,7 @@ import { bandName, bandOfSpeed, windText } from '../lib/polars'
 import { myName, useSettings, type Settings } from '../lib/settings'
 import { getSessionData, type SessionData, type SessionRecord } from '../lib/store'
 import { isCoarsePointer, useTheme, type ThemeColors } from '../lib/theme'
-import type { Leg, Maneuver, SessionAnalysis, SideStats, WindBand, WindSource } from '../lib/types'
+import type { Leg, SessionAnalysis, SideStats, WindBand, WindSource } from '../lib/types'
 import {
   compass,
   fmtDate,
@@ -612,7 +613,7 @@ export function SessionView({
             </div>
           )}
 
-          {tab === 'manovre' && <ManeuversTab a={a} unit={unit} selected={selMnv} onPick={pickManeuver} tr={tr} />}
+          {tab === 'manovre' && <ManeuversTab a={a} tr={tr} unit={unit} colors={colors} selected={selMnv} onPick={pickManeuver} onSelect={setSelMnv} />}
           {tab === 'andature' && (
             <SailTab
               a={a}
@@ -768,102 +769,6 @@ function HeartRate({ data, colors, coarse }: { data: SessionData; colors: ThemeC
     <div className={`${card} p-3`}>
       <p className="text-sm font-semibold">Battito cardiaco</p>
       <EChart option={option} height={220} label="Battito cardiaco nel tempo" />
-    </div>
-  )
-}
-
-function sideRate(ms: Maneuver[], kind: Maneuver['kind'], from: 'S' | 'P') {
-  const xs = ms.filter((m) => m.kind === kind && m.from === from)
-  return { n: xs.length, ok: xs.filter((m) => m.foiled).length }
-}
-
-function ManeuversTab({
-  a,
-  unit,
-  selected,
-  onPick,
-  tr,
-}: {
-  a: SessionAnalysis
-  unit: Settings['speedUnit']
-  selected: number | null
-  onPick: (k: number) => void
-  tr: SessionData['track']
-}) {
-  const u = SPEED_SHORT[unit]
-  const ms = a.maneuvers
-  if (a.wind.dir == null) return <p className={`${card} p-4 text-sm text-ink-2`}>Imposta il vento per riconoscere strambate e virate.</p>
-  if (!ms.length) return <p className={`${card} p-4 text-sm text-ink-2`}>Nessuna strambata o virata riconosciuta in questa uscita.</p>
-  const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : NaN)
-  const jibes = ms.filter((m) => m.kind === 'jibe')
-  const rows = [
-    { label: 'Strambate da mure a dritta', ...sideRate(ms, 'jibe', 'S') },
-    { label: 'Strambate da mure a sinistra', ...sideRate(ms, 'jibe', 'P') },
-    { label: 'Virate da mure a dritta', ...sideRate(ms, 'tack', 'S') },
-    { label: 'Virate da mure a sinistra', ...sideRate(ms, 'tack', 'P') },
-  ].filter((r) => r.n > 0)
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
-        <StatTile label="Velocità minima in strambata" value={fmtSpeed(avg(jibes.filter((m) => !m.fell).map((m) => m.minSpeed)), unit)} unit={u} sub="media, senza le cadute" />
-        <StatTile label="Durata media strambata" value={jibes.length ? `${fmtNum(avg(jibes.filter((m) => !m.fell).map((m) => m.duration)), 0)} s` : '–'} sub="senza le cadute" />
-        <StatTile label="Cadute o soste" value={String(a.summary.falls)} sub={`${ms.filter((m) => m.fell).length} durante una manovra`} />
-      </div>
-      <div className={`${card} overflow-hidden`}>
-        <table className="w-full text-sm">
-          <caption className="px-3 pt-3 text-left text-sm font-semibold">Riuscita per lato</caption>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.label} className="border-t border-line first:border-t-0">
-                <td className="px-3 py-2">{r.label}</td>
-                <td className="px-3 py-2 text-right tabular">
-                  {r.ok}/{r.n}
-                </td>
-                <td className="w-16 px-3 py-2 text-right font-semibold tabular">{fmtPct(r.ok / r.n)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className={`${card} overflow-x-auto`}>
-        <table className="w-full min-w-[520px] text-sm">
-          <caption className="px-3 pt-3 text-left text-sm font-semibold">Tutte le manovre ({u})</caption>
-          <thead className="text-xs text-ink-2">
-            <tr>
-              <th className="px-3 py-2 text-left font-medium">Ora</th>
-              <th className="px-2 py-2 text-left font-medium">Tipo</th>
-              <th className="px-2 py-2 text-left font-medium">Esito</th>
-              <th className="px-2 py-2 text-right font-medium">Minima</th>
-              <th className="px-2 py-2 text-right font-medium">Entrata</th>
-              <th className="px-2 py-2 text-right font-medium">Uscita</th>
-              <th className="px-3 py-2 text-right font-medium">Durata</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ms.map((m, k) => (
-              <tr
-                key={k}
-                onClick={() => onPick(k)}
-                className={`cursor-pointer border-t border-line ${selected === k ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
-              >
-                <td className="px-3 py-2 tabular">{fmtTimeSec(tr.t[m.i0])}</td>
-                <td className="px-2 py-2 whitespace-nowrap">
-                  {m.kind === 'jibe' ? 'Strambata' : 'Virata'}{' '}
-                  <span className="text-ink-2">{m.from === 'S' ? 'D→S' : 'S→D'}</span>
-                </td>
-                <td className="px-2 py-2 whitespace-nowrap">
-                  <Outcome ok={m.foiled} fell={m.fell} />
-                </td>
-                <td className="px-2 py-2 text-right font-semibold tabular">{fmtSpeed(m.minSpeed, unit)}</td>
-                <td className="px-2 py-2 text-right tabular">{fmtSpeed(m.entrySpeed, unit)}</td>
-                <td className="px-2 py-2 text-right tabular">{fmtSpeed(m.exitSpeed, unit)}</td>
-                <td className="px-3 py-2 text-right tabular">{fmtNum(m.duration, 0)} s</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="px-3 pb-3 text-xs text-ink-2">D→S: da mure a dritta a mure a sinistra. Tocca una riga per vederla sulla mappa.</p>
-      </div>
     </div>
   )
 }
