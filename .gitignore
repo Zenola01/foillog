@@ -23,8 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
-# Real sessions stay on this computer (they contain personal location data)
+# Real sessions and videos stay on this computer (they contain personal location data)
 tracce test/
+video test/
 local-test/
 
 # Local tool settings

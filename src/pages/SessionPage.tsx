@@ -11,6 +11,7 @@ import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { SessionGear } from '../components/SessionGear'
 import { TogetherBanner } from '../components/TogetherBanner'
 import { btnGhost, btnPrimary, btnSecondary, card, StatTile } from '../components/ui'
+import { VideoTab } from '../components/VideoTab'
 import { WindDial } from '../components/WindDial'
 import { rangeStats } from '../lib/analysis/analyze'
 import { bestLegs } from '../lib/analysis/bestLegs'
@@ -41,12 +42,13 @@ import {
   SPEED_SHORT,
 } from '../lib/units'
 
-type Tab = 'grafici' | 'manovre' | 'andature' | 'bordi'
+type Tab = 'grafici' | 'manovre' | 'andature' | 'bordi' | 'video'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'grafici', label: 'Grafici' },
   { id: 'manovre', label: 'Manovre' },
   { id: 'andature', label: 'Andature' },
   { id: 'bordi', label: 'Bordi' },
+  { id: 'video', label: 'Video' },
 ]
 
 const WIND_SOURCE: Record<WindSource, string> = {
@@ -227,6 +229,9 @@ export function SessionView({
   const [range, setRange] = useState<[number, number] | null>(null)
   const [selMnv, setSelMnv] = useState<number | null>(null)
   const [tab, setTab] = useState<Tab>('grafici')
+  // Once opened, the video tab stays mounted: leaving it must not lose the chosen video.
+  const videoOpened = useRef(false)
+  if (tab === 'video') videoOpened.current = true
   const [windEdit, setWindEdit] = useState(false)
   const [speedEdit, setSpeedEdit] = useState(false)
   const windCard = useRef<HTMLDivElement>(null)
@@ -627,6 +632,11 @@ export function SessionView({
               who={who}
               onEditWind={readOnly ? undefined : editWindSpeed}
             />
+          )}
+          {videoOpened.current && (
+            <div className={tab === 'video' ? '' : 'hidden'}>
+              <VideoTab tr={tr} windDir={wind.dir} unit={unit} visible={tab === 'video'} onTime={replay.setT} />
+            </div>
           )}
           {tab === 'bordi' && (
             <div className="space-y-4">

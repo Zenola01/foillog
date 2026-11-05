@@ -16,6 +16,7 @@
     "echarts": "^6.1.0",
     "idb-keyval": "^6.3.0",
     "maplibre-gl": "^6.16.0",
+    "mediabunny": "1.65.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.4"
