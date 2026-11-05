@@ -80,3 +80,6 @@ export function useSettings(): SettingsValue {
 
 /** The rider name used for your own sessions. */
 export const myName = (s: Settings) => s.riderName.trim() || 'Io'
+
+/** Whether a session kept on this device is yours: its rider's name is all it says about that. */
+export const isMyName = (rider: string, s: Settings, accountName?: string) => rider === myName(s) || rider === accountName

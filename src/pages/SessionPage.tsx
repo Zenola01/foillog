@@ -24,7 +24,7 @@ import { norm360 } from '../lib/geo'
 import { pastOfRecord, pastOfRow, useHistory, type PastSession } from '../lib/history'
 import { useLibrary } from '../lib/library'
 import { bandName, bandOfSpeed, windText } from '../lib/polars'
-import { myName, useSettings, type Settings } from '../lib/settings'
+import { isMyName, useSettings, type Settings } from '../lib/settings'
 import { getSessionData, type SessionData, type SessionRecord } from '../lib/store'
 import { isCoarsePointer, useTheme, type ThemeColors } from '../lib/theme'
 import type { Leg, SessionAnalysis, SideStats, WindBand, WindSource } from '../lib/types'
@@ -75,7 +75,7 @@ function LocalSession({ id }: { id: string }) {
   const confirm = useConfirm()
   const rec = sessions?.find((s) => s.id === id) ?? null
   // Your sessions are compared with your others, here and in the crew; a friend's with theirs here.
-  const mine = !!rec && !rec.demo && (rec.rider === myName(settings) || rec.rider === profile?.display_name)
+  const mine = !!rec && !rec.demo && isMyName(rec.rider, settings, profile?.display_name)
   const withCloud = mine && !!user
   const cloudRows = useHistory(withCloud ? user!.id : null)
   const others = useMemo<PastSession[] | null>(() => {

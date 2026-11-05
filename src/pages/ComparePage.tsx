@@ -103,8 +103,8 @@ function Picker({ initial, onConfirm }: { initial: string[]; onConfirm: (ids: st
         <div className={`${card} space-y-2 p-4 text-sm`}>
           <p className="font-medium">Nessuna uscita nello stesso orario</p>
           <p className="text-ink-2">
-            Il confronto mette insieme solo le tracce di chi era in acqua nello stesso momento. Carica anche la traccia di un amico (in Uscite
-            scegli «Di un amico») oppure chiedigli di condividere le sue uscite con la crew.
+            Il confronto mette insieme solo le tracce di chi era in acqua nello stesso momento: chiedi ai tuoi amici di caricare le loro uscite
+            nella crew.
           </p>
           <Link to="/" className={btnSecondary}>
             Vai alle uscite

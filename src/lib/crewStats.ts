@@ -10,6 +10,18 @@ export function dayKey(ms: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** Items newest first, divided by local calendar day. */
+export function byDay<T>(items: T[], time: (x: T) => number): { key: string; items: T[] }[] {
+  const out: { key: string; items: T[] }[] = []
+  for (const it of [...items].sort((a, b) => time(b) - time(a))) {
+    const key = dayKey(time(it))
+    const last = out[out.length - 1]
+    if (last?.key === key) last.items.push(it)
+    else out.push({ key, items: [it] })
+  }
+  return out
+}
+
 /** Local midnight-to-midnight range of a YYYY-MM-DD day. */
 export function dayRange(key: string): [Date, Date] {
   const [y, m, d] = key.split('-').map(Number)

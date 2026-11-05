@@ -165,9 +165,11 @@ export async function shareSession(rec: SessionRecord, data: SessionData, userId
   return saved.id
 }
 
-export async function feed(limit = 40, before?: string): Promise<CloudSession[]> {
+/** Newest first, a page at a time: everything the rider may see, or only `userId`'s. */
+export async function feed(limit = 40, before?: string, userId?: string): Promise<CloudSession[]> {
   let q = supabase.from('sessions').select(SESSION_FIELDS).order('started_at', { ascending: false }).limit(limit)
   if (before) q = q.lt('started_at', before)
+  if (userId) q = q.eq('user_id', userId)
   return check(await q) as unknown as CloudSession[]
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bestOf, dayKey, dayRange, groupByPlace, leaderboard, shiftDay, totals } from '../src/lib/crewStats'
+import { bestOf, byDay, dayKey, dayRange, groupByPlace, leaderboard, shiftDay, totals } from '../src/lib/crewStats'
 import type { SessionSummary } from '../src/lib/types'
 
 const summary = (s2: number | null, distance = 1000): SessionSummary =>
@@ -19,6 +19,15 @@ describe('crew stats', () => {
     expect(to.getTime() - from.getTime()).toBe(24 * 3600 * 1000)
     expect(shiftDay('2026-09-30', 1)).toBe('2026-10-01')
     expect(shiftDay('2026-03-01', -1)).toBe('2026-02-28')
+  })
+
+  it('lists items newest first, day by day, in whatever order they come', () => {
+    const at = (day: number, hour: number) => new Date(2026, 10, day, hour).getTime()
+    const days = byDay([at(3, 9), at(5, 8), at(3, 17), at(5, 15), at(4, 0)], (t) => t)
+    expect(days.map((d) => d.key)).toEqual(['2026-11-05', '2026-11-04', '2026-11-03'])
+    expect(days[0].items).toEqual([at(5, 15), at(5, 8)])
+    expect(days[2].items).toEqual([at(3, 17), at(3, 9)])
+    expect(byDay([], (t: number) => t)).toEqual([])
   })
 
   it('groups sessions by place', () => {

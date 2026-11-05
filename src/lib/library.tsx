@@ -34,8 +34,7 @@ interface LibraryValue {
   sessions: SessionRecord[] | null
   jobs: ImportJob[]
   persistent: boolean
-  /** `friend`: a crewmate's file, kept on this device under their name and never shared as yours. */
-  importFiles: (files: File[], opts?: { friend?: string }) => Promise<SessionRecord[]>
+  importFiles: (files: File[]) => Promise<SessionRecord[]>
   importDemo: () => Promise<SessionRecord[]>
   updateSession: (id: string, patch: Partial<SessionRecord>) => Promise<void>
   removeSession: (id: string) => Promise<void>
@@ -128,8 +127,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   )
 
   const importFiles = useCallback(
-    async (files: File[], opts: { friend?: string } = {}) => {
-      const friend = opts.friend?.trim()
+    async (files: File[]) => {
       const queued = files.map((f) => ({ key: crypto.randomUUID(), name: f.name, status: 'reading' as const, file: f }))
       setJobs((js) => [...js.filter((j) => j.status !== 'done' && j.status !== 'duplicate'), ...queued.map(({ file: _f, ...j }) => j)])
       const created: SessionRecord[] = []
@@ -138,13 +136,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           const buf = await q.file.arrayBuffer()
           setJob(q.key, { status: 'analyzing' })
           const imp = await importInWorker(q.file.name, buf, q.file.lastModified)
-          const { rec, duplicate } = await createSession(imp, { fileName: q.file.name, rider: friend || riderName })
+          const { rec, duplicate } = await createSession(imp, { fileName: q.file.name, rider: riderName })
           if (duplicate) {
             setJob(q.key, { status: 'duplicate', sessionId: rec.id, cloudId: rec.cloudId })
             continue
           }
           created.push(rec)
-          if (userId && !friend) {
+          if (userId) {
             setJob(q.key, { status: 'sharing', sessionId: rec.id })
             try {
               const d = await getSessionData(rec.id)
