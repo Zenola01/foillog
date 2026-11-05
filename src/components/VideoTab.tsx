@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useSettings, type LiveMetric } from '../lib/settings'
 import { isCoarsePointer } from '../lib/theme'
 import type { Track } from '../lib/types'
-import { fmtClockDuration, fmtNum, fmtTime, fmtTimeSec, type SpeedUnit } from '../lib/units'
-import { overlayValuesAt, videoInSession } from '../lib/videoData'
+import { fmtClockDuration, fmtNum, fmtTime, fmtTimeSec } from '../lib/units'
+import { overlayBeat, overlayValuesAt, videoInSession, type OverlaySource } from '../lib/videoData'
 import { exportVideo, readVideoInfo, type VideoExport, type VideoInfo } from '../lib/videoFile'
-import { drawOverlay } from '../lib/videoOverlay'
+import { drawOverlay, overlayCells, VIDEO_METRICS } from '../lib/videoOverlay'
 import { IconPause, IconPlay } from './icons'
 import { btnGhost, btnPrimary, btnSecondary, card } from './ui'
 
@@ -48,13 +49,13 @@ async function saveVideo(f: File) {
 export function VideoTab({
   tr,
   windDir,
-  unit,
+  foil,
   visible,
   onTime,
 }: {
   tr: Track
   windDir: number | null
-  unit: SpeedUnit
+  foil: Uint8Array
   /** The tab is kept mounted while hidden, so the chosen video is not lost. */
   visible: boolean
   /** The moment of the track being shown, for the map. */
@@ -112,7 +113,7 @@ export function VideoTab({
       info={info}
       tr={tr}
       windDir={windDir}
-      unit={unit}
+      foil={foil}
       visible={visible}
       onTime={onTime}
       session={session}
@@ -126,7 +127,7 @@ function Player({
   info,
   tr,
   windDir,
-  unit,
+  foil,
   visible,
   onTime,
   session,
@@ -136,12 +137,19 @@ function Player({
   info: VideoInfo
   tr: Track
   windDir: number | null
-  unit: SpeedUnit
+  foil: Uint8Array
   visible: boolean
   onTime: (ms: number) => void
   session: [number, number]
   changeButton: ReactNode
 }) {
+  const { settings, update } = useSettings()
+  const { speedUnit: unit, distUnit, videoMetrics: metrics } = settings
+  const source = useMemo<OverlaySource>(() => ({ track: tr, windDir, foil }), [tr, windDir, foil])
+  const offered = useMemo(() => VIDEO_METRICS.filter((m) => m.available(source)), [source])
+  // What was chosen on another session may not exist on this one (no heart rate, say).
+  const shown = useMemo(() => metrics.filter((k) => offered.some((m) => m.key === k)), [metrics, offered])
+  const [picking, setPicking] = useState(false)
   const video = useRef<HTMLVideoElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const [url, setUrl] = useState<string | null>(null)
@@ -194,15 +202,14 @@ function Player({
       const ch = Math.round(c.clientHeight * dpr)
       if (!cw || !ch) return
       const ms = start + v.currentTime * 1000
-      const values = overlayValuesAt(tr, windDir, ms)
-      const key = `${cw}.${ch}.${unit}.${values?.sog}.${values?.twa}`
+      const key = `${cw}.${ch}.${overlayBeat(ms)}`
       if (key !== painted) {
         painted = key
         if (c.width !== cw) c.width = cw
         if (c.height !== ch) c.height = ch
         const ctx = c.getContext('2d')!
         ctx.clearRect(0, 0, cw, ch)
-        drawOverlay(ctx, cw, ch, values, unit)
+        drawOverlay(ctx, cw, ch, overlayCells(overlayValuesAt(source, ms), shown, unit, distUnit))
       }
       if (now - followed >= FOLLOW_MS) {
         followed = now
@@ -213,7 +220,7 @@ function Player({
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [visible, start, tr, windDir, unit])
+  }, [visible, start, source, shown, unit, distUnit])
 
   const toggle = () => {
     const v = video.current
@@ -229,7 +236,7 @@ function Player({
     const running = exportVideo(
       file,
       info,
-      (ctx, w, h, s) => drawOverlay(ctx, w, h, overlayValuesAt(tr, windDir, start + s * 1000), unit),
+      (ctx, w, h, s) => drawOverlay(ctx, w, h, overlayCells(overlayValuesAt(source, start + s * 1000), shown, unit, distUnit)),
       setMaking,
     )
     job.current = running
@@ -254,6 +261,10 @@ function Player({
     const d = new Date(session[0])
     d.setHours(hh, mm, ss, 0)
     shift(d.getTime())
+  }
+  const toggleMetric = (k: LiveMetric) => {
+    update({ videoMetrics: metrics.includes(k) ? metrics.filter((x) => x !== k) : [...metrics, k] })
+    setMade(null)
   }
   const nudge = (ms: number, label: string) => (
     <button key={label} type="button" className="rounded-lg bg-surface-2 px-2.5 py-1.5 text-sm font-medium tabular" onClick={() => shift(start + ms)}>
@@ -328,6 +339,34 @@ function Player({
         {nudge(100, '+0,1')}
         {nudge(1000, '+1 s')}
       </div>
+      <div>
+        <button type="button" aria-expanded={picking} className={`${btnGhost} -ml-2.5`} onClick={() => setPicking((p) => !p)}>
+          Dati a schermo {picking ? '▴' : '▾'}
+        </button>
+        {picking && (
+          <div className="mt-1.5 flex flex-wrap gap-2" role="group" aria-label="Dati a schermo">
+            {offered.map((m) => {
+              const on = shown.includes(m.key)
+              return (
+                <button
+                  key={m.key}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  onClick={() => toggleMetric(m.key)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                    on ? 'border-transparent bg-accent-btn text-white' : 'border-line bg-surface text-ink hover:bg-surface-2'
+                  }`}
+                >
+                  {on && <span aria-hidden>✓</span>}
+                  {m.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {info.start == null && <p className="text-sm text-critical">Questo video non dice a che ora è stato girato: imposta l’ora d’inizio.</p>}
       {info.start != null && !inSession && (
         <p className="text-sm text-critical">

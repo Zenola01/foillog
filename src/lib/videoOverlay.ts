@@ -1,20 +1,84 @@
-import { fmtNum, fmtSpeed, SPEED_SHORT, type SpeedUnit } from './units'
-import type { OverlayValues } from './videoData'
+import { hasHeartRate } from './analysis/series'
+import type { LiveMetric } from './settings'
+import { compass, fmtDist, fmtNum, fmtSpeed, SPEED_SHORT, type DistUnit, type SpeedUnit } from './units'
+import type { OverlaySource, OverlayValues } from './videoData'
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 
 // Helvetica and Arial have digits of one width, so the numbers do not shake as they change.
 const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif'
 
-/** SOG, VMG and TWA in a band at the bottom of a frame of w×h pixels, sized on its short side. */
-export function drawOverlay(ctx: Ctx, w: number, h: number, v: OverlayValues | null, unit: SpeedUnit) {
+/** The numbers a video can show, in the order they are drawn. */
+export const VIDEO_METRICS: { key: LiveMetric; label: string; available: (s: OverlaySource) => boolean }[] = [
+  { key: 'spd', label: 'Velocità', available: () => true },
+  { key: 'vmg', label: 'VMG', available: (s) => s.windDir != null },
+  { key: 'twa', label: 'Angolo al vento', available: (s) => s.windDir != null },
+  { key: 'hr', label: 'Battito', available: (s) => hasHeartRate(s.track) },
+  { key: 'crs', label: 'Rotta', available: () => true },
+  { key: 'dist', label: 'Distanza', available: () => true },
+  { key: 'foil', label: 'In foil', available: (s) => s.foil != null },
+  { key: 'heel', label: 'Sbandamento', available: (s) => s.track.roll != null },
+]
+
+/** What a cell of the band says. */
+export interface OverlayCell {
+  label: string
+  value: string
+  note: string
+}
+
+/** The chosen numbers as text, in the fixed order of VIDEO_METRICS. */
+export function overlayCells(v: OverlayValues | null, metrics: LiveMetric[], unit: SpeedUnit, distUnit: DistUnit): OverlayCell[] {
+  const u = SPEED_SHORT[unit]
+  const cell = (key: LiveMetric): OverlayCell => {
+    switch (key) {
+      case 'spd':
+        return { label: 'SOG', value: v ? fmtSpeed(v.sog, unit) : '–', note: v ? u : '' }
+      case 'vmg':
+        return v?.vmg == null
+          ? { label: 'VMG', value: '–', note: '' }
+          : { label: v.vmg >= 0 ? 'VMG ↑' : 'VMG ↓', value: fmtSpeed(Math.abs(v.vmg), unit), note: u }
+      case 'twa':
+        return v?.twa == null ? { label: 'TWA', value: '–', note: '' } : { label: 'TWA', value: `${fmtNum(Math.abs(v.twa), 0)}°`, note: v.twa >= 0 ? 'dx' : 'sx' }
+      case 'hr':
+        return v?.hr == null ? { label: 'BATTITO', value: '–', note: '' } : { label: 'BATTITO', value: fmtNum(v.hr, 0), note: 'bpm' }
+      case 'crs':
+        return v ? { label: 'ROTTA', value: `${fmtNum(v.crs, 0)}°`, note: compass(v.crs) } : { label: 'ROTTA', value: '–', note: '' }
+      case 'dist': {
+        if (!v) return { label: 'DISTANZA', value: '–', note: '' }
+        const [value, note = ''] = fmtDist(v.dist, distUnit).split(' ')
+        return { label: 'DISTANZA', value, note }
+      }
+      case 'foil':
+        return { label: 'FOIL', value: v?.foil == null ? '–' : v.foil ? 'sì' : 'no', note: '' }
+      case 'heel':
+        return { label: 'SBAND.', value: v?.heel == null ? '–' : `${fmtNum(v.heel, 0)}°`, note: '' }
+    }
+  }
+  return VIDEO_METRICS.filter((m) => metrics.includes(m.key)).map((m) => cell(m.key))
+}
+
+/** How many cells go in a row: up to four on one row, then two rows. */
+export function overlayColumns(n: number): number {
+  if (n <= 4) return n
+  return n <= 6 ? 3 : 4
+}
+
+/** The chosen numbers in a band at the bottom of a frame of w×h pixels, sized on its short side. */
+export function drawOverlay(ctx: Ctx, w: number, h: number, cells: OverlayCell[]) {
+  if (!cells.length) return
   const base = Math.min(w, h)
-  const panelW = Math.min(w - base * 0.07, base)
-  const panelH = base * 0.165
+  const cols = overlayColumns(cells.length)
+  const rows = Math.ceil(cells.length / cols)
+  const fullCell = base * 0.31
+  const cellW = Math.min(fullCell, (w - base * 0.07) / cols)
+  // Narrower cells take slightly smaller numbers, so that value and unit still fit.
+  const k = Math.min(1, (cellW / fullCell) * 1.15)
+  const rowH = base * 0.165 * (rows > 1 ? 0.88 : 1)
+  const panelW = cellW * cols
+  const panelH = rowH * rows
   const x0 = (w - panelW) / 2
   const y0 = h - panelH - base * 0.055
-  const cellW = panelW / 3
-  const u = SPEED_SHORT[unit]
 
   ctx.save()
   ctx.fillStyle = 'rgba(8, 12, 18, 0.62)'
@@ -25,33 +89,31 @@ export function drawOverlay(ctx: Ctx, w: number, h: number, v: OverlayValues | n
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
   ctx.lineWidth = Math.max(1, base * 0.002)
   ctx.beginPath()
-  for (const k of [1, 2]) {
-    ctx.moveTo(x0 + cellW * k, y0 + panelH * 0.18)
-    ctx.lineTo(x0 + cellW * k, y0 + panelH * 0.82)
+  for (let c = 1; c < cols; c++) {
+    ctx.moveTo(x0 + cellW * c, y0 + rowH * 0.18)
+    ctx.lineTo(x0 + cellW * c, y0 + panelH - rowH * 0.18)
+  }
+  for (let r = 1; r < rows; r++) {
+    ctx.moveTo(x0 + base * 0.025, y0 + rowH * r)
+    ctx.lineTo(x0 + panelW - base * 0.025, y0 + rowH * r)
   }
   ctx.stroke()
 
-  const vmg = v?.vmg
-  const twa = v?.twa
-  const cells: { label: string; value: string; note: string }[] = [
-    { label: 'SOG', value: v ? fmtSpeed(v.sog, unit) : '–', note: u },
-    { label: vmg == null ? 'VMG' : vmg >= 0 ? 'VMG ↑' : 'VMG ↓', value: vmg == null ? '–' : fmtSpeed(Math.abs(vmg), unit), note: vmg == null ? '' : u },
-    { label: 'TWA', value: twa == null ? '–' : `${fmtNum(Math.abs(twa), 0)}°`, note: twa == null ? '' : twa >= 0 ? 'dx' : 'sx' },
-  ]
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
-  cells.forEach((c, k) => {
-    const x = x0 + cellW * k + base * 0.03
+  cells.forEach((c, n) => {
+    const x = x0 + cellW * (n % cols) + base * 0.03 * k
+    const y = y0 + rowH * Math.floor(n / cols)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.72)'
-    ctx.font = `600 ${base * 0.03}px ${FONT}`
-    ctx.fillText(c.label, x, y0 + panelH * 0.32)
+    ctx.font = `600 ${base * 0.03 * k}px ${FONT}`
+    ctx.fillText(c.label, x, y + rowH * 0.32)
     ctx.fillStyle = '#fff'
-    ctx.font = `700 ${base * 0.072}px ${FONT}`
-    ctx.fillText(c.value, x, y0 + panelH * 0.82)
+    ctx.font = `700 ${base * 0.072 * k}px ${FONT}`
+    ctx.fillText(c.value, x, y + rowH * 0.82)
     const valueW = ctx.measureText(c.value).width
     ctx.fillStyle = 'rgba(255, 255, 255, 0.72)'
-    ctx.font = `500 ${base * 0.028}px ${FONT}`
-    ctx.fillText(c.note, x + valueW + base * 0.01, y0 + panelH * 0.82)
+    ctx.font = `500 ${base * 0.028 * k}px ${FONT}`
+    ctx.fillText(c.note, x + valueW + base * 0.01, y + rowH * 0.82)
   })
   ctx.restore()
 }

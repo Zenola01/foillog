@@ -12,6 +12,8 @@ export interface Settings {
   foilOnKn: number
   riderName: string
   liveMetrics: LiveMetric[]
+  /** The numbers written over a video. */
+  videoMetrics: LiveMetric[]
   /** Several riders on one map: whole tracks, or only the trail each one leaves. */
   trailMode: 'full' | 'tail'
   /** Share of the upwind and downwind legs, best first, behind the "best legs" averages (1 = all). */
@@ -27,6 +29,7 @@ const DEFAULTS: Settings = {
   foilOnKn: DEFAULT_FOIL_KN,
   riderName: '',
   liveMetrics: ['spd', 'vmg'],
+  videoMetrics: ['spd', 'vmg', 'twa'],
   trailMode: 'full',
   topShare: 0.2,
   gear: [],
