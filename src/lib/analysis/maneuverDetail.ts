@@ -1,4 +1,4 @@
-import { angDiff, bearing, EARTH_RADIUS, RAD } from '../geo'
+import { angDiff, bearing, EARTH_RADIUS, norm180, RAD } from '../geo'
 import type { Maneuver, Track } from '../types'
 
 // What happens inside each manoeuvre: its path seen with the wind from the top, and how fast the
@@ -24,6 +24,10 @@ const HEEL_HALF_MS = 500
 const MIN_COURSE_SPEED = 1.5
 /** Under this many degrees a turn has no rate or radius to speak of. */
 const MIN_TURN_ANGLE = 30
+/** The way in and the way out: the stretch of track just before the turn and just after it. */
+const WAY_MS = 2000
+/** Shorter than this (m), that stretch says nothing about the direction. */
+const WAY_MIN_M = 3
 
 /** What a rate curve follows: how the GPS track bends, or how the board itself rotates (compass). */
 export type RateSource = 'track' | 'compass'
@@ -50,11 +54,16 @@ export interface ManeuverDetail {
   /** Seconds from the passage at which the turn starts (negative) and ends. */
   turnStart: number
   turnEnd: number
+  /** How long it took: each point stands for its own step, which at 1 Hz is a whole second. */
+  turnSeconds: number
   /**
    * How fast it turned (°/s): the angle turned over the time taken. Unlike a peak it hardly changes
    * between GPS and compass or with the sampling rate, so it compares across devices.
    */
   turnRate: number | null
+  /** Angle from the wind (deg, 0–180) on the way into the turn and on the way out of it. */
+  entryAngle: number | null
+  exitAngle: number | null
   /** Most heel towards the inside while turning (deg); negative if it never leaned in. */
   heelIn: number | null
   heelAtPassage: number | null
@@ -209,7 +218,10 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
     heel: tr.roll ? [] : null,
     turnStart: (t[i0] - t0) / 1000,
     turnEnd: (t[i1] - t0) / 1000,
+    turnSeconds: i1 > i0 ? ((t[i1] - t[i0]) / 1000) * (1 + 1 / (i1 - i0)) : 0,
     turnRate: null,
+    entryAngle: null,
+    exitAngle: null,
     heelIn: null,
     heelAtPassage: null,
     radius: null,
@@ -250,6 +262,12 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
     out.heelAtPassage = Number.isFinite(h) ? h : null
   }
 
+  // Read from the track itself: the smoothed course already leans into the turn before it starts.
+  const angleOf = (from: number, to: number) =>
+    dist[to] - dist[from] >= WAY_MIN_M ? Math.abs(norm180(windDir - bearing(lat[from], lon[from], lat[to], lon[to]))) : null
+  out.entryAngle = angleOf(reach(t, i0, WAY_MS, -1, lo, hi), i0)
+  out.exitAngle = angleOf(i1, reach(t, i1, WAY_MS, 1, lo, hi))
+
   // The angle turned, from the same rate as the turn's ends (the smoothed course lags behind them).
   let sum = 0
   let count = 0
@@ -274,8 +292,13 @@ export const rateSeriesOf = (d: ManeuverDetail, source: RateSource): number[] =>
 const meanOf = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null)
 
 /** Averages over some manoeuvres, to compare one side with the other. */
-export function detailAverages(ds: ManeuverDetail[]): { turnRate: number | null; heelIn: number | null } {
-  return { turnRate: meanOf(ds.flatMap((d) => d.turnRate ?? [])), heelIn: meanOf(ds.flatMap((d) => d.heelIn ?? [])) }
+export function detailAverages(ds: ManeuverDetail[]) {
+  return {
+    turnRate: meanOf(ds.flatMap((d) => d.turnRate ?? [])),
+    entryAngle: meanOf(ds.flatMap((d) => d.entryAngle ?? [])),
+    exitAngle: meanOf(ds.flatMap((d) => d.exitAngle ?? [])),
+    heelIn: meanOf(ds.flatMap((d) => d.heelIn ?? [])),
+  }
 }
 
 /** The one that kept the most speed while staying on the foil: the reference to read the others against. */

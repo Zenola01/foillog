@@ -93,6 +93,20 @@ describe('turn rate', () => {
     expect(quick.turnRate! / d.turnRate!).toBeLessThan(2.4)
   })
 
+  it('times the turn so that rate and time give back the angle, also at one point per second', () => {
+    for (const hz of [5, 1]) {
+      const legs: SimLeg[] = [
+        { twa: 140, seconds: 40, kn: 20 },
+        { twa: -120, seconds: 40, kn: 20 },
+      ]
+      const tr = simTrack({ windFrom: WIND, hz, legs, turns: { 0: { seconds: 5, minKn: 15 } } })
+      const d = maneuverDetails(tr, analyzeTrack(tr, null, { foilOnKn: 7, windOverride: WIND }).maneuvers, WIND)[0]!
+      // 40° up to dead downwind and 60° after it.
+      expect(d.turnRate! * d.turnSeconds).toBeGreaterThan(85)
+      expect(d.turnRate! * d.turnSeconds).toBeLessThan(115)
+    }
+  })
+
   it('reads about the same at one point per second as at five', () => {
     for (const [twaA, twaB, seconds] of [
       [140, -140, 3],
@@ -147,6 +161,47 @@ describe('turn rate', () => {
     const g = oneTurn(140, -140)
     expect(g.yaw).toBeNull()
     expect(rateSeriesOf(g, 'compass')).toBe(g.rate)
+  })
+})
+
+describe('angle from the wind', () => {
+  it('reads it on the way into the turn and on the way out', () => {
+    const jibe = oneTurn(150, -100)
+    expect(jibe.entryAngle).toBeGreaterThan(146)
+    expect(jibe.entryAngle).toBeLessThan(154)
+    expect(jibe.exitAngle).toBeGreaterThan(96)
+    expect(jibe.exitAngle).toBeLessThan(104)
+    const tack = oneTurn(40, -120)
+    expect(tack.entryAngle).toBeGreaterThan(36)
+    expect(tack.entryAngle).toBeLessThan(44)
+    expect(tack.exitAngle).toBeGreaterThan(116)
+    expect(tack.exitAngle).toBeLessThan(124)
+  })
+
+  it('does not depend on the tack', () => {
+    const a = oneTurn(140, -120)
+    const b = oneTurn(-140, 120)
+    expect(a.entryAngle).toBeCloseTo(b.entryAngle!, 0)
+    expect(a.exitAngle).toBeCloseTo(b.exitAngle!, 0)
+  })
+
+  it('reads the same at one point per second', () => {
+    const legs: SimLeg[] = [
+      { twa: 150, seconds: 40, kn: 20 },
+      { twa: -100, seconds: 40, kn: 20 },
+    ]
+    const tr = simTrack({ windFrom: WIND, legs, turns: { 0: { seconds: 6, minKn: 15 } } })
+    const d = maneuverDetails(tr, analyzeTrack(tr, null, { foilOnKn: 7, windOverride: WIND }).maneuvers, WIND)[0]!
+    expect(Math.abs(d.entryAngle! - 150)).toBeLessThan(6)
+    expect(Math.abs(d.exitAngle! - 100)).toBeLessThan(6)
+  })
+
+  it('averages over the manoeuvres', () => {
+    const avg = detailAverages([oneTurn(150, -100), oneTurn(130, -120)])
+    expect(avg.entryAngle).toBeGreaterThan(136)
+    expect(avg.entryAngle).toBeLessThan(144)
+    expect(avg.exitAngle).toBeGreaterThan(106)
+    expect(avg.exitAngle).toBeLessThan(114)
   })
 })
 

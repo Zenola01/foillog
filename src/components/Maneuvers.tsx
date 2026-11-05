@@ -17,6 +17,12 @@ const PLURAL: Record<Kind, string> = { jibe: 'Strambate', tack: 'Virate' }
 const PASSAGE: Record<Kind, string> = { jibe: 'la poppa piena', tack: 'la prua al vento' }
 const arrow = (from: Tack) => (from === 'S' ? 'D→S' : 'S→D')
 const rateText = (v: number | null | undefined) => (v == null ? '–' : fmtNum(v, 0))
+const angleText = (v: number | null | undefined) => (v == null ? '–' : `${fmtNum(v, 0)}°`)
+/** «140° → 120°»: the angle from the wind going into the turn and coming out of it. */
+const anglesText = (entry: number | null | undefined, exit: number | null | undefined) => (entry == null && exit == null ? '–' : `${angleText(entry)} → ${angleText(exit)}`)
+/** «140→120°», for the narrow columns of a table on a phone. */
+const anglesShort = (entry: number | null | undefined, exit: number | null | undefined) =>
+  entry == null && exit == null ? '–' : `${entry == null ? '–' : fmtNum(entry, 0)}→${exit == null ? '–' : fmtNum(exit, 0)}°`
 
 /** Below about one point per this many seconds the peaks come out blunter than they were. */
 const COARSE_POINT_S = 0.8
@@ -78,7 +84,6 @@ function Analysis({
 
   const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : NaN)
   const jibes = ms.filter((m) => m.kind === 'jibe')
-  const turnSeconds = (d: ManeuverDetail) => d.turnEnd - d.turnStart
   const rows = (['jibe', 'tack'] as const)
     .flatMap((kind) =>
       (['S', 'P'] as const).map((from) => {
@@ -99,7 +104,7 @@ function Analysis({
         <StatTile label="Velocità minima in strambata" value={fmtSpeed(avg(jibes.filter((m) => !m.fell).map((m) => m.minSpeed)), unit)} unit={u} sub="media, senza le cadute" />
         <StatTile
           label="Durata media strambata"
-          value={jibes.length ? `${fmtNum(avg(details.flatMap((d) => (d?.maneuver.kind === 'jibe' ? turnSeconds(d) : []))), 0)} s` : '–'}
+          value={jibes.length ? `${fmtNum(avg(details.flatMap((d) => (d?.maneuver.kind === 'jibe' ? d.turnSeconds : []))), 0)} s` : '–'}
           sub="la curva, senza le cadute"
         />
         <StatTile label="Cadute o soste" value={String(a.summary.falls)} sub={`${ms.filter((m) => m.fell).length} durante una manovra`} />
@@ -112,39 +117,43 @@ function Analysis({
           <caption className="px-3 pt-3 text-left text-sm font-semibold">Per lato</caption>
           <thead className="text-xs text-ink-2">
             <tr>
-              <th className="px-3 py-2 text-left font-medium" />
-              <th className="px-3 py-2 text-right font-medium">Vel. angolare</th>
-              {hasHeel && <th className="px-3 py-2 text-right font-medium">Inclinazione</th>}
+              <th className="py-2 pr-1 pl-3 text-left font-medium" />
+              <th className="px-2 py-2 text-right font-medium">Vel. ang.</th>
+              <th className="px-2 py-2 text-right font-medium">Angolo</th>
+              {hasHeel && <th className="py-2 pr-3 pl-2 text-right font-medium">Inclinaz.</th>}
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.label} className="border-t border-line">
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="py-2 pr-1 pl-3 whitespace-nowrap">
                   {r.label}
                   <span className="block text-xs text-ink-2 tabular">
                     {r.ok}/{r.n} in foil · <span className="font-semibold text-ink">{fmtPct(r.ok / r.n)}</span>
                   </span>
                 </td>
-                <td className="px-3 py-2 text-right tabular">{rateText(r.avg.turnRate)}</td>
-                {hasHeel && <td className="px-3 py-2 text-right tabular">{r.avg.heelIn == null ? '–' : `${fmtNum(r.avg.heelIn, 0)}°`}</td>}
+                <td className="px-2 py-2 text-right tabular">{rateText(r.avg.turnRate)}</td>
+                <td className="px-2 py-2 text-right whitespace-nowrap tabular">{anglesShort(r.avg.entryAngle, r.avg.exitAngle)}</td>
+                {hasHeel && <td className="py-2 pr-3 pl-2 text-right tabular">{angleText(r.avg.heelIn)}</td>}
               </tr>
             ))}
           </tbody>
         </table>
         <p className="px-3 pb-3 text-xs text-ink-2">
-          Medie delle manovre. Velocità angolare in °/s: angolo girato diviso il tempo della curva.{hasHeel && ' Inclinazione: la massima verso l’interno della curva.'}
+          Medie delle manovre. Vel. ang.: velocità angolare in °/s, angolo girato diviso il tempo della curva. Angolo: al vento, in ingresso → in uscita.
+          {hasHeel && ' Inclinaz.: la massima verso l’interno della curva.'}
         </p>
       </div>
 
       <div className={`${card} overflow-x-auto`}>
-        <table className="w-full min-w-[580px] text-sm">
+        <table className="w-full min-w-[650px] text-sm">
           <caption className="px-3 pt-3 text-left text-sm font-semibold">Tutte le manovre ({u})</caption>
           <thead className="text-xs text-ink-2">
             <tr>
               <th className="py-2 pr-1 pl-3 text-left font-medium">Ora</th>
               <th className="px-2 py-2 text-left font-medium">Manovra</th>
               <th className="px-2 py-2 text-right font-medium">Vel. ang.</th>
+              <th className="px-2 py-2 text-right font-medium">Angolo</th>
               {hasHeel && <th className="px-2 py-2 text-right font-medium">Inclinaz.</th>}
               <th className="px-2 py-2 text-right font-medium">Minima</th>
               <th className="px-2 py-2 text-right font-medium">Entrata</th>
@@ -169,19 +178,20 @@ function Analysis({
                     </span>
                   </td>
                   <td className="px-2 py-2 text-right tabular">{rateText(d?.turnRate)}</td>
-                  {hasHeel && <td className="px-2 py-2 text-right tabular">{d?.heelIn == null ? '–' : `${fmtNum(d.heelIn, 0)}°`}</td>}
+                  <td className="px-2 py-2 text-right whitespace-nowrap tabular">{anglesShort(d?.entryAngle, d?.exitAngle)}</td>
+                  {hasHeel && <td className="px-2 py-2 text-right tabular">{angleText(d?.heelIn)}</td>}
                   <td className="px-2 py-2 text-right font-semibold tabular">{fmtSpeed(m.minSpeed, unit)}</td>
                   <td className="px-2 py-2 text-right tabular">{fmtSpeed(m.entrySpeed, unit)}</td>
                   <td className="px-2 py-2 text-right tabular">{fmtSpeed(m.exitSpeed, unit)}</td>
-                  <td className="px-3 py-2 text-right tabular">{d && turnSeconds(d) === 0 ? '–' : `${fmtNum(d ? turnSeconds(d) : m.duration, 0)} s`}</td>
+                  <td className="px-3 py-2 text-right tabular">{d?.turnSeconds === 0 ? '–' : `${fmtNum(d ? d.turnSeconds : m.duration, 0)} s`}</td>
                 </tr>
               )
             })}
           </tbody>
         </table>
         <p className="px-3 pb-3 text-xs text-ink-2">
-          D→S: da mure a dritta a mure a sinistra. Vel. ang.: velocità angolare in °/s, angolo girato diviso il tempo della curva.
-          {hasHeel && ' Inclinazione: la massima verso l’interno della curva.'} Tocca una riga per vederla sulla mappa.
+          D→S: da mure a dritta a mure a sinistra. Vel. ang.: velocità angolare in °/s, angolo girato diviso il tempo della curva. Angolo: al vento, in ingresso → in uscita.
+          {hasHeel && ' Inclinaz.: la massima verso l’interno della curva.'} Tocca una riga per vederla sulla mappa.
         </p>
       </div>
     </div>
@@ -437,6 +447,7 @@ function Readout({ d, isBest, unit, tr }: { d: ManeuverDetail; isBest: boolean; 
       {isBest && <p className="text-xs text-ink-2">La velocità minima più alta rimanendo in foil.</p>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <StatTile label="Velocità angolare" value={rateText(d.turnRate)} unit={d.turnRate == null ? undefined : '°/s'} sub="angolo girato diviso il tempo della curva" />
+        <StatTile label="Angolo al vento" value={anglesText(d.entryAngle, d.exitAngle)} sub="in ingresso → in uscita" />
         {d.heelIn != null && (
           <StatTile
             label="Inclinazione"
@@ -444,7 +455,7 @@ function Readout({ d, isBest, unit, tr }: { d: ManeuverDetail; isBest: boolean; 
             sub={`massima verso l’interno${d.heelAtPassage != null ? ` · al passaggio ${fmtNum(d.heelAtPassage, 0)}°` : ''}`}
           />
         )}
-        <StatTile label="Raggio" value={d.radius == null ? '–' : fmtNum(d.radius, 0)} unit={d.radius == null ? undefined : 'm'} sub={`curva di ${fmtNum(d.turnEnd - d.turnStart, 0)} s`} />
+        <StatTile label="Raggio" value={d.radius == null ? '–' : fmtNum(d.radius, 0)} unit={d.radius == null ? undefined : 'm'} sub={`curva di ${fmtNum(d.turnSeconds, 0)} s`} />
         <StatTile label="Velocità minima" value={fmtSpeed(m.minSpeed, unit)} unit={u} sub={`entrata ${fmtSpeed(m.entrySpeed, unit)} · uscita ${fmtSpeed(m.exitSpeed, unit)}`} />
       </div>
     </div>
