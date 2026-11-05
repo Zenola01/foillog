@@ -3,15 +3,17 @@ import { Link, useNavigate } from 'react-router-dom'
 import { FeedCard } from '../components/FeedCard'
 import { FileDrop } from '../components/FileDrop'
 import { IconShare, IconX } from '../components/icons'
-import { TrackThumb } from '../components/TrackThumb'
+import { ScoredThumb } from '../components/Scores'
 import { btnGhost, btnPrimary, btnSecondary, card, Segmented } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { feed, myCrews, type CloudSession } from '../lib/cloud'
 import { byDay } from '../lib/crewStats'
 import { useLibrary, type ImportJob } from '../lib/library'
+import { useMissingScores } from '../lib/missingScores'
 import { isMyName, useSettings, type Settings } from '../lib/settings'
 import type { SessionRecord } from '../lib/store'
 import { together, type Span } from '../lib/together'
+import type { SessionSummary } from '../lib/types'
 import { fmtDate, fmtDist, fmtDuration, fmtPct, fmtSpeed, fmtTime, SPEED_SHORT } from '../lib/units'
 
 const STATUS: Record<ImportJob['status'], string> = {
@@ -103,6 +105,11 @@ export default function HomePage() {
   const accountName = profile?.display_name
   const isMine = useCallback((s: SessionRecord) => isMyName(s.rider, settings, accountName), [settings, accountName])
   const myLocal = useMemo(() => local.filter(isMine), [local, isMine])
+  const scored = useCallback((id: string, summary: SessionSummary) => {
+    const patch = (list: CloudSession[] | null) => list && list.map((r) => (r.id === id ? { ...r, summary } : r))
+    setLoaded((l) => ({ mine: patch(l.mine), feed: patch(l.feed) }))
+  }, [])
+  useMissingScores(loaded.mine, local, scored)
   const days = useMemo(() => {
     const entries: Entry[] = [
       ...(rows ?? []).map((row) => ({ at: Date.parse(row.started_at), row })),
@@ -376,7 +383,7 @@ function OutingCard({
     <li className={`${card} p-2.5 ${selected ? 'ring-2 ring-[var(--series-1)]' : ''}`}>
       <div className="flex items-center gap-3">
         <Link to={to} className="flex min-w-0 flex-1 items-center gap-3">
-          <TrackThumb points={s.preview} className="h-16 w-[100px] shrink-0" />
+          <ScoredThumb s={s} />
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold">{s.title}</p>
             {about && <p className="truncate text-sm text-ink-2">{about}</p>}

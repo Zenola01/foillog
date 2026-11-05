@@ -98,7 +98,7 @@ function CloudSessionLoader({ id }: { id: string }) {
         setA(res)
         const s = row.summary
         // The owner's copy keeps the stored numbers in step with the analysis (wind, threshold).
-        if (owner && (s.windDir !== res.summary.windDir || s.jibes !== res.summary.jibes || s.foilTime !== res.summary.foilTime || s.polar === undefined)) {
+        if (owner && (s.windDir !== res.summary.windDir || s.jibes !== res.summary.jibes || s.foilTime !== res.summary.foilTime || s.polar === undefined || s.perf === undefined)) {
           void updateSession(row.id, { summary: res.summary }).catch(() => {})
         }
       })

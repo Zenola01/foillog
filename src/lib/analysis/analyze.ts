@@ -14,6 +14,7 @@ import type {
 import { detectFoil } from './foil'
 import { findLegs, findManeuvers, findStops, findTurns, tackOf, type RawLeg } from './maneuvers'
 import { pointsOfSail } from './pointsOfSail'
+import { sessionPerf } from './scores'
 import { MIN_HR, segmentIds } from './series'
 import { bestDistanceWindow, bestNTimeWindows, bestTimeWindow } from './speed'
 import { estimateWind } from './wind'
@@ -124,6 +125,7 @@ export function analyzeTrack(tr: Track, instrument: InstrumentWind | null, opts:
     avgHr: hrN ? hrSum / hrN : null,
     maxHr: hrN ? hrMax : null,
     polar: sail ? sail.polar.map((b): PolarPoint => [b.twa, Math.round(b.speed * 100) / 100, Math.round(b.seconds)]) : null,
+    perf: W != null ? sessionPerf(legs, maneuvers) : null,
     center: [sLat / n, sLon / n],
     bbox: [minLat, minLon, maxLat, maxLon],
     points: n,

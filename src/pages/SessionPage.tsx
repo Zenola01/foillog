@@ -8,6 +8,7 @@ import { ManeuversTab } from '../components/Maneuvers'
 import { MapView, type MapTrack } from '../components/MapView'
 import { bandNote, useVsBest, VsBestSummary, whose, WindSpeedField, type VsBest, type Whose } from '../components/Polars'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
+import { ScoreCard } from '../components/Scores'
 import { SessionGear } from '../components/SessionGear'
 import { TogetherBanner } from '../components/TogetherBanner'
 import { btnGhost, btnPrimary, btnSecondary, card, StatTile } from '../components/ui'
@@ -123,7 +124,8 @@ function LocalSession({ id }: { id: string }) {
           s.jibes !== a.summary.jibes ||
           s.tacks !== a.summary.tacks ||
           s.foilTime !== a.summary.foilTime ||
-          s.polar === undefined
+          s.polar === undefined ||
+          s.perf === undefined
         if (changed) void updateSession(r.id, { summary: a.summary, foilOnKn: settings.foilOnKn })
       })
       .catch((e: Error) => alive && setError(e.message))
@@ -373,6 +375,8 @@ export function SessionView({
           </div>
         )}
       </div>
+
+      <ScoreCard perf={sum.perf} />
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-5">
         {/* Map and replay */}

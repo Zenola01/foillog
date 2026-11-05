@@ -5,7 +5,7 @@ import type { Settings } from '../lib/settings'
 import { fmtDist, fmtDuration, fmtPct, fmtSpeed, fmtTime, SPEED_SHORT } from '../lib/units'
 import { IconComment } from './icons'
 import { Avatar } from './RequireAuth'
-import { TrackThumb } from './TrackThumb'
+import { ScoredThumb } from './Scores'
 import { card } from './ui'
 
 /** The 🤙 button: optimistic, reverts if the server says no. */
@@ -96,7 +96,7 @@ export function FeedCard({
         )}
       </div>
       <Link to={`/c/${s.id}`} className="mt-2.5 flex items-center gap-3">
-        <TrackThumb points={s.preview} className="h-16 w-[100px] shrink-0" />
+        <ScoredThumb s={s} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{s.title}</p>
           <p className="mt-0.5 flex flex-wrap gap-x-3 text-sm">
