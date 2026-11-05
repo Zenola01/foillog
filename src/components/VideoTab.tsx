@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useSettings, type LiveMetric } from '../lib/settings'
+import { useSettings, type VideoMetric } from '../lib/settings'
 import { isCoarsePointer } from '../lib/theme'
 import type { Track } from '../lib/types'
 import { fmtClockDuration, fmtNum, fmtTime, fmtTimeSec } from '../lib/units'
@@ -49,13 +49,11 @@ async function saveVideo(f: File) {
 export function VideoTab({
   tr,
   windDir,
-  foil,
   visible,
   onTime,
 }: {
   tr: Track
   windDir: number | null
-  foil: Uint8Array
   /** The tab is kept mounted while hidden, so the chosen video is not lost. */
   visible: boolean
   /** The moment of the track being shown, for the map. */
@@ -113,7 +111,6 @@ export function VideoTab({
       info={info}
       tr={tr}
       windDir={windDir}
-      foil={foil}
       visible={visible}
       onTime={onTime}
       session={session}
@@ -127,7 +124,6 @@ function Player({
   info,
   tr,
   windDir,
-  foil,
   visible,
   onTime,
   session,
@@ -137,7 +133,6 @@ function Player({
   info: VideoInfo
   tr: Track
   windDir: number | null
-  foil: Uint8Array
   visible: boolean
   onTime: (ms: number) => void
   session: [number, number]
@@ -145,7 +140,7 @@ function Player({
 }) {
   const { settings, update } = useSettings()
   const { speedUnit: unit, distUnit, videoMetrics: metrics } = settings
-  const source = useMemo<OverlaySource>(() => ({ track: tr, windDir, foil }), [tr, windDir, foil])
+  const source = useMemo<OverlaySource>(() => ({ track: tr, windDir }), [tr, windDir])
   const offered = useMemo(() => VIDEO_METRICS.filter((m) => m.available(source)), [source])
   // What was chosen on another session may not exist on this one (no heart rate, say).
   const shown = useMemo(() => metrics.filter((k) => offered.some((m) => m.key === k)), [metrics, offered])
@@ -262,7 +257,7 @@ function Player({
     d.setHours(hh, mm, ss, 0)
     shift(d.getTime())
   }
-  const toggleMetric = (k: LiveMetric) => {
+  const toggleMetric = (k: VideoMetric) => {
     update({ videoMetrics: metrics.includes(k) ? metrics.filter((x) => x !== k) : [...metrics, k] })
     setMade(null)
   }

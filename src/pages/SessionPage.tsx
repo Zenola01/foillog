@@ -635,7 +635,7 @@ export function SessionView({
           )}
           {videoOpened.current && (
             <div className={tab === 'video' ? '' : 'hidden'}>
-              <VideoTab tr={tr} windDir={wind.dir} foil={a.foil} visible={tab === 'video'} onTime={replay.setT} />
+              <VideoTab tr={tr} windDir={wind.dir} visible={tab === 'video'} onTime={replay.setT} />
             </div>
           )}
           {tab === 'bordi' && (

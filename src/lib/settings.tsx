@@ -6,6 +6,9 @@ import type { DistUnit, SpeedUnit } from './units'
 /** Numbers that can be shown live over the map while replaying several riders. */
 export type LiveMetric = 'spd' | 'vmg' | 'twa' | 'crs' | 'dist' | 'foil' | 'hr' | 'heel'
 
+/** Numbers that can be written over a video. */
+export type VideoMetric = Exclude<LiveMetric, 'foil'>
+
 export interface Settings {
   speedUnit: SpeedUnit
   distUnit: DistUnit
@@ -13,7 +16,7 @@ export interface Settings {
   riderName: string
   liveMetrics: LiveMetric[]
   /** The numbers written over a video. */
-  videoMetrics: LiveMetric[]
+  videoMetrics: VideoMetric[]
   /** Several riders on one map: whole tracks, or only the trail each one leaves. */
   trailMode: 'full' | 'tail'
   /** Share of the upwind and downwind legs, best first, behind the "best legs" averages (1 = all). */

@@ -25,8 +25,6 @@ export interface OverlaySource {
   track: Track
   /** Direction the wind blows from (deg), when known. */
   windDir: number | null
-  /** Per point: on the foil or not. */
-  foil: Uint8Array | null
 }
 
 export interface OverlayValues {
@@ -40,7 +38,6 @@ export interface OverlayValues {
   crs: number
   /** Distance sailed so far (m). */
   dist: number
-  foil: boolean | null
   /** Heart rate (bpm), when there is a reading. */
   hr: number | null
   /** Heel to either side (deg), when the device measures it. */
@@ -78,7 +75,7 @@ function heelAround(tr: Track, i: number, ms: number): number | null {
 }
 
 /** The numbers at a moment of the track, between its points; null where the track has no data. */
-export function valuesAt({ track: tr, windDir, foil }: OverlaySource, ms: number): OverlayValues | null {
+export function valuesAt({ track: tr, windDir }: OverlaySource, ms: number): OverlayValues | null {
   const { t, spd, crs, gap, dist } = tr
   const n = t.length
   if (!(ms >= t[0] && ms <= t[n - 1])) return null
@@ -95,7 +92,6 @@ export function valuesAt({ track: tr, windDir, foil }: OverlaySource, ms: number
     vmg: twa == null ? null : sog * Math.cos(twa * RAD),
     crs: norm360(course),
     dist: dist[i] + f * (dist[j] - dist[i]),
-    foil: foil ? foil[i] === 1 : null,
     hr: heartRateAt(tr.hr, i, j, f),
     heel: heelAround(tr, i, ms),
   }

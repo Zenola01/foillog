@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { VideoMetric } from '../src/lib/settings'
 import type { Track } from '../src/lib/types'
 import { exportSize } from '../src/lib/videoFile'
 import { overlayValuesAt, parseCreationDate, valuesAt as readValues, videoInSession, videoStart, WHOLE_SECOND_SHIFT_MS } from '../src/lib/videoData'
@@ -26,7 +27,7 @@ function track(points: [number, number, number][], gapAt: number[] = []): Track 
   }
 }
 
-const valuesAt = (track: Track, windDir: number | null, ms: number) => readValues({ track, windDir, foil: null }, ms)
+const valuesAt = (track: Track, windDir: number | null, ms: number) => readValues({ track, windDir }, ms)
 
 describe('numbers at a moment of the video', () => {
   it('reads between the points of the track', () => {
@@ -71,7 +72,7 @@ describe('numbers at a moment of the video', () => {
 
   it('changes five times a second', () => {
     const tr = track([[0, 8, 0], [1, 10, 0]])
-    const source = { track: tr, windDir: 90, foil: null }
+    const source = { track: tr, windDir: 90 }
     expect(overlayValuesAt(source, T0 + 410)!.sog).toBeCloseTo(8.8)
     expect(overlayValuesAt(source, T0 + 590)!.sog).toBeCloseTo(8.8)
     expect(overlayValuesAt(source, T0 + 610)!.sog).toBeCloseTo(9.2)
@@ -89,14 +90,11 @@ describe('other numbers a video can show', () => {
     expect(valuesAt(tr, 90, T0)!.hr).toBeNull()
   })
 
-  it('reads course, distance and foil, with the course across north', () => {
+  it('reads course and distance, with the course across north', () => {
     const withDist = { ...tr, dist: Float64Array.from([0, 8, 16, 24]) }
-    const v = readValues({ track: withDist, windDir: null, foil: Uint8Array.from([0, 1, 1, 1]) }, T0 + 500)!
+    const v = valuesAt(withDist, null, T0 + 500)!
     expect(v.crs).toBeCloseTo(0)
     expect(v.dist).toBeCloseTo(4)
-    expect(v.foil).toBe(false)
-    expect(readValues({ track: withDist, windDir: null, foil: Uint8Array.from([0, 1, 1, 1]) }, T0 + 1000)!.foil).toBe(true)
-    expect(valuesAt(tr, 90, T0)!.foil).toBeNull()
   })
 
   it('steadies the heel over a second and reads it on either side', () => {
@@ -109,7 +107,7 @@ describe('other numbers a video can show', () => {
 })
 
 describe('the numbers on the video', () => {
-  const v = { sog: 10, twa: -135, vmg: -7, crs: 45, dist: 12_345, foil: true, hr: 148.4, heel: 21.6 }
+  const v = { sog: 10, twa: -135, vmg: -7, crs: 45, dist: 12_345, hr: 148.4, heel: 21.6 }
 
   it('writes what was chosen, always in the same order', () => {
     const cells = overlayCells(v, ['hr', 'twa', 'spd'], 'kn', 'km')
@@ -125,7 +123,6 @@ describe('the numbers on the video', () => {
     expect(overlayCells({ ...v, vmg: 7 }, ['vmg'], 'kn', 'km')[0].label).toBe('VMG ↑')
     expect(all.find((c) => c.label === 'ROTTA')).toEqual({ label: 'ROTTA', value: '45°', note: 'NE' })
     expect(all.find((c) => c.label === 'DISTANZA')).toEqual({ label: 'DISTANZA', value: '12,3', note: 'km' })
-    expect(all.find((c) => c.label === 'FOIL')?.value).toBe('sì')
     expect(all.find((c) => c.label === 'SBAND.')?.value).toBe('22°')
   })
 
@@ -137,16 +134,21 @@ describe('the numbers on the video', () => {
   })
 
   it('keeps up to four on a row, then two rows', () => {
-    expect([1, 2, 3, 4, 5, 6, 7, 8].map(overlayColumns)).toEqual([1, 2, 3, 4, 3, 3, 4, 4])
+    expect([1, 2, 3, 4, 5, 6, 7].map(overlayColumns)).toEqual([1, 2, 3, 4, 3, 3, 4])
   })
 
   it('offers only what the session has', () => {
-    const offered = (track: Track, windDir: number | null) => VIDEO_METRICS.filter((m) => m.available({ track, windDir, foil: new Uint8Array(0) })).map((m) => m.key)
+    const offered = (track: Track, windDir: number | null) => VIDEO_METRICS.filter((m) => m.available({ track, windDir })).map((m) => m.key)
     const tr = track([[0, 8, 0], [1, 8, 0]])
-    expect(offered(tr, null)).toEqual(['spd', 'crs', 'dist', 'foil'])
-    expect(offered(tr, 90)).toEqual(['spd', 'vmg', 'twa', 'crs', 'dist', 'foil'])
+    expect(offered(tr, null)).toEqual(['spd', 'crs', 'dist'])
+    expect(offered(tr, 90)).toEqual(['spd', 'vmg', 'twa', 'crs', 'dist'])
     expect(offered({ ...tr, hr: Float32Array.from([0, 0]) }, 90)).not.toContain('hr')
-    expect(offered({ ...tr, hr: Float32Array.from([130, 131]), roll: Float32Array.from([1, 2]) }, 90)).toEqual(['spd', 'vmg', 'twa', 'hr', 'crs', 'dist', 'foil', 'heel'])
+    expect(offered({ ...tr, hr: Float32Array.from([130, 131]), roll: Float32Array.from([1, 2]) }, 90)).toEqual(['spd', 'vmg', 'twa', 'hr', 'crs', 'dist', 'heel'])
+  })
+
+  it('leaves out «in foil» even if an earlier choice had it', () => {
+    const saved = ['spd', 'foil'] as VideoMetric[]
+    expect(overlayCells(v, saved, 'kn', 'km').map((c) => c.label)).toEqual(['SOG'])
   })
 })
 

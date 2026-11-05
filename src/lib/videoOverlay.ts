@@ -1,5 +1,5 @@
 import { hasHeartRate } from './analysis/series'
-import type { LiveMetric } from './settings'
+import type { VideoMetric } from './settings'
 import { compass, fmtDist, fmtNum, fmtSpeed, SPEED_SHORT, type DistUnit, type SpeedUnit } from './units'
 import type { OverlaySource, OverlayValues } from './videoData'
 
@@ -9,14 +9,13 @@ type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif'
 
 /** The numbers a video can show, in the order they are drawn. */
-export const VIDEO_METRICS: { key: LiveMetric; label: string; available: (s: OverlaySource) => boolean }[] = [
+export const VIDEO_METRICS: { key: VideoMetric; label: string; available: (s: OverlaySource) => boolean }[] = [
   { key: 'spd', label: 'Velocità', available: () => true },
   { key: 'vmg', label: 'VMG', available: (s) => s.windDir != null },
   { key: 'twa', label: 'Angolo al vento', available: (s) => s.windDir != null },
   { key: 'hr', label: 'Battito', available: (s) => hasHeartRate(s.track) },
   { key: 'crs', label: 'Rotta', available: () => true },
   { key: 'dist', label: 'Distanza', available: () => true },
-  { key: 'foil', label: 'In foil', available: (s) => s.foil != null },
   { key: 'heel', label: 'Sbandamento', available: (s) => s.track.roll != null },
 ]
 
@@ -28,9 +27,9 @@ export interface OverlayCell {
 }
 
 /** The chosen numbers as text, in the fixed order of VIDEO_METRICS. */
-export function overlayCells(v: OverlayValues | null, metrics: LiveMetric[], unit: SpeedUnit, distUnit: DistUnit): OverlayCell[] {
+export function overlayCells(v: OverlayValues | null, metrics: VideoMetric[], unit: SpeedUnit, distUnit: DistUnit): OverlayCell[] {
   const u = SPEED_SHORT[unit]
-  const cell = (key: LiveMetric): OverlayCell => {
+  const cell = (key: VideoMetric): OverlayCell => {
     switch (key) {
       case 'spd':
         return { label: 'SOG', value: v ? fmtSpeed(v.sog, unit) : '–', note: v ? u : '' }
@@ -49,8 +48,6 @@ export function overlayCells(v: OverlayValues | null, metrics: LiveMetric[], uni
         const [value, note = ''] = fmtDist(v.dist, distUnit).split(' ')
         return { label: 'DISTANZA', value, note }
       }
-      case 'foil':
-        return { label: 'FOIL', value: v?.foil == null ? '–' : v.foil ? 'sì' : 'no', note: '' }
       case 'heel':
         return { label: 'SBAND.', value: v?.heel == null ? '–' : `${fmtNum(v.heel, 0)}°`, note: '' }
     }
