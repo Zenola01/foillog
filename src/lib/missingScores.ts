@@ -1,13 +1,12 @@
 import { createStore, get, set, type UseStore } from 'idb-keyval'
 import { useEffect, useState } from 'react'
+import { lacksPerf, perfKey } from './analysis/scores'
 import { loadTrack, updateSession, type CloudSession } from './cloud'
 import { analyzeInWorker } from './engine'
 import { useLibrary } from './library'
 import { useSettings } from './settings'
 import { getSessionData, type SessionRecord } from './store'
 import type { SessionPerf, SessionSummary } from './types'
-
-const lacksScores = (s: SessionSummary) => s.perf === undefined && s.windDir != null
 
 /** Each session gets one try per start of the app: one that fails waits for the next start. */
 const tried = new Set<string>()
@@ -20,8 +19,8 @@ export function useMissingScores(rows: CloudSession[] | null, local: SessionReco
   const { foilOnKn } = useSettings().settings
   const { updateSession: updateLocal, mirror } = useLibrary()
   useEffect(() => {
-    const crew = (rows ?? []).filter((r) => lacksScores(r.summary) && !tried.has(r.id))
-    const device = local.filter((s) => lacksScores(s.summary) && !tried.has(s.id))
+    const crew = (rows ?? []).filter((r) => lacksPerf(r.summary) && !tried.has(r.id))
+    const device = local.filter((s) => lacksPerf(s.summary) && !tried.has(s.id))
     if (!crew.length && !device.length) return
     for (const s of [...crew, ...device]) tried.add(s.id)
     void (async () => {
@@ -59,7 +58,7 @@ const asked = new Map<string, Promise<SessionPerf | null>>()
 /** Worked out from the track the first time, then kept on this device. */
 function othersPerf(r: CloudSession, foilOnKn: number): Promise<SessionPerf | null> {
   // Correcting the wind changes the scores, so what they came from is part of the key.
-  const key = [r.id, r.wind_override, r.model_wind?.dir].join('|')
+  const key = perfKey(r.id, r.wind_override, r.model_wind?.dir)
   const known = asked.get(key)
   if (known) return known
   const work = (async () => {
@@ -95,7 +94,7 @@ export function useOthersPerf(rows: CloudSession[] | null, me: string | undefine
     let alive = true
     void (async () => {
       for (const r of rows ?? []) {
-        if (r.user_id === me || !lacksScores(r.summary)) continue
+        if (r.user_id === me || !lacksPerf(r.summary)) continue
         try {
           const perf = await othersPerf(r, foilOnKn)
           if (!alive) return

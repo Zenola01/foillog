@@ -18,7 +18,7 @@ export function ScoreCard({ perf, windSpeed }: { perf: SessionPerf | null | unde
       <dl className="flex items-center gap-3">
         <div className="flex shrink-0 flex-col-reverse border-r border-line pr-3 text-center">
           <dt className="mt-1 text-xs text-ink-2">Overall</dt>
-          <dd className="text-[34px] leading-none font-semibold tabular">{s.overall}</dd>
+          <dd className="text-[34px] leading-none font-semibold tabular">{s.overall ?? '–'}</dd>
         </div>
         <div className="grid min-w-0 flex-1 grid-cols-4 gap-1 text-center">
           {parts.map((p) => (

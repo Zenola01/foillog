@@ -189,7 +189,7 @@ export interface GearItem {
 /** What a session keeps of each piece of gear, so it still reads right after the list changes. */
 export type SessionGear = Pick<GearItem, 'id' | 'kind' | 'name' | 'size'>
 
-/** What a course is scored on: the averages of its best legs. */
+/** What a course is scored on: the averages of all the legs really sailed that way. */
 export interface CoursePerf {
   /** Made good (m/s), positive both ways. */
   vmg: number
@@ -197,6 +197,8 @@ export interface CoursePerf {
   sog: number
   /** |TWA| (deg). */
   twa: number
+  /** Time spent on those legs. */
+  seconds: number
 }
 
 /** What a kind of manoeuvre is scored on. */
@@ -206,8 +208,10 @@ export interface TurnPerf {
   minSog: number
 }
 
-/** What a session's scores are worked out from; null where there is too little to score. */
+/** What a session's scores are worked out from; null where it was not sailed at all. */
 export interface SessionPerf {
+  /** How these numbers were worked out: sessions with an older way get analysed again. */
+  v: number
   up: CoursePerf | null
   down: CoursePerf | null
   tack: TurnPerf | null
@@ -252,7 +256,7 @@ export interface SessionSummary {
   polar?: PolarPoint[] | null
   /**
    * What the scores come from, kept instead of the scores so that their scale can change without
-   * analysing anything again. Missing on sessions analysed before it was kept; null without a wind direction.
+   * analysing anything again. Missing or older on sessions analysed before; null without a wind direction.
    */
   perf?: SessionPerf | null
   /** [lat, lon] */

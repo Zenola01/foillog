@@ -16,6 +16,7 @@ import { VideoTab } from '../components/VideoTab'
 import { WindDial } from '../components/WindDial'
 import { rangeStats } from '../lib/analysis/analyze'
 import { bestLegs } from '../lib/analysis/bestLegs'
+import { lacksPerf } from '../lib/analysis/scores'
 import { courseOf, DOWNWIND_MIN, UPWIND_MAX } from '../lib/analysis/pointsOfSail'
 import { hasHeartRate, indexAtTime } from '../lib/analysis/series'
 import { useAuth } from '../lib/auth'
@@ -125,7 +126,7 @@ function LocalSession({ id }: { id: string }) {
           s.tacks !== a.summary.tacks ||
           s.foilTime !== a.summary.foilTime ||
           s.polar === undefined ||
-          s.perf === undefined
+          lacksPerf(s)
         if (changed) void updateSession(r.id, { summary: a.summary, foilOnKn: settings.foilOnKn })
       })
       .catch((e: Error) => alive && setError(e.message))

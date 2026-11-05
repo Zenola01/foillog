@@ -5,6 +5,7 @@ import { FileDrop } from '../components/FileDrop'
 import { IconShare, IconX } from '../components/icons'
 import { ScoredThumb } from '../components/Scores'
 import { btnGhost, btnPrimary, btnSecondary, card, Segmented } from '../components/ui'
+import { lacksPerf } from '../lib/analysis/scores'
 import { useAuth } from '../lib/auth'
 import { feed, myCrews, type CloudSession } from '../lib/cloud'
 import { byDay } from '../lib/crewStats'
@@ -115,7 +116,7 @@ export default function HomePage() {
     const entries: Entry[] = [
       ...(rows ?? []).map((r) => ({
         at: Date.parse(r.started_at),
-        row: r.summary.perf === undefined && othersPerf.has(r.id) ? { ...r, summary: { ...r.summary, perf: othersPerf.get(r.id) } } : r,
+        row: lacksPerf(r.summary) && othersPerf.has(r.id) ? { ...r, summary: { ...r.summary, perf: othersPerf.get(r.id) } } : r,
       })),
       ...(view === 'mine' ? myLocal : local).map((rec) => ({ at: rec.summary.start, rec })),
     ]

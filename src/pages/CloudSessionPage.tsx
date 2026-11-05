@@ -4,6 +4,7 @@ import { useConfirm } from '../components/Confirm'
 import { KudosButton } from '../components/FeedCard'
 import { Avatar, RequireAuth } from '../components/RequireAuth'
 import { btnGhost, btnPrimary, btnSecondary, card, Segmented } from '../components/ui'
+import { lacksPerf } from '../lib/analysis/scores'
 import { useAuth } from '../lib/auth'
 import {
   addComment,
@@ -98,7 +99,7 @@ function CloudSessionLoader({ id }: { id: string }) {
         setA(res)
         const s = row.summary
         // The owner's copy keeps the stored numbers in step with the analysis (wind, threshold).
-        if (owner && (s.windDir !== res.summary.windDir || s.jibes !== res.summary.jibes || s.foilTime !== res.summary.foilTime || s.polar === undefined || s.perf === undefined)) {
+        if (owner && (s.windDir !== res.summary.windDir || s.jibes !== res.summary.jibes || s.foilTime !== res.summary.foilTime || s.polar === undefined || lacksPerf(s))) {
           void updateSession(row.id, { summary: res.summary }).catch(() => {})
         }
       })
