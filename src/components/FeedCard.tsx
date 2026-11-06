@@ -26,7 +26,7 @@ export function KudosButton({ s, userId }: { s: Pick<CloudSession, 'id' | 'kudos
           setK(before)
         }
       }}
-      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 font-display text-[15px] font-semibold transition ${
+      className={`inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 font-display text-[16px] font-semibold transition ${
         mine ? 'border-[var(--accent-text)] text-ink' : 'border-line text-ink-2 hover:bg-surface-2'
       }`}
     >
@@ -67,17 +67,17 @@ export function FeedCard({
             {name}
           </Link>
           <span className="font-medium text-ink-2">
-            {' · '}
+            {' '}
             {fmtTime(sum.start)}
             {s.spot && (
               <>
-                {' · '}
+                {', '}
                 <Link to={`/spot/${s.spot.id}`} className="underline-offset-2 hover:underline">
                   {s.spot.name}
                 </Link>
               </>
             )}
-            {s.visibility === 'private' && ' · solo per te'}
+            {s.visibility === 'private' && ', solo per te'}
           </span>
         </p>
         {onToggle && (
@@ -101,7 +101,7 @@ export function FeedCard({
         <KudosButton s={s} userId={userId} />
         <Link
           to={`/c/${s.id}`}
-          className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-0.5 font-display text-[15px] font-semibold text-ink-2 hover:bg-surface-2"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-line px-3 font-display text-[16px] font-semibold text-ink-2 hover:bg-surface-2"
           aria-label={`${comments} commenti`}
         >
           <IconComment width={16} height={16} />

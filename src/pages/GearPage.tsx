@@ -70,7 +70,7 @@ export default function GearPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Attrezzatura</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold">Attrezzatura</h1>
         <p className="text-sm text-ink-2">
           Ali, tavole e foil: in ogni uscita scegli cosa hai usato.{' '}
           {inAccount ? 'La lista è nel tuo account, su tutti i tuoi dispositivi.' : 'La lista resta su questo dispositivo finché non entri nella crew.'}
@@ -112,7 +112,7 @@ export default function GearPage() {
 function GearGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className={card} aria-label={title}>
-      <h2 className="px-3.5 pt-3 font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">{title}</h2>
+      <h2 className="px-3.5 pt-3 font-display text-[16px] leading-tight font-semibold">{title}</h2>
       <ul className="divide-y divide-[var(--border)]">{children}</ul>
     </section>
   )
@@ -165,9 +165,9 @@ function GearRow({
         <p className="font-medium">{gearLabel(g)}</p>
         <p className="text-sm text-ink-2">
           {use
-            ? `${use.sessions === 1 ? '1 uscita' : `${use.sessions} uscite`} · ${fmtDuration(use.foilTime)} in foil${
-                use.best10s != null ? ` · max 10 s ${fmtSpeed(use.best10s, unit)} ${SPEED_SHORT[unit]}` : ''
-              } · ultima il ${fmtShortDate(use.last)}`
+            ? `${use.sessions === 1 ? '1 uscita' : `${use.sessions} uscite`}, ${fmtDuration(use.foilTime)} in foil${
+                use.best10s != null ? `, max 10 s ${fmtSpeed(use.best10s, unit)} ${SPEED_SHORT[unit]}` : ''
+              }, ultima il ${fmtShortDate(use.last)}`
             : 'Non ancora scelta in un’uscita'}
         </p>
       </div>

@@ -33,7 +33,7 @@ export function SessionGear({
       <div className={`${card} flex items-start gap-3 p-3.5`}>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] text-ink-2">Attrezzatura</p>
-          {shown.length ? <p className="font-display text-[19px] leading-tight font-semibold">{shown.map(gearLabel).join(' · ')}</p> : <p className="text-sm text-ink-2">Non indicata</p>}
+          {shown.length ? <p className="font-display text-[19px] leading-tight font-semibold">{shown.map(gearLabel).join(', ')}</p> : <p className="text-sm text-ink-2">Non indicata</p>}
         </div>
         {editable && (
           <button type="button" className={btnGhost} onClick={() => setDraft(shown.map((g) => g.id))}>

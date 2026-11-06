@@ -90,14 +90,14 @@ function Records({ userId }: { userId?: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">{me ? 'I tuoi record' : `Record di ${name}`}</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold">{me ? 'I tuoi record' : `Record di ${name}`}</h1>
         <p className="text-sm text-ink-2">
           Dalle uscite condivise nella crew{me ? '' : ' che puoi vedere'}.
           {me && (
             <>
               {' '}
               <Link to="/attrezzatura" className="font-medium text-accent">
-                La tua attrezzatura →
+                La tua attrezzatura
               </Link>
             </>
           )}
@@ -171,7 +171,7 @@ function Records({ userId }: { userId?: string }) {
           />
           {shown.length > 1 && (
             <div className={`${card} p-3`}>
-              <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Progressi</p>
+              <p className="font-display text-[16px] leading-tight font-semibold">Progressi</p>
               <p className="text-xs text-ink-2">Velocità massima su 10 secondi di ogni uscita ({u}).</p>
               <EChart option={progress} height={220} label="Velocità massima su 10 secondi nelle varie uscite" />
             </div>
@@ -239,7 +239,7 @@ function WindRow({ row, unit, onSaved }: { row: CloudSession; unit: SpeedUnit; o
       >
         <Link to={`/c/${row.id}`} className="min-w-0 flex-1">
           <span className="block truncate font-medium">
-            {fmtShortDate(Date.parse(row.started_at))} · {row.title}
+            {fmtShortDate(Date.parse(row.started_at))}, {row.title}
           </span>
           {model != null && (
             <span className="block text-xs text-ink-2">
@@ -313,7 +313,7 @@ function SessionList({ rows, settings, showName }: { rows: CloudSession[]; setti
             <SessionLine
               s={r}
               windSpeed={r.wind_speed}
-              about={showName ? `${r.profile?.display_name ?? 'Rider'} · ${fmtShortDate(Date.parse(r.started_at))}` : fmtShortDate(Date.parse(r.started_at))}
+              about={showName ? `${r.profile?.display_name ?? 'Rider'}, ${fmtShortDate(Date.parse(r.started_at))}` : fmtShortDate(Date.parse(r.started_at))}
               settings={settings}
             />
           </Link>
@@ -365,7 +365,7 @@ function SpotView({ id }: { id: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">{name}</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold">{name}</h1>
         <p className="text-sm text-ink-2">{rows.length} uscite della crew in questo spot.</p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -406,7 +406,7 @@ function SpotView({ id }: { id: string }) {
                   <Link to={`/rider/${r.userId}`} className="font-medium">
                     {nameOf(r.userId)}
                   </Link>
-                  <span className="text-xs text-ink-2"> · {r.sessions} uscite</span>
+                  <span className="text-xs text-ink-2">, {r.sessions} uscite</span>
                 </td>
                 <td className="px-2 py-2 text-right font-semibold tabular">{fmtSpeed(r.best!.value, settings.speedUnit)}</td>
                 <td className="px-3 py-2 text-right">

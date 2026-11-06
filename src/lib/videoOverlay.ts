@@ -41,16 +41,16 @@ export function overlayCells(v: OverlayValues | null, metrics: VideoMetric[], un
       case 'twa':
         return v?.twa == null ? { label: 'TWA', value: '–', note: '' } : { label: 'TWA', value: `${fmtNum(Math.abs(v.twa), 0)}°`, note: v.twa >= 0 ? 'dx' : 'sx' }
       case 'hr':
-        return v?.hr == null ? { label: 'BATTITO', value: '–', note: '' } : { label: 'BATTITO', value: fmtNum(v.hr, 0), note: 'bpm' }
+        return v?.hr == null ? { label: 'Battito', value: '–', note: '' } : { label: 'Battito', value: fmtNum(v.hr, 0), note: 'bpm' }
       case 'crs':
-        return v ? { label: 'ROTTA', value: `${fmtNum(v.crs, 0)}°`, note: compass(v.crs) } : { label: 'ROTTA', value: '–', note: '' }
+        return v ? { label: 'Rotta', value: `${fmtNum(v.crs, 0)}°`, note: compass(v.crs) } : { label: 'Rotta', value: '–', note: '' }
       case 'dist': {
-        if (!v) return { label: 'DISTANZA', value: '–', note: '' }
+        if (!v) return { label: 'Distanza', value: '–', note: '' }
         const [value, note = ''] = fmtDist(v.dist, distUnit).split(' ')
-        return { label: 'DISTANZA', value, note }
+        return { label: 'Distanza', value, note }
       }
       case 'heel':
-        return { label: 'SBAND.', value: v?.heel == null ? '–' : `${fmtNum(v.heel, 0)}°`, note: '' }
+        return { label: 'Sbandamento', value: v?.heel == null ? '–' : `${fmtNum(v.heel, 0)}°`, note: '' }
     }
   }
   return VIDEO_METRICS.filter((m) => metrics.includes(m.key)).map((m) => cell(m.key))

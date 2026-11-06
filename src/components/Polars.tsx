@@ -304,7 +304,7 @@ export function BestPolarsCard({
   return (
     <div className={`${card} space-y-3 p-3`}>
       <div>
-        <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Polari migliori</p>
+        <p className="font-display text-[16px] leading-tight font-semibold">Polari migliori</p>
         <p className="text-xs text-ink-2">
           Per ogni angolo dal vento, la velocità migliore in foil (90° percentile, {u}) tra le uscite con lo stesso vento. Vento dall’alto.
         </p>

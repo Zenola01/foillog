@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react'
 
 export const btnPrimary =
-  'inline-flex items-center justify-center gap-2 rounded-md bg-accent-btn px-4 py-2 font-display text-[17px] font-semibold tracking-wide text-on-accent uppercase transition active:opacity-80 disabled:opacity-50'
+  'inline-flex items-center justify-center gap-2 rounded-md bg-accent-btn px-4 py-2 font-display text-[17px] font-semibold text-on-accent transition active:opacity-80 disabled:opacity-50'
 export const btnSecondary =
-  'inline-flex items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 py-2 font-display text-[17px] font-semibold tracking-wide text-ink uppercase transition hover:bg-surface-2 active:opacity-80 disabled:opacity-50'
+  'inline-flex items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 py-2 font-display text-[17px] font-semibold text-ink transition hover:bg-surface-2 active:opacity-80 disabled:opacity-50'
 export const btnGhost =
-  'inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 font-display text-[16px] font-semibold tracking-wide text-accent transition hover:bg-surface-2'
+  'inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 font-display text-[16px] font-semibold text-accent transition hover:bg-surface-2'
 export const card = 'rounded-lg border border-line bg-surface'
-/** A small heading in the instrument's voice: «BOLINA», «GIO 29 OTT». */
-export const instrumentLabel = 'font-display text-[14px] font-semibold tracking-wider text-ink-2 uppercase'
+/** A small heading in the instrument's voice: «Bolina», «Gio 29 ott». */
+export const instrumentLabel = 'font-display text-[15px] font-semibold text-ink-2 first-letter:uppercase'
 
 export function StatTile({
   label,
@@ -27,7 +27,7 @@ export function StatTile({
 }) {
   const body = (
     <>
-      <p className="font-display text-[13px] leading-tight font-semibold tracking-wider text-ink-2 uppercase">{label}</p>
+      <p className="font-display text-[15px] leading-tight font-semibold text-ink-2">{label}</p>
       <p className="mt-1 font-display text-[28px] leading-none font-semibold tabular">
         {value}
         {unit && <span className="ml-1 text-[15px] font-medium text-ink-2">{unit}</span>}
@@ -69,7 +69,7 @@ export function Segmented<T extends string | number>({
           role="radio"
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
-          className={`border-b-2 py-1 font-display font-semibold tracking-wider whitespace-nowrap uppercase transition ${compact ? 'text-[14px]' : 'text-[16px]'} ${
+          className={`border-b-2 font-display font-semibold whitespace-nowrap transition ${compact ? 'py-1.5 text-[15px]' : 'py-2 text-[17px]'} ${
             o.value === value ? 'border-[var(--accent-text)] text-accent' : 'border-transparent text-ink-2 hover:text-ink'
           }`}
         >

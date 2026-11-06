@@ -39,10 +39,10 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Impostazioni</h1>
+      <h1 className="font-display text-[30px] leading-none font-bold">Impostazioni</h1>
 
       <section className={`${card} space-y-3 p-4`}>
-        <h2 className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Account e crew</h2>
+        <h2 className="font-display text-[16px] leading-tight font-semibold">Account e crew</h2>
         {user ? (
           <>
             <label className="block text-sm">
@@ -84,9 +84,6 @@ export default function SettingsPage() {
           <span className="block text-base font-semibold">Attrezzatura</span>
           <span className="block text-sm text-ink-2">Ali, tavole e foil da scegliere in ogni uscita</span>
         </span>
-        <span aria-hidden className="text-accent">
-          →
-        </span>
       </Link>
 
       <section className={`${card} divide-y divide-[var(--border)]`}>
@@ -104,7 +101,7 @@ export default function SettingsPage() {
           </label>
         )}
         <div className="space-y-2 p-4">
-          <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità</p>
+          <p className="font-display text-[16px] leading-tight font-semibold">Velocità</p>
           <Segmented
             label="Unità di velocità"
             value={settings.speedUnit}
@@ -117,7 +114,7 @@ export default function SettingsPage() {
           />
         </div>
         <div className="space-y-2 p-4">
-          <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Distanze</p>
+          <p className="font-display text-[16px] leading-tight font-semibold">Distanze</p>
           <Segmented
             label="Unità di distanza"
             value={settings.distUnit}
@@ -129,7 +126,7 @@ export default function SettingsPage() {
           />
         </div>
         <div className="space-y-2 p-4">
-          <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">
+          <p className="font-display text-[16px] leading-tight font-semibold">
             Soglia del foil: {fmtNum(thrInUnit, settings.speedUnit === 'ms' ? 1 : 0)} {u}
           </p>
           <p className="text-sm text-ink-2">
@@ -147,13 +144,13 @@ export default function SettingsPage() {
           />
           {busy && <p className="text-sm text-ink-2">Ricalcolo le uscite…</p>}
           <p className="text-xs text-ink-2">
-            Equivale a {fmtNum(settings.foilOnKn, 1)} nodi · {fmtNum(toUnit(fromUnit(settings.foilOnKn, 'kn'), 'kmh'), 0)} km/h.
+            Equivale a {fmtNum(settings.foilOnKn, 1)} nodi, {fmtNum(toUnit(fromUnit(settings.foilOnKn, 'kn'), 'kmh'), 0)} km/h.
           </p>
         </div>
       </section>
 
       <section className={`${card} space-y-4 p-4 text-sm`}>
-        <h2 className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Come caricare i file</h2>
+        <h2 className="font-display text-[16px] leading-tight font-semibold">Come caricare i file</h2>
         <div className="space-y-1.5">
           <p className="font-display text-[19px] leading-tight font-semibold">Dal Vakaros</p>
           <p className="text-ink-2">
@@ -211,7 +208,7 @@ export default function SettingsPage() {
       </section>
 
       <section className={`${card} space-y-3 p-4 text-sm`}>
-        <h2 className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">I tuoi dati</h2>
+        <h2 className="font-display text-[16px] leading-tight font-semibold">I tuoi dati</h2>
         <p className="text-ink-2">
           Su questo dispositivo ci sono {sessions?.length ?? 0} uscite. Quelle condivise con la crew stanno anche sul server della crew
           (Supabase) e le vedono solo i membri delle tue crew. Per stimare il vento, FoilLog invia a Open-Meteo la zona (arrotondata a circa

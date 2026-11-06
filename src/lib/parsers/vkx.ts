@@ -101,7 +101,7 @@ export function parseVkx(buf: ArrayBuffer): ParsedFile {
   if (!hasOrientation) warnings.push('Il file non contiene dati di orientamento')
   return {
     format: 'vkx',
-    device: `Vakaros${rate ? ` · ${rate} Hz` : ''}`,
+    device: `Vakaros${rate ? ` ${rate} Hz` : ''}`,
     track: b.build(),
     wind:
       wt.length > 0

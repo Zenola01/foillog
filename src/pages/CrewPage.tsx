@@ -47,7 +47,7 @@ function Crews() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Crew</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold">Crew</h1>
         <p className="text-sm text-ink-2">Nella crew vedete le uscite gli uni degli altri. Si entra solo con il link d'invito.</p>
       </div>
       {error && <p className="rounded-lg bg-surface-2 px-4 py-3 text-sm text-critical">{error}</p>}
@@ -58,7 +58,7 @@ function Crews() {
         return (
           <section key={c.id} className={`${card} space-y-3 p-4`}>
             <div className="flex items-start gap-2">
-              <h2 className="min-w-0 flex-1 font-display text-[24px] leading-tight font-bold tracking-wide">{c.name}</h2>
+              <h2 className="min-w-0 flex-1 font-display text-[24px] leading-tight font-bold">{c.name}</h2>
               <button
                 type="button"
                 className={`${btnGhost} text-critical`}
@@ -157,7 +157,7 @@ function Crews() {
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             maxLength={12}
             placeholder="Es. 4F2A9C1B"
-            className="tabular min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-base uppercase"
+            className="tabular min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-base"
           />
           <button type="submit" className={btnSecondary} disabled={busy || !code.trim()}>
             Entra

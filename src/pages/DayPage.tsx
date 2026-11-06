@@ -56,12 +56,12 @@ function Day() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">La giornata</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold">La giornata</h1>
         <p className="text-sm text-ink-2 first-letter:uppercase">{fmtDate(from.getTime())}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={btnGhost} onClick={() => navigate(`/giornata/${shiftDay(day, -1)}`)} aria-label="Giorno prima">
-          ← Prima
+          Prima
         </button>
         <input
           type="date"
@@ -72,7 +72,7 @@ function Day() {
           className="rounded-lg border border-line bg-surface px-2 py-1.5 text-sm"
         />
         <button type="button" className={btnGhost} onClick={() => navigate(`/giornata/${shiftDay(day, 1)}`)} aria-label="Giorno dopo">
-          Dopo →
+          Dopo
         </button>
       </div>
 
@@ -283,7 +283,7 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
           </div>
           {tracks && loaded.length > 0 && (
             <div className={`${card} p-3`}>
-              <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità di tutti</p>
+              <p className="font-display text-[16px] leading-tight font-semibold">Velocità di tutti</p>
               <EChart option={speedOpt} height={280} label="Velocità dei rider durante la giornata" />
             </div>
           )}

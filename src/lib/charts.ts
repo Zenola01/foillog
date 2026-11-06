@@ -126,7 +126,7 @@ export function speedOption(p: {
         const i = index[ps[0]?.dataIndex ?? -1]
         if (i == null || i < 0) return ''
         const twa = a.twa ? Math.round(a.twa[i]) : null
-        const side = twa == null ? '' : ` · ${Math.abs(twa)}° ${twa >= 0 ? 'dritta' : 'sinistra'}`
+        const side = twa == null ? '' : `, ${Math.abs(twa)}° ${twa >= 0 ? 'dritta' : 'sinistra'}`
         return `<b style="font-size:15px">${fmtNum(toUnit(tr.spd[i], unit))} ${u}</b> <span style="color:${c.ink2}">${fmtTimeSec(tr.t[i])}</span><br><span style="color:${c.ink2}">${a.foil[i] ? 'in foil' : 'non in foil'}${side}</span>`
       },
     },
@@ -369,7 +369,7 @@ export function polarOption(sessions: PolarLine[], unit: SpeedUnit, c: ThemeColo
       formatter: (p: { seriesName: string; color: string; data: { value: [number, number]; twa: number; note?: string } }) =>
         `${sessions.length > 1 ? lineKey(sessions.find((s) => s.name === p.seriesName)?.color ?? p.color) : ''}<b style="font-size:15px">${fmtNum(p.data.value[0])} ${u}</b><br><span style="color:${c.ink2}">${Math.abs(
           Math.round(p.data.twa),
-        )}° dal vento · mure a ${p.data.twa >= 0 ? 'dritta' : 'sinistra'}${sessions.length > 1 ? ` · ${esc(p.seriesName)}` : ''}${p.data.note ? ` · ${esc(p.data.note)}` : ''}</span>`,
+        )}° dal vento, mure a ${p.data.twa >= 0 ? 'dritta' : 'sinistra'}${sessions.length > 1 ? `, ${esc(p.seriesName)}` : ''}${p.data.note ? `, ${esc(p.data.note)}` : ''}</span>`,
     },
     series,
   }
@@ -412,7 +412,7 @@ export function maneuverOption(p: { lines: ManeuverLine[]; seconds: number; unit
       formatter: (ps: { seriesId?: string; value: [number, number | null] }[]) => {
         const q = ps.find((x) => x.seriesId === String(focus?.id))
         if (!q || q.value[1] == null) return ''
-        return `<b style="font-size:15px">${fmtNum(q.value[1], p.digits ?? 0)} ${esc(p.unit)}</b><br><span style="color:${c.ink2}">${q.value[0] > 0 ? '+' : ''}${fmtNum(q.value[0], 1)} s · ${esc(focus!.name)}</span>`
+        return `<b style="font-size:15px">${fmtNum(q.value[1], p.digits ?? 0)} ${esc(p.unit)}</b><br><span style="color:${c.ink2}">${q.value[0] > 0 ? '+' : ''}${fmtNum(q.value[0], 1)} s, ${esc(focus!.name)}</span>`
       },
     },
     series: lines

@@ -111,19 +111,19 @@ describe('the numbers on the video', () => {
 
   it('writes what was chosen, always in the same order', () => {
     const cells = overlayCells(v, ['hr', 'twa', 'spd'], 'kn', 'km')
-    expect(cells.map((c) => c.label)).toEqual(['SOG', 'TWA', 'BATTITO'])
+    expect(cells.map((c) => c.label)).toEqual(['SOG', 'TWA', 'Battito'])
     expect(cells[0]).toEqual({ label: 'SOG', value: '19,4', note: 'kn' })
     expect(cells[1]).toEqual({ label: 'TWA', value: '135°', note: 'sx' })
-    expect(cells[2]).toEqual({ label: 'BATTITO', value: '148', note: 'bpm' })
+    expect(cells[2]).toEqual({ label: 'Battito', value: '148', note: 'bpm' })
   })
 
   it('points the VMG up or down the wind, and writes the rest', () => {
     const all = overlayCells(v, VIDEO_METRICS.map((m) => m.key), 'kn', 'km')
     expect(all.find((c) => c.label.startsWith('VMG'))).toEqual({ label: 'VMG ↓', value: '13,6', note: 'kn' })
     expect(overlayCells({ ...v, vmg: 7 }, ['vmg'], 'kn', 'km')[0].label).toBe('VMG ↑')
-    expect(all.find((c) => c.label === 'ROTTA')).toEqual({ label: 'ROTTA', value: '45°', note: 'NE' })
-    expect(all.find((c) => c.label === 'DISTANZA')).toEqual({ label: 'DISTANZA', value: '12,3', note: 'km' })
-    expect(all.find((c) => c.label === 'SBAND.')?.value).toBe('22°')
+    expect(all.find((c) => c.label === 'Rotta')).toEqual({ label: 'Rotta', value: '45°', note: 'NE' })
+    expect(all.find((c) => c.label === 'Distanza')).toEqual({ label: 'Distanza', value: '12,3', note: 'km' })
+    expect(all.find((c) => c.label === 'Sbandamento')?.value).toBe('22°')
   })
 
   it('shows a dash for what is missing, and nothing at all when nothing is chosen', () => {

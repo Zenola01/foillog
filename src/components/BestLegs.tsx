@@ -75,7 +75,7 @@ export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Set
           <p className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
             <span className="font-semibold">{COURSE[course]}</span>
             <span className="text-xs text-ink-2">
-              {best ? `${best.legs} ${legsWord(best.legs)} su ${best.of} · ${fmtDuration(best.seconds)}` : `nessun ${legsWord(1)} in foil`}
+              {best ? `${best.legs} ${legsWord(best.legs)} su ${best.of}, ${fmtDuration(best.seconds)}` : `nessun ${legsWord(1)} in foil`}
             </span>
           </p>
           {best && course !== 'reach' && (
@@ -159,20 +159,20 @@ export function BestLegsCompare({
   if (stats.every((s) => !s.up && !s.down && !s.reach)) return null
   const count = (b: BestLegs | null) => (b ? `${b.legs}/${b.of}` : '–')
   const rows: Row[] = [
-    { label: 'Bolina · VMG', get: (s) => s.up?.vmg ?? null, fmt: sp, better: 'max' },
-    { label: 'Bolina · velocità', get: (s) => s.up?.speed ?? null, fmt: sp, better: 'max' },
-    { label: 'Bolina · angolo', get: (s) => s.up?.angle ?? null, fmt: deg },
-    { label: 'Poppa · VMG', get: (s) => s.down?.vmg ?? null, fmt: sp, better: 'max' },
-    { label: 'Poppa · velocità', get: (s) => s.down?.speed ?? null, fmt: sp, better: 'max' },
-    { label: 'Poppa · angolo', get: (s) => s.down?.angle ?? null, fmt: deg },
-    { label: 'Traverso · velocità', get: (s) => s.reach?.speed ?? null, fmt: sp, better: 'max' },
+    { label: 'Bolina, VMG', get: (s) => s.up?.vmg ?? null, fmt: sp, better: 'max' },
+    { label: 'Bolina, velocità', get: (s) => s.up?.speed ?? null, fmt: sp, better: 'max' },
+    { label: 'Bolina, angolo', get: (s) => s.up?.angle ?? null, fmt: deg },
+    { label: 'Poppa, VMG', get: (s) => s.down?.vmg ?? null, fmt: sp, better: 'max' },
+    { label: 'Poppa, velocità', get: (s) => s.down?.speed ?? null, fmt: sp, better: 'max' },
+    { label: 'Poppa, angolo', get: (s) => s.down?.angle ?? null, fmt: deg },
+    { label: 'Traverso, velocità', get: (s) => s.reach?.speed ?? null, fmt: sp, better: 'max' },
     { label: 'Tempo a traverso', get: (s) => s.reachAll?.seconds ?? null, fmt: (v) => fmtDuration(v) },
   ]
 
   return (
     <div className={`${card} overflow-x-auto`}>
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-3">
-        <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Bordi migliori a confronto ({u})</p>
+        <p className="font-display text-[16px] leading-tight font-semibold">Bordi migliori a confronto ({u})</p>
         <TopShareToggle />
       </div>
       <table className="mt-1 w-full text-sm">
@@ -208,10 +208,10 @@ export function BestLegsCompare({
             )
           })}
           <tr className="border-t border-line">
-            <td className="px-3 py-2 text-ink-2">Bordi bolina · poppa · traverso</td>
+            <td className="px-3 py-2 text-ink-2">Bordi bolina, poppa, traverso</td>
             {stats.map((s, k) => (
               <td key={k} className="px-2 py-2 text-right whitespace-nowrap tabular">
-                {count(s.up)} · {count(s.down)} · {count(s.reach)}
+                {count(s.up)} / {count(s.down)} / {count(s.reach)}
               </td>
             ))}
           </tr>

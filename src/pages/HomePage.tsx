@@ -42,7 +42,7 @@ function dayLabel(ms: number): string {
 /** The line under a title: the time, unless the title says it already (as the ones the app makes up do), and the rest. */
 function aboutLine(s: Pick<SessionRecord, 'title' | 'summary'>, ...rest: (string | false | undefined)[]): string {
   const time = fmtTime(s.summary.start)
-  return [!s.title.includes(time) && time, ...rest].filter(Boolean).join(' · ')
+  return [!s.title.includes(time) && time, ...rest].filter(Boolean).join(', ')
 }
 
 /** A session in the list: from the crew's project, or kept on this device only. */
@@ -177,7 +177,7 @@ export default function HomePage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Uscite</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold">Uscite</h1>
         <Segmented
           label="Quali uscite vedere"
           value={view}
@@ -200,7 +200,7 @@ export default function HomePage() {
 
       {latest && (
         <Link to={latest.e.row ? `/c/${latest.e.row.id}` : `/s/${latest.e.rec.id}`} className="block">
-          <ScorePanel scores={latest.scores} caption={`${fmtShortDate(latest.e.at)} · Overall`} />
+          <ScorePanel scores={latest.scores} caption={`Ultima uscita, ${fmtShortDate(latest.e.at)}`} />
         </Link>
       )}
 
@@ -214,7 +214,7 @@ export default function HomePage() {
       {jobs.length > 0 && (
         <div className={`${card} p-3`}>
           <div className="mb-1 flex items-center justify-between">
-            <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Importazione</p>
+            <p className="font-display text-[16px] leading-tight font-semibold">Importazione</p>
             {jobs.every((j) => j.status === 'done' || j.status === 'duplicate' || j.status === 'error') && (
               <button type="button" onClick={dismissJobs} className="rounded-lg p-1 text-ink-2 hover:bg-surface-2" aria-label="Chiudi">
                 <IconX width={18} height={18} />
@@ -229,7 +229,7 @@ export default function HomePage() {
                   <span className="text-right text-critical">{j.error}</span>
                 ) : j.sessionId && (j.status === 'done' || j.status === 'duplicate') ? (
                   <Link to={j.cloudId ? `/c/${j.cloudId}` : `/s/${j.sessionId}`} className="text-right font-medium text-accent">
-                    {j.status === 'done' && j.cloudId ? 'Condivisa con la crew' : STATUS[j.status]} · apri
+                    {j.status === 'done' && j.cloudId ? 'Condivisa con la crew' : STATUS[j.status]}, apri
                     {j.shareError && <span className="block text-xs font-normal text-ink-2">Salvata solo qui: {j.shareError}</span>}
                   </Link>
                 ) : (
@@ -283,7 +283,7 @@ export default function HomePage() {
             <h2 className={`min-w-0 flex-1 ${instrumentLabel}`}>{dayLabel(g.items[0].at)}</h2>
             {view === 'feed' && new Set(g.items.flatMap((e) => e.row?.user_id ?? [])).size > 1 && (
               <Link to={`/giornata/${g.key}`} className={btnGhost}>
-                La giornata →
+                La giornata
               </Link>
             )}
           </div>

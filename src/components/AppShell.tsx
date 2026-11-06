@@ -18,9 +18,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname])
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="safe-top sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur-md">
+      <header className="safe-top sticky top-0 z-30 border-b border-line bg-surface">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-          <Link to="/" className="flex items-center gap-2 font-display text-[21px] font-bold tracking-wider uppercase">
+          <Link to="/" className="flex items-center gap-2 font-display text-[21px] font-bold">
             <Logo className="h-7 w-7" />
             FoilLog
           </Link>
@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `rounded-md px-3 py-1.5 font-display text-[16px] font-semibold tracking-wider uppercase transition ${isActive ? 'text-accent' : 'text-ink-2 hover:text-ink'}`
+                  `rounded-md px-3 py-1.5 font-display text-[16px] font-semibold transition ${isActive ? 'text-accent' : 'text-ink-2 hover:text-ink'}`
                 }
               >
                 {label}
@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-28 md:pb-12">{children}</main>
       <nav
-        className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur-md md:hidden"
+        className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface md:hidden"
         aria-label="Sezioni"
       >
         <div className="grid grid-cols-5">
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               to={to}
               end={end}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-0.5 pt-2 pb-1.5 font-display text-[12px] font-semibold tracking-wider uppercase ${isActive ? 'text-accent' : 'text-ink-2'}`
+                `flex flex-col items-center gap-0.5 pt-2 pb-1.5 font-display text-[12px] font-semibold ${isActive ? 'text-accent' : 'text-ink-2'}`
               }
             >
               <Icon />

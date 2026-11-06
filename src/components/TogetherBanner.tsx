@@ -60,7 +60,7 @@ export function TogetherBanner({ id, start, end }: { id: string; start: number; 
           {chosen.map((o) => `${o.name} (${fmtTime(o.start)}–${fmtTime(o.end)})`).join(', ')}
         </span>
       </span>
-      <span className="shrink-0 font-semibold text-accent">Sovrapponi →</span>
+      <span className="shrink-0 font-semibold text-accent">Sovrapponi</span>
     </Link>
   )
 }

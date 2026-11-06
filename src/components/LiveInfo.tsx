@@ -119,7 +119,7 @@ export function LiveInfo({ riders, cursor }: { riders: LiveRider[]; cursor: numb
   const sides = shown.some((m) => m.key === 'twa')
 
   return (
-    <div className="pointer-events-auto max-w-full rounded-lg border border-line bg-surface/90 text-xs shadow-sm backdrop-blur">
+    <div className="pointer-events-auto max-w-full rounded-lg border border-line bg-surface/90 text-xs shadow-sm">
       <div className="flex items-center justify-between gap-3 py-1 pr-1 pl-2.5">
         <span className="font-semibold">In questo momento</span>
         <button
@@ -193,7 +193,7 @@ export function LiveInfo({ riders, cursor }: { riders: LiveRider[]; cursor: numb
             </table>
             {(arrows || sides) && (
               <p className="px-1 pt-0.5 text-[11px] text-ink-2">
-                {[arrows && '↑ verso il vento, ↓ sottovento', sides && 'dx/sx mure a dritta/sinistra'].filter(Boolean).join(' · ')}
+                {[arrows && '↑ verso il vento, ↓ sottovento', sides && 'dx/sx mure a dritta/sinistra'].filter(Boolean).join(', ')}
               </p>
             )}
           </div>

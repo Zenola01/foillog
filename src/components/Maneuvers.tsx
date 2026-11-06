@@ -124,7 +124,7 @@ function Analysis({
                 <td className="py-2 pr-1 pl-3 whitespace-nowrap">
                   {r.label}
                   <span className="block text-xs text-ink-2 tabular">
-                    {r.ok}/{r.n} in foil · <span className="font-semibold text-ink">{fmtPct(r.ok / r.n)}</span>
+                    {r.ok}/{r.n} in foil, <span className="font-semibold text-ink">{fmtPct(r.ok / r.n)}</span>
                   </span>
                 </td>
                 <td className="px-2 py-2 text-right tabular">{rateText(r.avg.turnRate)}</td>
@@ -232,7 +232,7 @@ function Overlay({
     <div className="space-y-4">
       <div className={`${card} space-y-3 p-3`}>
         <div>
-          <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Traiettorie sovrapposte</p>
+          <p className="font-display text-[16px] leading-tight font-semibold">Traiettorie sovrapposte</p>
           <p className="text-xs text-ink-2">Allineate {PASSAGE[kind]} (il pallino). Tocca una linea per i numeri.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -299,7 +299,7 @@ function Overlay({
         <>
           <div className={`${card} space-y-2 p-3`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità angolare (°/s)</p>
+              <p className="font-display text-[16px] leading-tight font-semibold">Velocità angolare (°/s)</p>
               {tr.hdg && (
                 <Segmented
                   compact
@@ -318,13 +318,13 @@ function Overlay({
 
           {heelLines.length > 0 && (
             <div className={`${card} space-y-2 p-3`}>
-              <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Inclinazione verso l’interno della curva (°)</p>
+              <p className="font-display text-[16px] leading-tight font-semibold">Inclinazione verso l’interno della curva (°)</p>
               <TimeChart lines={heelLines} seconds={seconds} unit="°" colors={colors} onPick={onSelect} height={170} label="Inclinazione nel tempo, attorno al passaggio" />
             </div>
           )}
 
           <div className={`${card} space-y-2 p-3`}>
-            <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità ({u})</p>
+            <p className="font-display text-[16px] leading-tight font-semibold">Velocità ({u})</p>
             <TimeChart lines={speedLines} seconds={seconds} unit={u} digits={1} colors={colors} onPick={onSelect} height={170} label="Velocità nel tempo, attorno al passaggio" />
           </div>
         </>
@@ -418,7 +418,7 @@ function Readout({
         <StatTile label="Angolo al vento" value={anglesText(d.entryAngle, d.exitAngle)} sub="ingresso → uscita" />
         {d.heelIn != null && <StatTile label="Inclinazione" value={`${fmtNum(d.heelIn, 0)}°`} sub="massima verso l’interno" />}
         <StatTile label="Raggio" value={d.radius == null ? '–' : fmtNum(d.radius, 0)} unit={d.radius == null ? undefined : 'm'} sub={`curva di ${fmtNum(d.turnSeconds, 0)} s`} />
-        <StatTile label="Velocità minima" value={fmtSpeed(m.minSpeed, unit)} unit={u} sub={`entrata ${fmtSpeed(m.entrySpeed, unit)} · uscita ${fmtSpeed(m.exitSpeed, unit)}`} />
+        <StatTile label="Velocità minima" value={fmtSpeed(m.minSpeed, unit)} unit={u} sub={`entrata ${fmtSpeed(m.entrySpeed, unit)}, uscita ${fmtSpeed(m.exitSpeed, unit)}`} />
       </div>
     </div>
   )
@@ -619,12 +619,12 @@ function PathsPlot({
           style={{ left: Math.min(hover.x + 12, w - 170), top: Math.min(hover.y + 12, geo.h - 50) }}
         >
           <span className="font-semibold">
-            {KIND_NAME[hover.d.maneuver.kind]} {arrow(hover.d.maneuver.from)} · {fmtTimeSec(tr.t[hover.d.maneuver.i0])}
+            {KIND_NAME[hover.d.maneuver.kind]} {arrow(hover.d.maneuver.from)}, {fmtTimeSec(tr.t[hover.d.maneuver.i0])}
           </span>
           <br />
           <span className="text-ink-2">
             minima {fmtSpeed(hover.d.maneuver.minSpeed, unit)} {SPEED_SHORT[unit]}
-            {hover.d.turnRate != null && ` · ${fmtNum(hover.d.turnRate, 0)}°/s`}
+            {hover.d.turnRate != null && `, ${fmtNum(hover.d.turnRate, 0)}°/s`}
           </span>
         </div>
       )}

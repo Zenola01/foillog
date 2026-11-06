@@ -639,7 +639,7 @@ function MapViewImpl(props: Props) {
       {(windDir != null || !!windByRider?.length || legend || props.overlay) && (
         <div className="pointer-events-none absolute top-2 left-2 flex max-w-[calc(100%-3.75rem)] flex-col items-start gap-1.5">
           {windDir != null && (
-            <div className="flex items-center gap-2 rounded-lg border border-line bg-surface/90 px-2 py-1.5 backdrop-blur">
+            <div className="flex items-center gap-2 rounded-lg border border-line bg-surface/90 px-2 py-1.5">
               <svg width="30" height="30" viewBox="-15 -15 30 30" aria-hidden="true">
                 <circle r="14" fill="none" stroke="var(--axis)" />
                 <g transform={`rotate(${windDir})`}>
@@ -656,7 +656,7 @@ function MapViewImpl(props: Props) {
             </div>
           )}
           {windDir == null && !!windByRider?.length && (
-            <div className="rounded-lg border border-line bg-surface/90 px-2.5 py-1.5 text-xs backdrop-blur">
+            <div className="rounded-lg border border-line bg-surface/90 px-2.5 py-1.5 text-xs">
               <p className="mb-1 text-ink-2">Vento da</p>
               <ul className="space-y-1">
                 {windByRider.map((w) => (
@@ -677,7 +677,7 @@ function MapViewImpl(props: Props) {
             </div>
           )}
           {legend && (
-            <div className="rounded-lg border border-line bg-surface/90 px-2.5 py-1.5 text-xs backdrop-blur">
+            <div className="rounded-lg border border-line bg-surface/90 px-2.5 py-1.5 text-xs">
               <p className="mb-1 text-ink-2">Velocità ({legend.unit})</p>
               <div className="h-1.5 w-28 rounded-full" style={{ background: `linear-gradient(90deg, ${colors.speed.join(',')})` }} />
               <div className="mt-0.5 flex justify-between tabular text-ink-2">

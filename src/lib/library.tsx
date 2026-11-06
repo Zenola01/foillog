@@ -175,7 +175,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         rider: f.friend ? 'Amico (esempio)' : riderName,
         modelWind: demoModelWind,
         demo: true,
-        title: 'Esempio · Lago di Garda',
+        title: 'Esempio, Lago di Garda',
       })
       created.push(rec)
     }

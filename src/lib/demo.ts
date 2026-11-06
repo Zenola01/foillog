@@ -45,8 +45,8 @@ export function demoFiles(t0: number): { name: string; gpx: string; friend: bool
     wobble: true,
   })
   return [
-    { name: 'esempio-garda.gpx', gpx: toGpx(a, { name: 'Esempio · Lago di Garda', creator: 'FoilLog esempio' }), friend: false },
-    { name: 'esempio-garda-amico.gpx', gpx: toGpx(b, { name: 'Esempio · Lago di Garda', creator: 'FoilLog esempio' }), friend: true },
+    { name: 'esempio-garda.gpx', gpx: toGpx(a, { name: 'Esempio, Lago di Garda', creator: 'FoilLog esempio' }), friend: false },
+    { name: 'esempio-garda-amico.gpx', gpx: toGpx(b, { name: 'Esempio, Lago di Garda', creator: 'FoilLog esempio' }), friend: true },
   ]
 }
 

@@ -143,7 +143,7 @@ function CloudSessionLoader({ id }: { id: string }) {
       ) : (
         'Spot non indicato'
       )}
-      {row.visibility === 'private' ? ' · visibile solo a te' : ' · visibile alla crew'}
+      {row.visibility === 'private' ? ', visibile solo a te' : ', visibile alla crew'}
     </p>
   )
 
@@ -203,9 +203,6 @@ function CloudSessionLoader({ id }: { id: string }) {
               <span className="block font-semibold">La giornata</span>
               <span className="block text-sm text-ink-2">Chi era in acqua il {fmtDate(Date.parse(row.started_at))}, con il replay di tutti</span>
             </span>
-            <span aria-hidden className="text-accent">
-              →
-            </span>
           </Link>
         </>
       }
@@ -230,7 +227,7 @@ function Social({ row, userId }: { row: CloudSession; userId: string }) {
         <span className="text-sm text-ink-2">Dai un 🤙 se l'uscita ti piace</span>
       </div>
       <div className="space-y-2.5">
-        <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Commenti</p>
+        <p className="font-display text-[16px] leading-tight font-semibold">Commenti</p>
         {comments?.length === 0 && <p className="text-sm text-ink-2">Nessun commento: scrivi tu il primo.</p>}
         {comments?.map((c) => (
           <div key={c.id} className="flex gap-2.5">
@@ -314,7 +311,7 @@ function OwnerControls({
   return (
     <section className={`${card} space-y-3 p-3.5`}>
       <div className="space-y-1.5">
-        <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Chi la vede</p>
+        <p className="font-display text-[16px] leading-tight font-semibold">Chi la vede</p>
         <Segmented
           label="Visibilità"
           value={row.visibility}

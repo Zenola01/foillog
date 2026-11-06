@@ -317,7 +317,7 @@ export function SessionView({
     if (cursor == null) return undefined
     const i = indexAtTime(tr.t, cursor)
     const twa = a.twa ? Math.round(a.twa[i]) : null
-    return `${sp(tr.spd[i])} ${u} · ${a.foil[i] ? 'in foil' : 'giù'}${twa != null ? ` · ${Math.abs(twa)}° ${twa >= 0 ? 'dritta' : 'sinistra'}` : ''}`
+    return `${sp(tr.spd[i])} ${u}, ${a.foil[i] ? 'in foil' : 'giù'}${twa != null ? `, ${Math.abs(twa)}° ${twa >= 0 ? 'dritta' : 'sinistra'}` : ''}`
   })()
 
   // Time on a reach (across the wind), kept out of the upwind and downwind numbers.
@@ -355,10 +355,10 @@ export function SessionView({
         ) : (
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
-              <h1 className="font-display text-[30px] leading-[1.05] font-bold tracking-wide">{rec.title}</h1>
+              <h1 className="font-display text-[30px] leading-[1.05] font-bold">{rec.title}</h1>
               <p className="mt-0.5 text-sm text-ink-2 first-letter:uppercase">
-                {fmtDate(sum.start)} · {fmtTime(sum.start)}–{fmtTime(sum.end)} · {rec.rider}
-                {rec.device ? ` · ${rec.device}` : ''}
+                {fmtDate(sum.start)}, {fmtTime(sum.start)}–{fmtTime(sum.end)}, {rec.rider}
+                {rec.device ? `, ${rec.device.replace(' \u00b7 ', ' ')}` : ''}
               </p>
               {meta}
               <TogetherBanner id={compareId ?? rec.id} start={sum.start} end={sum.end} />
@@ -438,7 +438,7 @@ export function SessionView({
                   <p className="text-[13px] text-ink-2">Vento</p>
                   {wind.dir != null ? (
                     <p className="font-display text-[19px] leading-tight font-semibold">
-                      da {compass(wind.dir)} · {Math.round(wind.dir)}°{' '}
+                      da {compass(wind.dir)}, {Math.round(wind.dir)}°{' '}
                       <span className="font-normal text-ink-2">{wind.source ? WIND_SOURCE[wind.source] : ''}</span>
                     </p>
                   ) : (
@@ -496,7 +496,7 @@ export function SessionView({
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <StatTile label="Distanza" value={fmtDist(sum.distance, settings.distUnit)} sub={`in foil ${fmtDist(sum.foilDistance, settings.distUnit)}`} />
             <StatTile label="Durata" value={fmtDuration(sum.duration)} sub={`in movimento ${fmtDuration(sum.movingTime)}`} />
-            <StatTile label="In foil" value={fmtPct(sum.foilShare)} sub={`${fmtDuration(sum.foilTime)} · ${sum.takeoffs} decolli`} />
+            <StatTile label="In foil" value={fmtPct(sum.foilShare)} sub={`${fmtDuration(sum.foilTime)}, ${sum.takeoffs} decolli`} />
             <StatTile
               label="Velocità max (2 s)"
               value={sp(sum.records.s2)}
@@ -600,7 +600,7 @@ export function SessionView({
                 role="tab"
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
-                className={`-mb-px flex-1 border-b-2 px-1 py-2 font-display text-[16px] font-semibold tracking-wider uppercase transition ${tab === t.id ? 'border-[var(--accent-text)] text-accent' : 'border-transparent text-ink-2'}`}
+                className={`-mb-px flex-1 border-b-2 px-1 py-2 font-display text-[16px] font-semibold transition ${tab === t.id ? 'border-[var(--accent-text)] text-accent' : 'border-transparent text-ink-2'}`}
               >
                 {t.label}
               </button>
@@ -610,7 +610,7 @@ export function SessionView({
           {tab === 'grafici' && (
             <div className="space-y-4">
               <div className={`${card} p-3`}>
-                <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità</p>
+                <p className="font-display text-[16px] leading-tight font-semibold">Velocità</p>
                 <p className="text-xs text-ink-2">
                   {coarse ? 'Tocca il grafico per i valori; ' : 'Passa sopra il grafico per i valori; '}trascina le maniglie in basso per
                   selezionare un tratto.
@@ -662,14 +662,14 @@ export function SessionView({
           {readOnly ? (
             rec.notes && (
               <div className={`${card} p-3.5`}>
-                <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Note</p>
+                <p className="font-display text-[16px] leading-tight font-semibold">Note</p>
                 <p className="mt-1 text-sm whitespace-pre-wrap">{rec.notes}</p>
               </div>
             )
           ) : (
             <Notes rec={rec} onSave={(notes) => onUpdate({ notes })} />
           )}
-          {rec.warnings.length > 0 && <p className="px-1 text-xs text-ink-2">Note sul file: {rec.warnings.join(' · ')}.</p>}
+          {rec.warnings.length > 0 && <p className="px-1 text-xs text-ink-2">Note sul file: {rec.warnings.join(', ')}.</p>}
         </div>
       </div>
     </div>
@@ -760,7 +760,7 @@ function Histogram({ tr, a, unit, colors }: { tr: SessionData['track']; a: Sessi
   const option = useMemo(() => histogramOption(tr, a, unit, colors), [tr, a, unit, colors])
   return (
     <div className={`${card} p-3`}>
-      <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità in foil</p>
+      <p className="font-display text-[16px] leading-tight font-semibold">Velocità in foil</p>
       <p className="text-xs text-ink-2">Minuti passati in ogni fascia di velocità.</p>
       <EChart option={option} height={220} label="Distribuzione della velocità in foil" />
     </div>
@@ -771,7 +771,7 @@ function Orientation({ data, colors, coarse }: { data: SessionData; colors: Them
   const option = useMemo(() => orientationOption(data.track, colors, coarse), [data, colors, coarse])
   return (
     <div className={`${card} p-3`}>
-      <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Sbandamento e beccheggio</p>
+      <p className="font-display text-[16px] leading-tight font-semibold">Sbandamento e beccheggio</p>
       <p className="text-xs text-ink-2">Dall'orientamento registrato dal Vakaros, in gradi.</p>
       <EChart option={option} height={240} label="Sbandamento e beccheggio nel tempo" />
     </div>
@@ -782,7 +782,7 @@ function HeartRate({ data, colors, coarse }: { data: SessionData; colors: ThemeC
   const option = useMemo(() => heartRateOption(data.track, colors, coarse), [data, colors, coarse])
   return (
     <div className={`${card} p-3`}>
-      <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Battito cardiaco</p>
+      <p className="font-display text-[16px] leading-tight font-semibold">Battito cardiaco</p>
       <EChart option={option} height={220} label="Battito cardiaco nel tempo" />
     </div>
   )
@@ -854,12 +854,12 @@ function SailTab({
           sub={vs?.vmg.down ? `${who.short}: ${fmtSpeed(vs.vmg.down.v, unit)} ${u}` : 'media su 10 s'}
         />
         <button type="button" className={`${btnGhost} col-span-2 justify-self-start`} onClick={onBest}>
-          Bordi migliori di bolina e poppa →
+          Bordi migliori di bolina e poppa
         </button>
       </div>
       <div className={`${card} space-y-3 p-3`}>
         <div>
-          <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Polare</p>
+          <p className="font-display text-[16px] leading-tight font-semibold">Polare</p>
           <p className="text-xs text-ink-2">Velocità in foil (90° percentile, {u}) per angolo dal vento. Vento dall'alto.</p>
         </div>
         {windSpeed != null && band && (
@@ -968,7 +968,7 @@ function LegsTab({
               </td>
               <td className="px-2 py-2">
                 {pointOfSail(l.twa)}
-                {l.tack && <span className="text-ink-2"> · {l.tack === 'S' ? 'dritta' : 'sinistra'}</span>}
+                {l.tack && <span className="text-ink-2">, {l.tack === 'S' ? 'dritta' : 'sinistra'}</span>}
               </td>
               <td className="px-2 py-2 text-right tabular">{l.twa != null ? `${Math.abs(Math.round(l.twa))}°` : '–'}</td>
               <td className="px-2 py-2 text-right tabular">{fmtSpeed(l.avgSpeed, unit)}</td>

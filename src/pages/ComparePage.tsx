@@ -95,7 +95,7 @@ function Picker({ initial, onConfirm }: { initial: string[]; onConfirm: (ids: st
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Confronta</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold">Confronta</h1>
         <p className="text-sm text-ink-2">Sovrapponi le tracce di chi era in acqua nello stesso momento: stesso vento, stesso campo, un solo replay.</p>
       </div>
       {loading && <p className="py-8 text-center text-ink-2">Cerco le uscite nello stesso orario…</p>}
@@ -161,7 +161,7 @@ function TogetherGroup({ items, initial, onConfirm }: { items: PickItem[]; initi
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{it.rider}</span>
                   <span className="block truncate text-sm text-ink-2">
-                    {fmtTime(it.start)}–{fmtTime(it.end)} · {it.title}
+                    {fmtTime(it.start)}–{fmtTime(it.end)}, {it.title}
                   </span>
                   {blocked && (
                     <span className="block text-xs text-ink-2">
@@ -266,7 +266,7 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
     ...x,
     color: colors.series[k],
     // The same rider twice (two devices on one outing): told apart by the start time.
-    name: items.filter((y) => y.rec.rider === x.rec.rider).length > 1 ? `${x.rec.rider} · ${fmtTime(x.a.summary.start)}` : x.rec.rider,
+    name: items.filter((y) => y.rec.rider === x.rec.rider).length > 1 ? `${x.rec.rider}, ${fmtTime(x.a.summary.start)}` : x.rec.rider,
   }))
   const clockStart = Math.min(...series.map((s) => s.a.summary.start))
   const clockEnd = Math.max(...series.map((s) => s.a.summary.end))
@@ -312,9 +312,9 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Confronto</h1>
+          <h1 className="font-display text-[30px] leading-none font-bold">Confronto</h1>
           <p className="text-sm text-ink-2 first-letter:uppercase">
-            {fmtDate(clockStart)} · in acqua nello stesso momento
+            {fmtDate(clockStart)}, in acqua nello stesso momento
           </p>
         </div>
         <button type="button" className={btnSecondary} onClick={onChange}>
@@ -353,13 +353,13 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
           <CompareTable series={series} settings={settings} />
           <BestLegsCompare riders={legRiders} unit={unit} sharedWind={wind != null} />
           <div className={`${card} p-3`}>
-            <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità</p>
+            <p className="font-display text-[16px] leading-tight font-semibold">Velocità</p>
             <p className="text-xs text-ink-2">Ora del giorno.</p>
             <EChart option={speedOpt} height={280} label="Velocità delle uscite a confronto" />
           </div>
           {polarSessions.length > 0 && (
             <div className={`${card} p-3`}>
-              <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Polari a confronto</p>
+              <p className="font-display text-[16px] leading-tight font-semibold">Polari a confronto</p>
               <p className="text-xs text-ink-2">Velocità in foil ({u}) per angolo dal vento. Vento dall'alto.</p>
               <EChart option={polarOpt} height={340} label="Diagrammi polari a confronto" />
               <p className="flex justify-between px-2 text-xs text-ink-2">
