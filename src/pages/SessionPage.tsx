@@ -11,7 +11,7 @@ import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { ScoreCard } from '../components/Scores'
 import { SessionGear } from '../components/SessionGear'
 import { TogetherBanner } from '../components/TogetherBanner'
-import { btnGhost, btnPrimary, btnSecondary, card, StatTile } from '../components/ui'
+import { btnGhost, btnPrimary, btnSecondary, card, MiniRing, SlidingTabs, Sparkline, StatTile } from '../components/ui'
 import { VideoTab } from '../components/VideoTab'
 import { WindDial } from '../components/WindDial'
 import { rangeStats } from '../lib/analysis/analyze'
@@ -226,6 +226,18 @@ export function SessionView({
   const u = SPEED_SHORT[unit]
   const sp = (ms: number | null | undefined) => fmtSpeed(ms, unit)
   const coarse = useMemo(isCoarsePointer, [])
+  // The speed through the session, in a few averaged steps, for the tile with the top speed.
+  const speedLine = useMemo(() => {
+    const steps = 60
+    const size = tr.spd.length / steps
+    return Array.from({ length: steps }, (_, k) => {
+      const from = Math.floor(k * size)
+      const to = Math.max(from + 1, Math.floor((k + 1) * size))
+      let sum = 0
+      for (let i = from; i < to; i++) sum += tr.spd[i] ?? 0
+      return sum / (to - from)
+    })
+  }, [tr])
 
   const replay = useReplay(t0, t1)
   const [hoverT, setHoverT] = useState<number | null>(null)
@@ -493,16 +505,18 @@ export function SessionView({
           <SessionGear gear={rec.gear ?? []} editable={!readOnly && riderIsMe} start={sum.start} past={others} onSave={(gear) => onUpdate({ gear })} />
 
           {/* Key numbers */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <StatTile label="Distanza" value={fmtDist(sum.distance, settings.distUnit)} sub={`in foil ${fmtDist(sum.foilDistance, settings.distUnit)}`} />
-            <StatTile label="Durata" value={fmtDuration(sum.duration)} sub={`in movimento ${fmtDuration(sum.movingTime)}`} />
-            <StatTile label="In foil" value={fmtPct(sum.foilShare)} sub={`${fmtDuration(sum.foilTime)}, ${sum.takeoffs} decolli`} />
+          <div className="stagger grid grid-cols-2 gap-2 sm:grid-cols-3">
             <StatTile
               label="Velocità max (2 s)"
+              wide
+              visual={<Sparkline values={speedLine} className="size-full" />}
               value={sp(sum.records.s2)}
               unit={u}
               onClick={a.records.s2 ? () => focus(a.records.s2!.i0, a.records.s2!.i1) : undefined}
             />
+            <StatTile label="Distanza" value={fmtDist(sum.distance, settings.distUnit)} sub={`in foil ${fmtDist(sum.foilDistance, settings.distUnit)}`} />
+            <StatTile label="Durata" value={fmtDuration(sum.duration)} sub={`in movimento ${fmtDuration(sum.movingTime)}`} />
+            <StatTile label="In foil" visual={<MiniRing share={sum.foilShare} />} value={fmtPct(sum.foilShare)} sub={`${fmtDuration(sum.foilTime)}, ${sum.takeoffs} decolli`} />
             <StatTile
               label="Max su 10 s"
               value={sp(sum.records.s10)}
@@ -520,12 +534,14 @@ export function SessionView({
             <StatTile label="Media in foil" value={sp(sum.avgFoilSpeed)} unit={u} sub={`100 m: ${sp(sum.records.m100)} ${u}`} />
             <StatTile
               label="Strambate in foil"
+              visual={sum.jibes ? <MiniRing share={sum.jibesFoiled / sum.jibes} /> : undefined}
               value={sum.jibes ? `${sum.jibesFoiled}/${sum.jibes}` : '–'}
               sub={sum.jibes ? fmtPct(sum.jibesFoiled / sum.jibes) : wind.dir == null ? 'serve il vento' : 'nessuna'}
               onClick={sum.jibes ? () => setTab('manovre') : undefined}
             />
             <StatTile
               label="Virate in foil"
+              visual={sum.tacks ? <MiniRing share={sum.tacksFoiled / sum.tacks} /> : undefined}
               value={sum.tacks ? `${sum.tacksFoiled}/${sum.tacks}` : '–'}
               sub={sum.tacks ? fmtPct(sum.tacksFoiled / sum.tacks) : wind.dir == null ? 'serve il vento' : 'nessuna'}
               onClick={sum.tacks ? () => setTab('manovre') : undefined}
@@ -592,20 +608,7 @@ export function SessionView({
           )}
 
           {/* Tabs */}
-          <div role="tablist" aria-label="Dettagli" className="flex gap-1 border-b border-line">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
-                className={`-mb-px flex-1 border-b-2 px-1 py-2 font-display text-[16px] font-semibold transition ${tab === t.id ? 'border-[var(--accent-text)] text-accent' : 'border-transparent text-ink-2'}`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <SlidingTabs tabs={TABS} value={tab} onChange={setTab} label="Dettagli" />
 
           {tab === 'grafici' && (
             <div className="space-y-4">

@@ -4,7 +4,7 @@ import { FeedCard } from '../components/FeedCard'
 import { FileDrop } from '../components/FileDrop'
 import { IconShare, IconX } from '../components/icons'
 import { ScorePanel, SessionLine } from '../components/Scores'
-import { btnGhost, btnPrimary, btnSecondary, card, instrumentLabel, Segmented } from '../components/ui'
+import { btnGhost, btnPrimary, btnSecondary, card, instrumentLabel, Segmented, Skeleton } from '../components/ui'
 import { lacksPerf, sessionScores } from '../lib/analysis/scores'
 import { useAuth } from '../lib/auth'
 import { feed, myCrews, type CloudSession } from '../lib/cloud'
@@ -199,8 +199,8 @@ export default function HomePage() {
       )}
 
       {latest && (
-        <Link to={latest.e.row ? `/c/${latest.e.row.id}` : `/s/${latest.e.rec.id}`} className="block">
-          <ScorePanel scores={latest.scores} caption={`Ultima uscita, ${fmtShortDate(latest.e.at)}`} />
+        <Link to={latest.e.row ? `/c/${latest.e.row.id}` : `/s/${latest.e.rec.id}`} className="press block">
+          <ScorePanel scores={latest.scores} caption={`Ultima uscita, ${fmtShortDate(latest.e.at)}`} track={latest.e.row ? latest.e.row.preview : latest.e.rec.preview} />
         </Link>
       )}
 
@@ -274,7 +274,7 @@ export default function HomePage() {
       }} />}
 
       {user && listError && <p className="rounded-lg bg-surface-2 px-4 py-3 text-sm text-critical">{listError}</p>}
-      {user && rows == null && !listError && <p className="text-sm text-ink-2">{view === 'mine' ? 'Carico le tue uscite…' : 'Carico il feed della crew…'}</p>}
+      {user && rows == null && !listError && <Skeleton label={view === 'mine' ? 'Carico le tue uscite' : 'Carico il feed della crew'} />}
       {view === 'feed' && user && rows != null && days.length === 0 && !!crewCount && <p className="text-sm text-ink-2">Ancora nessuna uscita nella crew.</p>}
 
       {days.map((g) => (
@@ -287,7 +287,7 @@ export default function HomePage() {
               </Link>
             )}
           </div>
-          <ul className="divide-y divide-[var(--border)] border-y border-line">
+          <ul className="stagger space-y-2.5">
             {g.items.map((e) =>
               e.rec ? (
                 <LocalCard
@@ -334,7 +334,7 @@ export default function HomePage() {
       )}
 
       {view === 'feed' && selected.length > 0 && (
-        <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4 md:bottom-6">
+        <div className="fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4 md:bottom-6">
           <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-2.5 shadow-lg">
             <span className="text-sm">{selected.length === 1 ? 'Scegli un’altra uscita nello stesso orario' : `${selected.length} uscite selezionate`}</span>
             <button
@@ -403,7 +403,7 @@ function OutingCard({
   children?: ReactNode
 }) {
   return (
-    <li className={`py-2.5 ${selected ? 'bg-surface-2' : ''}`}>
+    <li className={`press ${card} p-3 ${selected ? 'ring-2 ring-[var(--accent-text)]' : ''}`}>
       <div className="flex items-center gap-3">
         <Link to={to} className="flex min-w-0 flex-1 items-center gap-3">
           <SessionLine s={s} windSpeed={windSpeed} about={about} settings={settings} />

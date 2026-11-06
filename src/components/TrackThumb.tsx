@@ -1,11 +1,31 @@
 import { useMemo } from 'react'
+import { prefersReducedMotion } from '../lib/motion'
 
 const W = 100
 const H = 64
 const PAD = 3
 
-/** Mini map of a track (no tiles), from the simplified preview points. */
-export function TrackThumb({ points, color = 'var(--track)', className }: { points: [number, number][]; color?: string; className?: string }) {
+/**
+ * Mini map of a track (no tiles), from the simplified preview points. `draw`: false keeps it hidden,
+ * true draws it from start to finish. `runner` sends a dot along it. `fade` dims the line alone.
+ */
+export function TrackThumb({
+  points,
+  color = 'var(--track)',
+  className,
+  weight = 1.6,
+  draw,
+  runner,
+  fade = 1,
+}: {
+  points: [number, number][]
+  color?: string
+  className?: string
+  weight?: number
+  draw?: boolean
+  runner?: boolean
+  fade?: number
+}) {
   const d = useMemo(() => {
     if (points.length < 2) return ''
     const k = Math.cos((points[0][0] * Math.PI) / 180)
@@ -22,7 +42,22 @@ export function TrackThumb({ points, color = 'var(--track)', className }: { poin
   }, [points])
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className={className} aria-hidden="true">
-      <path d={d} fill="none" stroke={color} strokeWidth="1.25" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <path
+        d={d}
+        pathLength={draw === undefined ? undefined : 1}
+        fill="none"
+        stroke={color}
+        strokeOpacity={fade}
+        strokeWidth={weight}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        className={draw === undefined ? undefined : draw ? 'track-draw' : 'opacity-0'}
+      />
+      {runner && draw && d && !prefersReducedMotion() && (
+        <circle r="1.4" fill={color}>
+          <animateMotion dur="24s" repeatCount="indefinite" path={d} />
+        </circle>
+      )}
     </svg>
   )
 }

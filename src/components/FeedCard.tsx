@@ -6,10 +6,12 @@ import { fmtTime } from '../lib/units'
 import { IconComment } from './icons'
 import { Avatar } from './RequireAuth'
 import { SessionLine } from './Scores'
+import { card } from './ui'
 
 /** The 🤙 button: optimistic, reverts if the server says no. */
 export function KudosButton({ s, userId }: { s: Pick<CloudSession, 'id' | 'kudos'>; userId: string }) {
   const [kudos, setK] = useState(s.kudos)
+  const [bursts, setBursts] = useState(0)
   const mine = kudos.some((k) => k.user_id === userId)
   return (
     <button
@@ -19,6 +21,7 @@ export function KudosButton({ s, userId }: { s: Pick<CloudSession, 'id' | 'kudos
       onClick={async () => {
         const before = kudos
         const next = !mine
+        if (next) setBursts((b) => b + 1)
         setK(next ? [...kudos, { user_id: userId }] : kudos.filter((k) => k.user_id !== userId))
         try {
           await setKudos(s.id, userId, next)
@@ -26,11 +29,18 @@ export function KudosButton({ s, userId }: { s: Pick<CloudSession, 'id' | 'kudos
           setK(before)
         }
       }}
-      className={`inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 font-display text-[16px] font-semibold transition ${
+      className={`press relative inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 font-display text-[16px] font-semibold ${
         mine ? 'border-[var(--accent-text)] text-ink' : 'border-line text-ink-2 hover:bg-surface-2'
       }`}
     >
-      <span aria-hidden>🤙</span>
+      <span aria-hidden key={bursts} className={bursts ? 'kudos-pop' : undefined}>
+        🤙
+      </span>
+      {bursts > 0 && (
+        <span aria-hidden key={`f${bursts}`} className="kudos-float">
+          🤙
+        </span>
+      )}
       <span className="tabular">{kudos.length}</span>
     </button>
   )
@@ -57,7 +67,7 @@ export function FeedCard({
   const name = s.profile?.display_name ?? 'Rider'
   const comments = s.comments[0]?.count ?? 0
   return (
-    <li className={`py-3 ${selected ? 'bg-surface-2' : ''}`}>
+    <li className={`press ${card} p-3 ${selected ? 'ring-2 ring-[var(--accent-text)]' : ''}`}>
       <div className="flex items-center gap-2">
         <Link to={`/rider/${s.user_id}`}>
           <Avatar name={name} size={26} />
@@ -101,7 +111,7 @@ export function FeedCard({
         <KudosButton s={s} userId={userId} />
         <Link
           to={`/c/${s.id}`}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-line px-3 font-display text-[16px] font-semibold text-ink-2 hover:bg-surface-2"
+          className="press inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3 font-display text-[16px] font-semibold text-ink-2 hover:bg-surface-2"
           aria-label={`${comments} commenti`}
         >
           <IconComment width={16} height={16} />

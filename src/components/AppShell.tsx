@@ -12,6 +12,7 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
+  const active = NAV.findIndex((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)))
   // A block body: an effect must return nothing or a cleanup function, never scrollTo's result.
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -40,19 +41,25 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-28 md:pb-12">{children}</main>
-      <nav
-        className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface md:hidden"
-        aria-label="Sezioni"
-      >
-        <div className="grid grid-cols-5">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-28 md:pb-12">
+        <div key={pathname} className="page-enter">
+          {children}
+        </div>
+      </main>
+      <nav className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+8px)] z-30 md:hidden" aria-label="Sezioni">
+        <div className="relative grid grid-cols-5 rounded-2xl border border-line bg-surface shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+          {active >= 0 && (
+            <span aria-hidden className="slide absolute inset-y-1 left-0 w-1/5 px-1" style={{ transform: `translateX(${active * 100}%)` }}>
+              <span className="block size-full rounded-xl bg-accent-btn" />
+            </span>
+          )}
           {NAV.map(({ to, label, Icon, end }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-0.5 pt-2 pb-1.5 font-display text-[12px] font-semibold ${isActive ? 'text-accent' : 'text-ink-2'}`
+                `relative flex flex-col items-center gap-0.5 pt-2 pb-1.5 font-display text-[12px] font-semibold transition-colors ${isActive ? 'text-on-accent' : 'text-ink-2'}`
               }
             >
               <Icon />
