@@ -25,6 +25,24 @@ export function useSeen<T extends Element>(): [RefObject<T | null>, boolean] {
   return [ref, seen]
 }
 
+/** Whether the element is in view right now, to stop what keeps moving where it cannot be seen. */
+export function useInView<T extends Element>(on = true): [RefObject<T | null>, boolean] {
+  const ref = useRef<T>(null)
+  const [inView, setInView] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || !on) return
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true)
+      return
+    }
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [on])
+  return [ref, inView]
+}
+
 /** A number climbing to `value` once `run` is true. */
 export function useCountUp(value: number, run: boolean, ms = 900): number {
   const [shown, setShown] = useState(0)

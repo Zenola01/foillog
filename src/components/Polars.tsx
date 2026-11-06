@@ -25,7 +25,7 @@ import type { ThemeColors } from '../lib/theme'
 import type { PolarBin, WindBand } from '../lib/types'
 import { fmtNum, fmtPct, fmtShortDate, fmtSpeed, MS_TO_KN, SPEED_SHORT, toUnit, type SpeedUnit } from '../lib/units'
 import { EChart } from './EChart'
-import { btnGhost, btnPrimary, btnSecondary, card, Segmented, StatTile } from './ui'
+import { btnGhost, btnPrimary, btnSecondary, card, Segmented, StatTile, zones } from './ui'
 
 const COURSE: Record<Course, string> = { up: 'Bolina', reach: 'Traverso', down: 'Poppa' }
 const calmBelow = (unit: SpeedUnit) => `${fmtNum(toUnit(WIND_BANDS[0].fromKn / MS_TO_KN, unit), unit === 'ms' ? 1 : 0)} ${SPEED_SHORT[unit]}`
@@ -175,8 +175,10 @@ function WindSpeedForm({
             autoFocus
             value={text}
             onChange={(e) => setText(e.target.value)}
+            name="windSpeed"
+            autoComplete="off"
             inputMode="decimal"
-            placeholder="es. 15"
+            placeholder="es. 15…"
             aria-label={`Vento medio in acqua (${u})`}
             className="w-24 rounded-lg border border-line bg-surface px-3 py-2 text-base"
           />
@@ -243,7 +245,7 @@ export function VsBestSummary({
       <p className="text-sm">
         In tutto <b>{fmtPct(cmp.overall.ratio)}</b> {who.of} con {bandText(band, unit)}.
       </p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className={`${zones} [--cols:3] [--zone:var(--surface-2)]`}>
         {(['up', 'reach', 'down'] as const).map((c) => (
           <StatTile key={c} label={COURSE[c]} value={cmp.byCourse[c] ? fmtPct(cmp.byCourse[c]!.ratio) : '–'} sub={cmp.byCourse[c] ? who.of : 'non confrontabile'} />
         ))}
@@ -304,7 +306,7 @@ export function BestPolarsCard({
   return (
     <div className={`${card} space-y-3 p-3`}>
       <div>
-        <p className="font-display text-[16px] leading-tight font-semibold">Polari migliori</p>
+        <p className="card-title">Polari migliori</p>
         <p className="text-xs text-ink-2">
           Per ogni angolo dal vento, la velocità migliore in foil (90° percentile, {u}) tra le uscite con lo stesso vento. Vento dall’alto.
         </p>
@@ -320,7 +322,7 @@ export function BestPolarsCard({
             <span>← mure a sinistra</span>
             <span>mure a dritta →</span>
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`${zones} [--cols:2] [--zone:var(--surface-2)]`}>
             <StatTile label="Miglior VMG in bolina" value={fmtSpeed(vmg.up?.v, unit)} unit={u} sub={vmg.up ? date(vmg.up) : 'media su 10 s'} />
             <StatTile label="Miglior VMG in poppa" value={fmtSpeed(vmg.down?.v, unit)} unit={u} sub={vmg.down ? date(vmg.down) : 'media su 10 s'} />
           </div>

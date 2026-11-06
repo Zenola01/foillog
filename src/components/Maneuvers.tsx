@@ -6,7 +6,7 @@ import type { ThemeColors } from '../lib/theme'
 import type { Maneuver, SessionAnalysis, Tack } from '../lib/types'
 import { fmtNum, fmtPct, fmtSpeed, fmtTimeSec, SPEED_SHORT, toUnit, type SpeedUnit } from '../lib/units'
 import { EChart, type Chart } from './EChart'
-import { btnGhost, card, LineKey, Outcome, Segmented, StatTile } from './ui'
+import { btnGhost, card, LineKey, Outcome, Segmented, StatTile, zones } from './ui'
 
 type Kind = Maneuver['kind']
 type Track = SessionData['track']
@@ -96,7 +96,7 @@ function Analysis({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
+      <div className={`${zones} [--cols:2]`}>
         <StatTile label="Velocità minima in strambata" value={fmtSpeed(avg(jibes.filter((m) => !m.fell).map((m) => m.minSpeed)), unit)} unit={u} sub="media" />
         <StatTile
           label="Durata media strambata"
@@ -232,7 +232,7 @@ function Overlay({
     <div className="space-y-4">
       <div className={`${card} space-y-3 p-3`}>
         <div>
-          <p className="font-display text-[16px] leading-tight font-semibold">Traiettorie sovrapposte</p>
+          <p className="card-title">Traiettorie sovrapposte</p>
           <p className="text-xs text-ink-2">Allineate {PASSAGE[kind]} (il pallino). Tocca una linea per i numeri.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -299,7 +299,7 @@ function Overlay({
         <>
           <div className={`${card} space-y-2 p-3`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="font-display text-[16px] leading-tight font-semibold">Velocità angolare (°/s)</p>
+              <p className="card-title">Velocità angolare (°/s)</p>
               {tr.hdg && (
                 <Segmented
                   compact
@@ -318,13 +318,13 @@ function Overlay({
 
           {heelLines.length > 0 && (
             <div className={`${card} space-y-2 p-3`}>
-              <p className="font-display text-[16px] leading-tight font-semibold">Inclinazione verso l’interno della curva (°)</p>
+              <p className="card-title">Inclinazione verso l’interno della curva (°)</p>
               <TimeChart lines={heelLines} seconds={seconds} unit="°" colors={colors} onPick={onSelect} height={170} label="Inclinazione nel tempo, attorno al passaggio" />
             </div>
           )}
 
           <div className={`${card} space-y-2 p-3`}>
-            <p className="font-display text-[16px] leading-tight font-semibold">Velocità ({u})</p>
+            <p className="card-title">Velocità ({u})</p>
             <TimeChart lines={speedLines} seconds={seconds} unit={u} digits={1} colors={colors} onPick={onSelect} height={170} label="Velocità nel tempo, attorno al passaggio" />
           </div>
         </>
@@ -413,7 +413,7 @@ function Readout({
           </button>
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className={`${zones} [--cols:2] sm:[--cols:3]`}>
         <StatTile label="Velocità angolare" value={rateText(d.turnRate)} unit={d.turnRate == null ? undefined : '°/s'} sub="media della curva" />
         <StatTile label="Angolo al vento" value={anglesText(d.entryAngle, d.exitAngle)} sub="ingresso → uscita" />
         {d.heelIn != null && <StatTile label="Inclinazione" value={`${fmtNum(d.heelIn, 0)}°`} sub="massima verso l’interno" />}

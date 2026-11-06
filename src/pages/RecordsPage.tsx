@@ -4,7 +4,7 @@ import { EChart } from '../components/EChart'
 import { BestPolarsCard } from '../components/Polars'
 import { RequireAuth } from '../components/RequireAuth'
 import { SessionLine } from '../components/Scores'
-import { btnGhost, btnSecondary, card, Segmented, StatTile } from '../components/ui'
+import { btnGhost, btnSecondary, card, Segmented, StatTile, zones } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { progressOption } from '../lib/charts'
 import { listSpots, loadTrack, sessionsAtSpot, sessionsOf, updateSession, type CloudSession } from '../lib/cloud'
@@ -90,7 +90,7 @@ function Records({ userId }: { userId?: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold">{me ? 'I tuoi record' : `Record di ${name}`}</h1>
+        <h1 className="page-title">{me ? 'I tuoi record' : `Record di ${name}`}</h1>
         <p className="text-sm text-ink-2">
           Dalle uscite condivise nella crew{me ? '' : ' che puoi vedere'}.
           {me && (
@@ -118,7 +118,7 @@ function Records({ userId }: { userId?: string }) {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className={`${zones} [--cols:2] sm:[--cols:4]`}>
             <StatTile label="Uscite" value={String(tot.sessions)} />
             <StatTile label="Distanza" value={fmtDist(tot.distance, settings.distUnit)} />
             <StatTile label="In foil" value={fmtDuration(tot.foilTime)} />
@@ -171,7 +171,7 @@ function Records({ userId }: { userId?: string }) {
           />
           {shown.length > 1 && (
             <div className={`${card} p-3`}>
-              <p className="font-display text-[16px] leading-tight font-semibold">Progressi</p>
+              <p className="card-title">Progressi</p>
               <p className="text-xs text-ink-2">Velocità massima su 10 secondi di ogni uscita ({u}).</p>
               <EChart option={progress} height={220} label="Velocità massima su 10 secondi nelle varie uscite" />
             </div>
@@ -250,6 +250,8 @@ function WindRow({ row, unit, onSaved }: { row: CloudSession; unit: SpeedUnit; o
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
+          name="windSpeed"
+          autoComplete="off"
           inputMode="decimal"
           aria-label={`Vento medio in acqua il ${fmtShortDate(Date.parse(row.started_at))} (${u})`}
           className="w-16 rounded-lg border border-line bg-surface px-2 py-1.5 text-base"
@@ -306,14 +308,15 @@ function AddPolars({ rows, onDone }: { rows: CloudSession[]; onDone: () => void 
 
 function SessionList({ rows, settings, showName }: { rows: CloudSession[]; settings: Settings; showName?: boolean }) {
   return (
-    <ul className="divide-y divide-[var(--border)] border-y border-line">
+    <ul className="space-y-3">
       {rows.slice(0, 50).map((r) => (
-        <li key={r.id} className="py-2.5">
-          <Link to={`/c/${r.id}`} className="flex items-center gap-3">
+        <li key={r.id} className="press rounded-2xl [contain-intrinsic-size:auto_84px] [content-visibility:auto]">
+          <Link to={`/c/${r.id}`} className="flex items-center gap-3 rounded-2xl">
             <SessionLine
               s={r}
               windSpeed={r.wind_speed}
-              about={showName ? `${r.profile?.display_name ?? 'Rider'}, ${fmtShortDate(Date.parse(r.started_at))}` : fmtShortDate(Date.parse(r.started_at))}
+              // The title the app makes up has the date in it already.
+              about={[showName && (r.profile?.display_name ?? 'Rider'), !r.title.startsWith('Uscita del ') && fmtShortDate(Date.parse(r.started_at))].filter(Boolean).join(', ')}
               settings={settings}
             />
           </Link>
@@ -365,7 +368,7 @@ function SpotView({ id }: { id: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold">{name}</h1>
+        <h1 className="page-title">{name}</h1>
         <p className="text-sm text-ink-2">{rows.length} uscite della crew in questo spot.</p>
       </div>
       <div className="flex flex-wrap gap-2">

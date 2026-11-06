@@ -11,7 +11,7 @@ import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { ScoreCard } from '../components/Scores'
 import { SessionGear } from '../components/SessionGear'
 import { TogetherBanner } from '../components/TogetherBanner'
-import { btnGhost, btnPrimary, btnSecondary, card, MiniRing, SlidingTabs, Sparkline, StatTile } from '../components/ui'
+import { btnGhost, btnPrimary, btnSecondary, card, instrumentLabel, SlidingTabs, StatTile, zones } from '../components/ui'
 import { VideoTab } from '../components/VideoTab'
 import { WindDial } from '../components/WindDial'
 import { rangeStats } from '../lib/analysis/analyze'
@@ -227,9 +227,10 @@ export function SessionView({
   const u = SPEED_SHORT[unit]
   const sp = (ms: number | null | undefined) => fmtSpeed(ms, unit)
   const coarse = useMemo(isCoarsePointer, [])
-  // The speed through the session, in a few averaged steps, for the tile with the top speed.
+  const navigate = useNavigate()
+  // The speed through the session, in averaged steps, for the replay's slider.
   const speedLine = useMemo(() => {
-    const steps = 60
+    const steps = 72
     const size = tr.spd.length / steps
     return Array.from({ length: steps }, (_, k) => {
       const from = Math.floor(k * size)
@@ -354,67 +355,40 @@ export function SessionView({
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="space-y-1">
-        <Link to="/" className="inline-flex items-center gap-1 text-sm font-medium text-accent">
-          <IconBack width={18} height={18} /> Uscite
-        </Link>
-        {editing ? (
-          <EditDetails rec={rec} riderEditable={riderEditable} onCancel={() => setEditing(false)} onSave={async (p) => {
-            await onUpdate(p)
-            setEditing(false)
-          }} />
-        ) : (
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <h1 className="font-display text-[30px] leading-[1.05] font-bold">{rec.title}</h1>
-              <p className="mt-0.5 text-sm text-ink-2 first-letter:uppercase">
-                {fmtDate(sum.start)}, {fmtTime(sum.start)}–{fmtTime(sum.end)}, {rec.rider}
-                {rec.device ? `, ${rec.device.replace(' \u00b7 ', ' ')}` : ''}
-              </p>
-              {meta}
-              <TogetherBanner id={compareId ?? rec.id} start={sum.start} end={sum.end} />
-            </div>
-            {!readOnly && (
-              <button type="button" className={btnGhost} onClick={() => setEditing(true)} aria-label="Modifica titolo e rider">
-                <IconEdit width={18} height={18} />
-              </button>
-            )}
-            {!readOnly && (
-              <button type="button" className={`${btnGhost} text-critical`} onClick={onDelete} aria-label="Elimina uscita">
-                <IconTrash width={18} height={18} />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <ScoreCard perf={sum.perf} windSpeed={rec.windSpeed} />
-
-      <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-5">
+    <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-5">
         {/* Map and replay */}
-        <div className="space-y-2 lg:sticky lg:top-[4.5rem] lg:self-start">
-          <MapView
-            tracks={mapTracks}
-            cursor={cursor}
-            range={range}
-            segments={tab === 'bordi' ? top?.segments : null}
-            maneuvers={a.maneuvers}
-            stops={stopPoints}
-            selectedManeuver={selMnv}
-            onManeuverClick={(k) => {
-              pickManeuver(k)
-              setTab('manovre')
-            }}
-            pin={pin}
-            windDir={wind.dir}
-            speedDomain={domain}
-            trail={settings.trailMode}
-            legend={{ min: sp(domain[0]), max: sp(domain[1]), unit: u }}
-            className="h-[46vh] min-h-[300px] rounded-lg border border-line lg:h-[calc(100dvh-11rem)]"
-          />
-          <ReplayBar replay={replay} t0={t0} t1={t1} readout={readout} />
+        <div className="space-y-2 lg:sticky lg:top-[4.25rem] lg:self-start">
+          <div className="map-hero relative">
+            <MapView
+              tracks={mapTracks}
+              cursor={cursor}
+              range={range}
+              segments={tab === 'bordi' ? top?.segments : null}
+              maneuvers={a.maneuvers}
+              stops={stopPoints}
+              selectedManeuver={selMnv}
+              onManeuverClick={(k) => {
+                pickManeuver(k)
+                setTab('manovre')
+              }}
+              pin={pin}
+              windDir={wind.dir}
+              speedDomain={domain}
+              trail={settings.trailMode}
+              legend={{ min: sp(domain[0]), max: sp(domain[1]), unit: u }}
+              className="size-full"
+            />
+            <button
+              type="button"
+              // Back where it came from; a session opened from a link has nowhere to go back to but the list.
+              onClick={() => ((window.history.state as { idx?: number } | null)?.idx ? navigate(-1) : navigate('/'))}
+              aria-label="Indietro"
+              className="press absolute top-[calc(env(safe-area-inset-top)+0.5rem)] left-2 flex size-10 items-center justify-center rounded-full bg-surface/90 text-ink"
+            >
+              <IconBack width={22} height={22} />
+            </button>
+          </div>
+          <ReplayBar replay={replay} t0={t0} t1={t1} readout={readout} profile={speedLine} />
           <TrailToggle value={settings.trailMode} onChange={(trailMode) => updateSettings({ trailMode })} />
           {(a.maneuvers.length > 0 || a.stops.length > 0) && (
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs text-ink-2">
@@ -435,6 +409,38 @@ export function SessionView({
         </div>
 
         <div className="mt-4 space-y-4 lg:mt-0">
+          {/* Header */}
+          {editing ? (
+            <EditDetails rec={rec} riderEditable={riderEditable} onCancel={() => setEditing(false)} onSave={async (p) => {
+              await onUpdate(p)
+              setEditing(false)
+            }} />
+          ) : (
+            <div className="flex items-start gap-1">
+              <div className="min-w-0 flex-1">
+                <h1 className="font-display text-[32px] leading-[1.05] font-bold">{rec.title.replace(/^Uscita del /, '')}</h1>
+                <p className="mt-0.5 text-sm text-ink-2 first-letter:uppercase">
+                  {fmtDate(sum.start)}, {fmtTime(sum.start)}–{fmtTime(sum.end)}, {rec.rider}
+                  {rec.device ? `, ${rec.device.replace(' \u00b7 ', ' ')}` : ''}
+                </p>
+                {meta}
+                <TogetherBanner id={compareId ?? rec.id} start={sum.start} end={sum.end} />
+              </div>
+              {!readOnly && (
+                <button type="button" className={`${btnGhost} text-ink-2`} onClick={() => setEditing(true)} aria-label="Modifica titolo e rider">
+                  <IconEdit width={18} height={18} />
+                </button>
+              )}
+              {!readOnly && (
+                <button type="button" className={`${btnGhost} text-critical`} onClick={onDelete} aria-label="Elimina uscita">
+                  <IconTrash width={18} height={18} />
+                </button>
+              )}
+            </div>
+          )}
+
+          <ScoreCard perf={sum.perf} windSpeed={rec.windSpeed} />
+
           {/* Wind */}
           {windEdit ? (
             <WindEditor
@@ -450,7 +456,7 @@ export function SessionView({
             <div ref={windCard} className={`${card} space-y-2 p-3.5`}>
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] text-ink-2">Vento</p>
+                  <p className={instrumentLabel}>Vento</p>
                   {wind.dir != null ? (
                     <p className="font-display text-[19px] leading-tight font-semibold">
                       da {compass(wind.dir)}, {Math.round(wind.dir)}°{' '}
@@ -508,18 +514,14 @@ export function SessionView({
           <SessionGear gear={rec.gear ?? []} editable={!readOnly && riderIsMe} start={sum.start} past={others} onSave={(gear) => onUpdate({ gear })} />
 
           {/* Key numbers */}
-          <div className="stagger grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className={`${zones} [--cols:2] sm:[--cols:3]`}>
             <StatTile
+              big
               label="Velocità max (2 s)"
-              wide
-              visual={<Sparkline values={speedLine} className="size-full" />}
               value={sp(sum.records.s2)}
               unit={u}
               onClick={a.records.s2 ? () => focus(a.records.s2!.i0, a.records.s2!.i1) : undefined}
             />
-            <StatTile label="Distanza" value={fmtDist(sum.distance, settings.distUnit)} sub={`in foil ${fmtDist(sum.foilDistance, settings.distUnit)}`} />
-            <StatTile label="Durata" value={fmtDuration(sum.duration)} sub={`in movimento ${fmtDuration(sum.movingTime)}`} />
-            <StatTile label="In foil" visual={<MiniRing share={sum.foilShare} />} value={fmtPct(sum.foilShare)} sub={`${fmtDuration(sum.foilTime)}, ${sum.takeoffs} decolli`} />
             <StatTile
               label="Max su 10 s"
               value={sp(sum.records.s10)}
@@ -534,17 +536,20 @@ export function SessionView({
               sub={`1 miglio: ${sp(sum.records.nm)} ${u}`}
               onClick={a.records.m500 ? () => focus(a.records.m500!.i0, a.records.m500!.i1, 3000) : undefined}
             />
+            <StatTile label="Distanza" value={fmtDist(sum.distance, settings.distUnit)} sub={`in foil ${fmtDist(sum.foilDistance, settings.distUnit)}`} />
+            <StatTile label="Durata" value={fmtDuration(sum.duration)} sub={`in movimento ${fmtDuration(sum.movingTime)}`} />
+            <StatTile label="In foil" share={sum.foilShare} value={fmtPct(sum.foilShare)} sub={`${fmtDuration(sum.foilTime)}, ${sum.takeoffs} decolli`} />
             <StatTile label="Media in foil" value={sp(sum.avgFoilSpeed)} unit={u} sub={`100 m: ${sp(sum.records.m100)} ${u}`} />
             <StatTile
               label="Strambate in foil"
-              visual={sum.jibes ? <MiniRing share={sum.jibesFoiled / sum.jibes} /> : undefined}
+              share={sum.jibes ? sum.jibesFoiled / sum.jibes : undefined}
               value={sum.jibes ? `${sum.jibesFoiled}/${sum.jibes}` : '–'}
               sub={sum.jibes ? fmtPct(sum.jibesFoiled / sum.jibes) : wind.dir == null ? 'serve il vento' : 'nessuna'}
               onClick={sum.jibes ? () => setTab('manovre') : undefined}
             />
             <StatTile
               label="Virate in foil"
-              visual={sum.tacks ? <MiniRing share={sum.tacksFoiled / sum.tacks} /> : undefined}
+              share={sum.tacks ? sum.tacksFoiled / sum.tacks : undefined}
               value={sum.tacks ? `${sum.tacksFoiled}/${sum.tacks}` : '–'}
               sub={sum.tacks ? fmtPct(sum.tacksFoiled / sum.tacks) : wind.dir == null ? 'serve il vento' : 'nessuna'}
               onClick={sum.tacks ? () => setTab('manovre') : undefined}
@@ -599,7 +604,7 @@ export function SessionView({
                   Tutta l'uscita
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`${zones} [--cols:3] [--zone:var(--surface-2)]`}>
                 <StatTile label="Durata" value={fmtDuration(rangeInfo.duration)} />
                 <StatTile label="Distanza" value={fmtDist(rangeInfo.distance, settings.distUnit)} />
                 <StatTile label="Media" value={sp(rangeInfo.avgSpeed)} unit={u} />
@@ -616,7 +621,7 @@ export function SessionView({
           {tab === 'grafici' && (
             <div className="space-y-4">
               <div className={`${card} p-3`}>
-                <p className="font-display text-[16px] leading-tight font-semibold">Velocità</p>
+                <p className="card-title">Velocità</p>
                 <p className="text-xs text-ink-2">
                   {coarse ? 'Tocca il grafico per i valori; ' : 'Passa sopra il grafico per i valori; '}trascina le maniglie in basso per
                   selezionare un tratto.
@@ -668,7 +673,7 @@ export function SessionView({
           {readOnly ? (
             rec.notes && (
               <div className={`${card} p-3.5`}>
-                <p className="font-display text-[16px] leading-tight font-semibold">Note</p>
+                <p className="card-title">Note</p>
                 <p className="mt-1 text-sm whitespace-pre-wrap">{rec.notes}</p>
               </div>
             )
@@ -678,7 +683,6 @@ export function SessionView({
           {rec.warnings.length > 0 && <p className="px-1 text-xs text-ink-2">Note sul file: {rec.warnings.join(', ')}.</p>}
         </div>
       </div>
-    </div>
   )
 }
 
@@ -705,12 +709,12 @@ function EditDetails({
     >
       <label className="block text-sm">
         <span className="text-ink-2">Titolo</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-base" />
+        <input name="title" autoComplete="off" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-base" />
       </label>
       {riderEditable && (
         <label className="block text-sm">
           <span className="text-ink-2">Rider (di chi è questa uscita)</span>
-          <input value={rider} onChange={(e) => setRider(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-base" />
+          <input name="rider" autoComplete="off" value={rider} onChange={(e) => setRider(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-base" />
         </label>
       )}
       <div className="flex gap-2">
@@ -766,7 +770,7 @@ function Histogram({ tr, a, unit, colors }: { tr: SessionData['track']; a: Sessi
   const option = useMemo(() => histogramOption(tr, a, unit, colors), [tr, a, unit, colors])
   return (
     <div className={`${card} p-3`}>
-      <p className="font-display text-[16px] leading-tight font-semibold">Velocità in foil</p>
+      <p className="card-title">Velocità in foil</p>
       <p className="text-xs text-ink-2">Minuti passati in ogni fascia di velocità.</p>
       <EChart option={option} height={220} label="Distribuzione della velocità in foil" />
     </div>
@@ -777,7 +781,7 @@ function Orientation({ data, colors, coarse }: { data: SessionData; colors: Them
   const option = useMemo(() => orientationOption(data.track, colors, coarse), [data, colors, coarse])
   return (
     <div className={`${card} p-3`}>
-      <p className="font-display text-[16px] leading-tight font-semibold">Sbandamento e beccheggio</p>
+      <p className="card-title">Sbandamento e beccheggio</p>
       <p className="text-xs text-ink-2">Dall'orientamento registrato dal Vakaros, in gradi.</p>
       <EChart option={option} height={240} label="Sbandamento e beccheggio nel tempo" />
     </div>
@@ -788,7 +792,7 @@ function HeartRate({ data, colors, coarse }: { data: SessionData; colors: ThemeC
   const option = useMemo(() => heartRateOption(data.track, colors, coarse), [data, colors, coarse])
   return (
     <div className={`${card} p-3`}>
-      <p className="font-display text-[16px] leading-tight font-semibold">Battito cardiaco</p>
+      <p className="card-title">Battito cardiaco</p>
       <EChart option={option} height={220} label="Battito cardiaco nel tempo" />
     </div>
   )
@@ -846,7 +850,7 @@ function SailTab({
   )
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
+      <div className={`${zones} [--cols:2]`}>
         <StatTile
           label="Miglior VMG in bolina"
           value={fmtSpeed(a.sail.bestVmgUp?.v, unit)}
@@ -859,13 +863,13 @@ function SailTab({
           unit={u}
           sub={vs?.vmg.down ? `${who.short}: ${fmtSpeed(vs.vmg.down.v, unit)} ${u}` : 'media su 10 s'}
         />
-        <button type="button" className={`${btnGhost} col-span-2 justify-self-start`} onClick={onBest}>
-          Bordi migliori di bolina e poppa
-        </button>
       </div>
+      <button type="button" className={`${btnGhost} -my-1`} onClick={onBest}>
+        Bordi migliori di bolina e poppa
+      </button>
       <div className={`${card} space-y-3 p-3`}>
         <div>
-          <p className="font-display text-[16px] leading-tight font-semibold">Polare</p>
+          <p className="card-title">Polare</p>
           <p className="text-xs text-ink-2">Velocità in foil (90° percentile, {u}) per angolo dal vento. Vento dall'alto.</p>
         </div>
         {windSpeed != null && band && (
@@ -965,7 +969,10 @@ function LegsTab({
           {a.legs.map((l, k) => (
             <tr key={k} onClick={() => onPick(l.i0, l.i1)} className="cursor-pointer border-t border-line hover:bg-surface-2">
               <td className="px-3 py-2 whitespace-nowrap tabular">
-                {fmtTimeSec(tr.t[l.i0])}
+                {/* The whole row answers a tap; the button is how a keyboard gets to it. */}
+                <button type="button" onClick={(e) => (e.stopPropagation(), onPick(l.i0, l.i1))} className="rounded tabular">
+                  {fmtTimeSec(tr.t[l.i0])}
+                </button>
                 {top?.has(l) && (
                   <span className="ml-1 text-accent" title="Tra i bordi migliori">
                     ★<span className="sr-only"> tra i migliori</span>
@@ -1000,6 +1007,8 @@ function Notes({ rec, onSave }: { rec: SessionRecord; onSave: (notes: string) =>
     <label className={`${card} block p-3.5`}>
       <span className="text-sm font-semibold">Note</span>
       <textarea
+        name="notes"
+        autoComplete="off"
         value={v}
         onChange={(e) => setV(e.target.value)}
         onBlur={() => v !== rec.notes && onSave(v)}

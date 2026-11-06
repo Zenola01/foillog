@@ -3,28 +3,30 @@
 @import "@fontsource/barlow/latin-600.css";
 @import "@fontsource/barlow-condensed/latin-600.css";
 @import "@fontsource/barlow-condensed/latin-700.css";
+@import "@fontsource/barlow-condensed/latin-700-italic.css";
 
-/* Colour tokens: a race instrument, black and lime in the dark theme, ink and olive in the light one.
-   Chart and series values come from the validated data-viz palette
+/* Colour tokens. The screen is black or white with greys one step apart, and colour belongs to the data
+   and to the one main action of a view. Chart and series values come from the validated data-viz palette
    (light and dark are separate, selected steps, not an automatic flip). */
 :root {
   color-scheme: light;
-  --page: #f1f3ec;
-  --surface: #f8f9f4;
-  --surface-2: #e7eadf;
-  --ink: #0b0e10;
-  --ink-2: #4d565b;
-  --muted: #7a8388;
-  --grid: #dde0d4;
-  --axis: #bfc4b6;
-  --border: rgba(11, 14, 16, 0.14);
+  --page: #f2f3f3;
+  --surface: #ffffff;
+  --surface-2: #e7e9e9;
+  --ink: #0a0a0a;
+  --ink-2: #4e5456;
+  --muted: #6c7274;
+  --grid: #e1e3e3;
+  --axis: #c3c7c8;
+  --border: rgba(10, 10, 10, 0.13);
+  --water: #dde3e5;
+  --land: #f7f8f8;
   --accent-text: #4c5f00;
   --accent-btn: #c8f31d;
-  --on-accent: #0a0d0f;
+  --on-accent: #0a0a0a;
   --brand: #4c5f00;
-  --score: #0b0e10;
-  --bar: #8db000;
-  --bar-track: #dde0d4;
+  --bar: #769400;
+  --bar-track: #e1e3e3;
   --track: #2e3a00;
   --series-1: #2a78d6;
   --series-2: #eb6834;
@@ -45,24 +47,25 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root {
     color-scheme: dark;
-    --page: #0a0d0f;
-    --surface: #11161a;
-    --surface-2: #1a2126;
-    --ink: #e9eef0;
-    --ink-2: #9aa5aa;
-    --muted: #6f7a80;
-    --grid: #232a2e;
-    --axis: #333c41;
-    --border: rgba(233, 238, 240, 0.12);
+    --page: #000000;
+    --surface: #141516;
+    --surface-2: #222425;
+    --ink: #f6f7f7;
+    --ink-2: #a7adaf;
+    --muted: #868c8e;
+    --grid: #26282a;
+    --axis: #3b3e40;
+    --border: rgba(255, 255, 255, 0.12);
+    --water: #000000;
+    --land: #1b1c1d;
     --accent-text: #c8f31d;
     --accent-btn: #c8f31d;
-    --on-accent: #0a0d0f;
+    --on-accent: #0a0a0a;
     --brand: #c8f31d;
-    --score: #c8f31d;
     --bar: #c8f31d;
-    --bar-track: #232a2e;
+    --bar-track: #2a2c2e;
     --track: #c8f31d;
     --series-1: #3987e5;
     --series-2: #d95926;
@@ -75,52 +78,15 @@
     --good: #0ca30c;
     --good-text: #0ca30c;
     --critical: #d03b3b;
-    --speed-1: #5a3ce8;
-    --speed-2: #b23ac8;
+    --speed-1: #6248f0;
+    --speed-2: #b93fd2;
     --speed-3: #f4506f;
     --speed-4: #ff9a36;
     --speed-5: #fff23d;
   }
 }
 
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --page: #0a0d0f;
-  --surface: #11161a;
-  --surface-2: #1a2126;
-  --ink: #e9eef0;
-  --ink-2: #9aa5aa;
-  --muted: #6f7a80;
-  --grid: #232a2e;
-  --axis: #333c41;
-  --border: rgba(233, 238, 240, 0.12);
-  --accent-text: #c8f31d;
-  --accent-btn: #c8f31d;
-  --on-accent: #0a0d0f;
-  --brand: #c8f31d;
-  --score: #c8f31d;
-  --bar: #c8f31d;
-  --bar-track: #232a2e;
-  --track: #c8f31d;
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --series-5: #d55181;
-  --series-6: #008300;
-  --series-7: #9085e9;
-  --series-8: #e66767;
-  --good: #0ca30c;
-  --good-text: #0ca30c;
-  --critical: #d03b3b;
-  --speed-1: #5a3ce8;
-  --speed-2: #b23ac8;
-  --speed-3: #f4506f;
-  --speed-4: #ff9a36;
-  --speed-5: #fff23d;
-}
-
-/* Other colour combinations to try, chosen under Altro; yellow on black is the default above. */
+/* The colours the app can wear, chosen under Altro; yellow on black is the default above. */
 :root[data-palette="arancio"] {
   --accent-btn: #ff7a1a;
   --on-accent: #160a00;
@@ -130,18 +96,24 @@
   --track: #8a3700;
 }
 :root[data-palette="oceano"] {
-  --page: #eef5f8;
-  --surface: #f8fbfc;
-  --surface-2: #dfecf2;
-  --grid: #d3e3ea;
+  --page: #e8f2f7;
+  --surface: #ffffff;
+  --surface-2: #d8e8f1;
+  --ink: #03202f;
+  --ink-2: #41606f;
+  --muted: #587584;
+  --grid: #d9e7ee;
+  --axis: #b5cbd6;
+  --border: rgba(3, 32, 47, 0.14);
+  --water: #cfe3ee;
+  --land: #f4f8fa;
+  --accent-btn: #0a79ad;
+  --on-accent: #ffffff;
+  --accent-text: #086a98;
+  --brand: #086a98;
+  --bar: #0a8cc7;
   --bar-track: #d3e3ea;
-  --accent-btn: #2cc6e4;
-  --on-accent: #04202b;
-  --accent-text: #0a6a85;
-  --brand: #0a6a85;
-  --score: #06283b;
-  --bar: #0f9dbd;
-  --track: #0a5a73;
+  --track: #075f88;
 }
 :root[data-palette="rosso"] {
   --accent-btn: #e5283a;
@@ -152,56 +124,57 @@
   --track: #8f1521;
 }
 :root[data-palette="bianco"] {
-  --accent-btn: #0b0e10;
+  --accent-btn: #0a0a0a;
   --on-accent: #ffffff;
-  --accent-text: #0b0e10;
-  --brand: #0b0e10;
-  --bar: #0b0e10;
-  --track: #0b0e10;
+  --accent-text: #0a0a0a;
+  --brand: #0a0a0a;
+  --bar: #0a0a0a;
+  --bar-track: #dcdfe0;
+  --track: #0a0a0a;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-palette="arancio"] {
     --accent-text: #ff9650;
     --brand: #ff9650;
-    --score: #ff8f40;
     --bar: #ff7a1a;
     --track: #ff8f40;
   }
   :root[data-palette="oceano"] {
-    --page: #06182a;
-    --surface: #0c2439;
-    --surface-2: #143349;
-    --ink: #e6f1f7;
-    --ink-2: #9db6c6;
-    --muted: #6f8ea2;
-    --grid: #1a3a52;
+    --page: #041627;
+    --surface: #0a2236;
+    --surface-2: #12304a;
+    --ink: #eef6fb;
+    --ink-2: #a0b9c9;
+    --muted: #7f9db0;
+    --grid: #173650;
     --axis: #27506c;
     --border: rgba(220, 235, 245, 0.13);
-    --bar-track: #1a3a52;
-    --accent-btn: #3fd8f2;
-    --accent-text: #5fe0f6;
-    --brand: #5fe0f6;
-    --score: #5fe0f6;
-    --bar: #3fd8f2;
-    --track: #5fe0f6;
+    --water: #041627;
+    --land: #0f2a40;
+    --accent-btn: #38c6f4;
+    --on-accent: #031421;
+    --accent-text: #5fd2f7;
+    --brand: #5fd2f7;
+    --bar: #38c6f4;
+    --bar-track: #173650;
+    --track: #7adcff;
   }
   :root[data-palette="rosso"] {
     --accent-btn: #ff4757;
     --on-accent: #1a0306;
     --accent-text: #ff6b78;
     --brand: #ff6b78;
-    --score: #ff6b78;
     --bar: #ff4757;
     --track: #ff6b78;
   }
   :root[data-palette="bianco"] {
-    --accent-btn: #f2f4f5;
-    --on-accent: #0a0d0f;
-    --accent-text: #f2f4f5;
-    --brand: #f2f4f5;
-    --score: #ffffff;
-    --bar: #e6eaec;
-    --track: #e6eaec;
+    --accent-btn: #ffffff;
+    --on-accent: #000000;
+    --accent-text: #ffffff;
+    --brand: #ffffff;
+    --bar: #ffffff;
+    --bar-track: #2a2c2e;
+    --track: #ffffff;
   }
 }
 
@@ -218,7 +191,6 @@
   --color-accent-btn: var(--accent-btn);
   --color-on-accent: var(--on-accent);
   --color-brand: var(--brand);
-  --color-score: var(--score);
   --color-good: var(--good);
   --color-good-text: var(--good-text);
   --color-critical: var(--critical);
@@ -247,8 +219,46 @@ label {
   touch-action: manipulation;
 }
 
+h1,
+h2 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* The type: the slanted cut is for what moves, the name of a page and the numbers that matter. */
+@layer components {
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 40px;
+    font-style: italic;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+  .big-number {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    line-height: 1;
+  }
+}
+
+/* With a white accent a link has nothing but its underline to tell it from the text. */
+:root[data-palette="bianco"] a.text-accent {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Tables read like an instrument: numbers in the condensed face, small headings. */
@@ -262,7 +272,7 @@ thead th {
   font-weight: 600;
 }
 caption {
-  font-size: 17px;
+  font-size: 18px;
 }
 thead th {
   font-size: 15px;
@@ -273,23 +283,89 @@ thead th {
   outline-offset: 2px;
 }
 
-/* Motion: only transforms and opacity where it matters, and nothing for whoever asked for less. */
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
+/* The map under the status bar, edge to edge on a phone; its water is the page, so it melts into it. */
+.map-hero {
+  margin-inline: -1rem;
+  margin-top: calc(-1rem - env(safe-area-inset-top));
+  height: 56svh;
+  min-height: 340px;
+}
+.map-hero .maplibregl-ctrl-top-right {
+  top: env(safe-area-inset-top);
+}
+.map-edge {
+  margin-inline: -1rem;
+  height: 46svh;
+  min-height: 300px;
+}
+@media (min-width: 768px) {
+  .map-hero,
+  .map-edge {
+    margin: 0;
+    overflow: hidden;
+    border-radius: 1rem;
+    height: 46svh;
   }
 }
-@keyframes reveal {
-  from {
-    clip-path: inset(0 100% 0 0);
+@media (min-width: 1024px) {
+  .map-hero,
+  .map-edge {
+    height: calc(100dvh - 15rem);
   }
-  to {
-    clip-path: inset(0);
+}
+
+/* A value out of 100 as lit segments. */
+.led {
+  height: 8px;
+  overflow: hidden;
+  background: var(--bar-track);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px);
+  mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px);
+}
+.led-fill {
+  display: block;
+  height: 100%;
+  background: var(--bar);
+  transform-origin: left;
+  animation: grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* The replay's slider: nothing but a needle, as wide as a finger to grab, over the speed of the session. */
+.scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.scrubber::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+}
+.scrubber::-moz-range-track {
+  height: 100%;
+  background: transparent;
+}
+.scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 44px;
+  border: 0;
+  background: linear-gradient(var(--ink), var(--ink)) center / 3px 100% no-repeat;
+}
+.scrubber::-moz-range-thumb {
+  width: 28px;
+  height: 44px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(var(--ink), var(--ink)) center / 3px 100% no-repeat;
+}
+
+/* Motion: what moves is what the sport moves, a track drawing itself, a needle climbing, a replay running.
+   Only transforms and opacity where it matters, and nothing for whoever asked for less. */
+@keyframes fade {
+  from {
+    opacity: 0;
   }
 }
 @keyframes draw {
@@ -320,25 +396,7 @@ thead th {
 }
 
 .page-enter {
-  animation: rise 0.34s ease-out both;
-}
-.stagger > * {
-  animation: rise 0.42s ease-out both;
-}
-.stagger > :nth-child(2) {
-  animation-delay: 50ms;
-}
-.stagger > :nth-child(3) {
-  animation-delay: 100ms;
-}
-.stagger > :nth-child(4) {
-  animation-delay: 150ms;
-}
-.stagger > :nth-child(5) {
-  animation-delay: 200ms;
-}
-.stagger > :nth-child(n + 6) {
-  animation-delay: 250ms;
+  animation: fade 0.16s ease-out both;
 }
 .press {
   transition: transform 0.12s ease-out, background-color 0.12s ease-out;
@@ -353,22 +411,6 @@ thead th {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
   animation: draw 1.8s ease-out forwards;
-}
-.reveal-x {
-  animation: reveal 1.5s ease-out both;
-}
-.ring-fill {
-  transition: stroke-dasharray 1s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.bar-fill {
-  transform-origin: left;
-  animation: grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.score-glow {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(70% 90% at 100% 0%, color-mix(in srgb, var(--accent-btn) 15%, transparent), transparent 72%);
 }
 .skeleton {
   position: relative;
@@ -420,25 +462,24 @@ thead th {
 
 /* MapLibre controls follow the app surfaces. */
 .maplibregl-ctrl-group {
+  overflow: hidden;
+  border-radius: 12px !important;
   background: var(--surface) !important;
-  border: 1px solid var(--border);
   box-shadow: none !important;
 }
 .maplibregl-ctrl-group button + button {
   border-top: 1px solid var(--border) !important;
 }
-.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
-  filter: var(--ctrl-icon-filter, none);
-}
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  .maplibregl-ctrl-group button .maplibregl-ctrl-icon,
+  .maplibregl-ctrl-attrib-button {
     filter: invert(1);
   }
 }
 .maplibregl-ctrl-attrib {
   background: color-mix(in srgb, var(--surface) 80%, transparent) !important;
-  color: var(--ink-2);
 }
+.maplibregl-ctrl-attrib-inner,
 .maplibregl-ctrl-attrib a {
   color: var(--ink-2) !important;
 }

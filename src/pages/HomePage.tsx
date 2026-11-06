@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { Link, useNavigate } from 'react-router-dom'
 import { FeedCard } from '../components/FeedCard'
 import { FileDrop } from '../components/FileDrop'
-import { IconShare, IconX } from '../components/icons'
-import { ScorePanel, SessionLine } from '../components/Scores'
-import { btnGhost, btnPrimary, btnSecondary, card, instrumentLabel, Segmented, Skeleton } from '../components/ui'
+import { IconShare, IconX, Logo } from '../components/icons'
+import { ScoreHero, SessionLine } from '../components/Scores'
+import { btnGhost, btnPrimary, btnSecondary, card, Segmented, Skeleton } from '../components/ui'
 import { lacksPerf, sessionScores } from '../lib/analysis/scores'
 import { useAuth } from '../lib/auth'
 import { feed, myCrews, type CloudSession } from '../lib/cloud'
@@ -15,7 +15,7 @@ import { isMyName, useSettings, type Settings } from '../lib/settings'
 import type { SessionRecord } from '../lib/store'
 import { together, type Span } from '../lib/together'
 import type { SessionSummary } from '../lib/types'
-import { fmtDate, fmtShortDate, fmtTime } from '../lib/units'
+import { fmtShortDate, fmtTime } from '../lib/units'
 
 const STATUS: Record<ImportJob['status'], string> = {
   reading: 'Lettura…',
@@ -28,16 +28,31 @@ const STATUS: Record<ImportJob['status'], string> = {
 
 const PAGE = 30
 
-function dayLabel(ms: number): string {
-  const d = new Date(ms)
+const WEEKDAY = new Intl.DateTimeFormat('it-IT', { weekday: 'short' })
+const MONTH = new Intl.DateTimeFormat('it-IT', { month: 'short' })
+
+/** A day as in a ship's log: down the left of its sessions, staying in sight while they scroll past. */
+function DayMark({ at }: { at: number }) {
+  const d = new Date(at)
   const today = new Date()
   const yest = new Date()
   yest.setDate(today.getDate() - 1)
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString()
-  if (same(d, today)) return 'Oggi'
-  if (same(d, yest)) return 'Ieri'
-  return fmtDate(ms)
+  const year = d.getFullYear() === today.getFullYear() ? '' : ` ${String(d.getFullYear()).slice(2)}`
+  return (
+    <h2 className="sticky top-[calc(env(safe-area-inset-top)+0.75rem)] z-10 self-start text-center font-display leading-none md:top-[4.25rem]">
+      <span className="block text-[15px] font-semibold text-ink-2 first-letter:uppercase">{same(d, today) ? 'Oggi' : same(d, yest) ? 'Ieri' : WEEKDAY.format(d)}</span>
+      <span className="big-number my-0.5 block text-[34px]">{d.getDate()}</span>
+      <span className="block text-[15px] font-semibold whitespace-nowrap text-ink-2">
+        {MONTH.format(d)}
+        {year}
+      </span>
+    </h2>
+  )
 }
+
+/** The title the app makes up says only when: next to its day, the time is all it has to add. */
+const headingOf = (s: Pick<SessionRecord, 'title' | 'summary'>) => (s.title.startsWith('Uscita del ') ? fmtTime(s.summary.start) : s.title)
 
 /** The line under a title: the time, unless the title says it already (as the ones the app makes up do), and the rest. */
 function aboutLine(s: Pick<SessionRecord, 'title' | 'summary'>, ...rest: (string | false | undefined)[]): string {
@@ -133,6 +148,11 @@ export default function HomePage() {
     }
     return null
   }, [view, days])
+  const canShareRec = (s: SessionRecord) => !!user && !s.demo && isMine(s)
+  // The session at the head is not repeated in the list, unless it still has to be sent to the crew.
+  const listed = days
+    .map((g) => ({ ...g, items: g.items.filter((e) => e !== latest?.e || (e.rec != null && canShareRec(e.rec))) }))
+    .filter((g) => g.items.length > 0)
 
   const onFiles = async (files: File[]) => {
     const created = await importFiles(files)
@@ -176,8 +196,14 @@ export default function HomePage() {
 
   return (
     <div className="space-y-5">
+      {empty && (
+        <p translate="no" className="flex items-center gap-2 font-display text-[21px] font-bold md:hidden">
+          <Logo className="h-7 w-7" />
+          FoilLog
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <h1 className="font-display text-[30px] leading-none font-bold">Uscite</h1>
+        <h1 className="page-title">Uscite</h1>
         <Segmented
           label="Quali uscite vedere"
           value={view}
@@ -198,25 +224,33 @@ export default function HomePage() {
         </p>
       )}
 
-      {latest && (
-        <Link to={latest.e.row ? `/c/${latest.e.row.id}` : `/s/${latest.e.rec.id}`} className="press block">
-          <ScorePanel scores={latest.scores} caption={`Ultima uscita, ${fmtShortDate(latest.e.at)}`} track={latest.e.row ? latest.e.row.preview : latest.e.rec.preview} />
-        </Link>
-      )}
-
+      <div className={view === 'mine' ? 'space-y-5 lg:grid lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)] lg:items-start lg:gap-8 lg:space-y-0' : 'space-y-5'}>
       {view === 'mine' && (
-        <div className="space-y-2">
-          <FileDrop onFiles={onFiles} compact={!empty} />
-          <p className="px-1 text-xs text-ink-2">{user ? 'Le tue uscite vanno anche nel feed della crew.' : 'Le uscite restano su questo dispositivo.'}</p>
+        <div className="space-y-4 lg:sticky lg:top-[4.25rem]">
+          {latest && (
+            <Link to={latest.e.row ? `/c/${latest.e.row.id}` : `/s/${latest.e.rec.id}`} className="press block rounded-3xl">
+              <ScoreHero
+                scores={latest.scores}
+                caption={`Ultima uscita, ${fmtShortDate(latest.e.at)}`}
+                track={latest.e.row ? latest.e.row.preview : latest.e.rec.preview}
+                windDir={(latest.e.row ?? latest.e.rec).summary.windDir}
+              />
+            </Link>
+          )}
+          <div className="space-y-2">
+            <FileDrop onFiles={onFiles} compact={!empty} />
+            <p className="px-1 text-xs text-ink-2">{user ? 'Le tue uscite vanno anche nel feed della crew.' : 'Le uscite restano su questo dispositivo.'}</p>
+          </div>
         </div>
       )}
 
+      <div className="min-w-0 space-y-5 lg:max-w-2xl">
       {jobs.length > 0 && (
-        <div className={`${card} p-3`}>
+        <div className={`${card} p-3`} aria-live="polite">
           <div className="mb-1 flex items-center justify-between">
-            <p className="font-display text-[16px] leading-tight font-semibold">Importazione</p>
+            <p className="card-title">Importazione</p>
             {jobs.every((j) => j.status === 'done' || j.status === 'duplicate' || j.status === 'error') && (
-              <button type="button" onClick={dismissJobs} className="rounded-lg p-1 text-ink-2 hover:bg-surface-2" aria-label="Chiudi">
+              <button type="button" onClick={dismissJobs} className="rounded-full p-2 text-ink-2 hover:bg-surface-2" aria-label="Chiudi">
                 <IconX width={18} height={18} />
               </button>
             )}
@@ -277,43 +311,43 @@ export default function HomePage() {
       {user && rows == null && !listError && <Skeleton label={view === 'mine' ? 'Carico le tue uscite' : 'Carico il feed della crew'} />}
       {view === 'feed' && user && rows != null && days.length === 0 && !!crewCount && <p className="text-sm text-ink-2">Ancora nessuna uscita nella crew.</p>}
 
-      {days.map((g) => (
-        <section key={g.key} className="space-y-2">
-          <div className="flex items-center gap-2">
-            <h2 className={`min-w-0 flex-1 ${instrumentLabel}`}>{dayLabel(g.items[0].at)}</h2>
+      {listed.map((g) => (
+        <section key={g.key} className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-2.5">
+          <DayMark at={g.items[0].at} />
+          <div className="min-w-0 space-y-3">
             {view === 'feed' && new Set(g.items.flatMap((e) => e.row?.user_id ?? [])).size > 1 && (
-              <Link to={`/giornata/${g.key}`} className={btnGhost}>
+              <Link to={`/giornata/${g.key}`} className={`${btnGhost} -ml-3`}>
                 La giornata
               </Link>
             )}
+            <ul className={view === 'feed' ? 'space-y-3 divide-y divide-[var(--border)] [&>li+li]:pt-3' : 'space-y-3'}>
+              {g.items.map((e) =>
+                e.rec ? (
+                  <LocalCard
+                    key={e.rec.id}
+                    s={e.rec}
+                    settings={settings}
+                    showRider={view === 'feed'}
+                    {...(view === 'feed' ? pick(e.rec.id) : {})}
+                    canShare={canShareRec(e.rec)}
+                    sharing={sharing[e.rec.id]}
+                    onShare={() => shareOne(e.rec.id)}
+                  />
+                ) : view === 'feed' ? (
+                  <FeedCard key={e.row.id} s={e.row} userId={user!.id} settings={settings} {...pick(`c:${e.row.id}`)} />
+                ) : (
+                  <OutingCard
+                    key={e.row.id}
+                    to={`/c/${e.row.id}`}
+                    s={e.row}
+                    windSpeed={e.row.wind_speed}
+                    about={aboutLine(e.row, e.row.spot?.name, e.row.visibility === 'private' && 'solo per te')}
+                    settings={settings}
+                  />
+                ),
+              )}
+            </ul>
           </div>
-          <ul className="stagger space-y-2.5">
-            {g.items.map((e) =>
-              e.rec ? (
-                <LocalCard
-                  key={e.rec.id}
-                  s={e.rec}
-                  settings={settings}
-                  showRider={view === 'feed'}
-                  {...(view === 'feed' ? pick(e.rec.id) : {})}
-                  canShare={!!user && !e.rec.demo && isMine(e.rec)}
-                  sharing={sharing[e.rec.id]}
-                  onShare={() => shareOne(e.rec.id)}
-                />
-              ) : view === 'feed' ? (
-                <FeedCard key={e.row.id} s={e.row} userId={user!.id} settings={settings} {...pick(`c:${e.row.id}`)} />
-              ) : (
-                <OutingCard
-                  key={e.row.id}
-                  to={`/c/${e.row.id}`}
-                  s={e.row}
-                  windSpeed={e.row.wind_speed}
-                  about={aboutLine(e.row, e.row.spot?.name, e.row.visibility === 'private' && 'solo per te')}
-                  settings={settings}
-                />
-              ),
-            )}
-          </ul>
         </section>
       ))}
       {user && more && rows && (
@@ -332,10 +366,12 @@ export default function HomePage() {
           Mostra altre uscite
         </button>
       )}
+      </div>
+      </div>
 
       {view === 'feed' && selected.length > 0 && (
         <div className="fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4 md:bottom-6">
-          <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-2.5 shadow-lg">
+          <div className="flex items-center gap-3 rounded-full border border-line bg-surface py-2 pr-2 pl-4 shadow-lg">
             <span className="text-sm">{selected.length === 1 ? 'Scegli un’altra uscita nello stesso orario' : `${selected.length} uscite selezionate`}</span>
             <button
               type="button"
@@ -345,7 +381,7 @@ export default function HomePage() {
             >
               Confronta
             </button>
-            <button type="button" onClick={() => setSelected([])} className="rounded-lg p-1 text-ink-2" aria-label="Annulla selezione">
+            <button type="button" onClick={() => setSelected([])} className="rounded-full p-2 text-ink-2 hover:bg-surface-2" aria-label="Annulla selezione">
               <IconX width={18} height={18} />
             </button>
           </div>
@@ -403,10 +439,10 @@ function OutingCard({
   children?: ReactNode
 }) {
   return (
-    <li className={`press ${card} p-3 ${selected ? 'ring-2 ring-[var(--accent-text)]' : ''}`}>
+    <li className={`press rounded-2xl [contain-intrinsic-size:auto_84px] [content-visibility:auto] ${selected ? 'ring-2 ring-[var(--accent-text)]' : ''}`}>
       <div className="flex items-center gap-3">
-        <Link to={to} className="flex min-w-0 flex-1 items-center gap-3">
-          <SessionLine s={s} windSpeed={windSpeed} about={about} settings={settings} />
+        <Link to={to} className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl">
+          <SessionLine s={s} heading={headingOf(s)} windSpeed={windSpeed} about={about} settings={settings} />
         </Link>
         {onToggle && (
           <label className={`flex shrink-0 flex-col items-center gap-0.5 px-1 text-[11px] text-ink-2 ${blocked ? 'opacity-60' : 'cursor-pointer'}`}>
@@ -449,8 +485,8 @@ function LocalCard({
   return (
     <OutingCard to={`/s/${s.id}`} s={s} windSpeed={s.windSpeed} about={aboutLine(s, showRider && s.rider, s.demo && 'esempio')} {...rest}>
       {canShare && (
-        <div className="mt-2 flex items-center gap-2 border-t border-line pt-2">
-          <button type="button" className={btnGhost} onClick={onShare} disabled={sharing === 'busy'}>
+        <div className="mt-1 flex items-center gap-2 pl-[6.5rem]">
+          <button type="button" className={`${btnGhost} -ml-3`} onClick={onShare} disabled={sharing === 'busy'}>
             <IconShare width={16} height={16} />
             {sharing === 'busy' ? 'Invio…' : 'Condividi con la crew'}
           </button>

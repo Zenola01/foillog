@@ -227,7 +227,7 @@ function Social({ row, userId }: { row: CloudSession; userId: string }) {
         <span className="text-sm text-ink-2">Dai un 🤙 se l'uscita ti piace</span>
       </div>
       <div className="space-y-2.5">
-        <p className="font-display text-[16px] leading-tight font-semibold">Commenti</p>
+        <p className="card-title">Commenti</p>
         {comments?.length === 0 && <p className="text-sm text-ink-2">Nessun commento: scrivi tu il primo.</p>}
         {comments?.map((c) => (
           <div key={c.id} className="flex gap-2.5">
@@ -271,6 +271,8 @@ function Social({ row, userId }: { row: CloudSession; userId: string }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             maxLength={1000}
+            name="comment"
+            autoComplete="off"
             placeholder="Scrivi un commento…"
             aria-label="Nuovo commento"
             className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-base"
@@ -311,7 +313,7 @@ function OwnerControls({
   return (
     <section className={`${card} space-y-3 p-3.5`}>
       <div className="space-y-1.5">
-        <p className="font-display text-[16px] leading-tight font-semibold">Chi la vede</p>
+        <p className="card-title">Chi la vede</p>
         <Segmented
           label="Visibilità"
           value={row.visibility}
@@ -376,7 +378,9 @@ function OwnerControls({
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 maxLength={80}
-                placeholder="Nuovo spot, es. Barcola"
+                name="spot"
+                autoComplete="off"
+                placeholder="Nuovo spot, es. Barcola…"
                 className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-base"
               />
               <button type="submit" className={btnPrimary} disabled={!newName.trim()}>

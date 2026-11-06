@@ -39,15 +39,17 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="font-display text-[30px] leading-none font-bold">Impostazioni</h1>
+      <h1 className="page-title">Impostazioni</h1>
 
       <section className={`${card} space-y-3 p-4`}>
-        <h2 className="font-display text-[16px] leading-tight font-semibold">Account e crew</h2>
+        <h2 className="card-title">Account e crew</h2>
         {user ? (
           <>
             <label className="block text-sm">
               <span className="font-semibold">Il tuo nome nella crew</span>
               <input
+                name="displayName"
+                autoComplete="nickname"
                 key={profile?.display_name}
                 defaultValue={profile?.display_name ?? ''}
                 maxLength={40}
@@ -87,7 +89,7 @@ export default function SettingsPage() {
       </Link>
 
       <section className={`${card} space-y-3 p-4`}>
-        <h2 className="font-display text-[16px] leading-tight font-semibold">Colori</h2>
+        <h2 className="card-title">Colori</h2>
         <div role="radiogroup" aria-label="Colori dell'app" className="grid grid-cols-5 gap-1.5">
           {PALETTES.map((p) => (
             <button
@@ -111,6 +113,8 @@ export default function SettingsPage() {
             <span className="text-sm font-semibold">Il tuo nome</span>
             <span className="block text-sm text-ink-2">Compare come rider sulle tue uscite e nei confronti.</span>
             <input
+              name="riderName"
+              autoComplete="nickname"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={() => update({ riderName: name.trim() })}
@@ -120,7 +124,7 @@ export default function SettingsPage() {
           </label>
         )}
         <div className="space-y-2 p-4">
-          <p className="font-display text-[16px] leading-tight font-semibold">Velocità</p>
+          <p className="card-title">Velocità</p>
           <Segmented
             label="Unità di velocità"
             value={settings.speedUnit}
@@ -133,7 +137,7 @@ export default function SettingsPage() {
           />
         </div>
         <div className="space-y-2 p-4">
-          <p className="font-display text-[16px] leading-tight font-semibold">Distanze</p>
+          <p className="card-title">Distanze</p>
           <Segmented
             label="Unità di distanza"
             value={settings.distUnit}
@@ -145,7 +149,7 @@ export default function SettingsPage() {
           />
         </div>
         <div className="space-y-2 p-4">
-          <p className="font-display text-[16px] leading-tight font-semibold">
+          <p className="card-title">
             Soglia del foil: {fmtNum(thrInUnit, settings.speedUnit === 'ms' ? 1 : 0)} {u}
           </p>
           <p className="text-sm text-ink-2">
@@ -169,7 +173,7 @@ export default function SettingsPage() {
       </section>
 
       <section className={`${card} space-y-4 p-4 text-sm`}>
-        <h2 className="font-display text-[16px] leading-tight font-semibold">Come caricare i file</h2>
+        <h2 className="card-title">Come caricare i file</h2>
         <div className="space-y-1.5">
           <p className="font-display text-[19px] leading-tight font-semibold">Dal Vakaros</p>
           <p className="text-ink-2">
@@ -227,7 +231,7 @@ export default function SettingsPage() {
       </section>
 
       <section className={`${card} space-y-3 p-4 text-sm`}>
-        <h2 className="font-display text-[16px] leading-tight font-semibold">I tuoi dati</h2>
+        <h2 className="card-title">I tuoi dati</h2>
         <p className="text-ink-2">
           Su questo dispositivo ci sono {sessions?.length ?? 0} uscite. Quelle condivise con la crew stanno anche sul server della crew
           (Supabase) e le vedono solo i membri delle tue crew. Per stimare il vento, FoilLog invia a Open-Meteo la zona (arrotondata a circa

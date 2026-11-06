@@ -56,7 +56,7 @@ function Day() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold">La giornata</h1>
+        <h1 className="page-title">La giornata</h1>
         <p className="text-sm text-ink-2 first-letter:uppercase">{fmtDate(from.getTime())}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -211,19 +211,21 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
       </ul>
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-5">
-        <div className="space-y-2 lg:sticky lg:top-[4.5rem] lg:self-start">
+        <div className="space-y-2 lg:sticky lg:top-[4.25rem] lg:self-start">
           {tracks ? (
-            <MapView
-              tracks={mapTracks}
-              cursor={cursor}
-              trail={settings.trailMode}
-              windDir={shared}
-              windByRider={windByRider}
-              overlay={loaded.length > 1 ? <LiveInfo riders={live} cursor={cursor} /> : undefined}
-              className="h-[46vh] min-h-[300px] rounded-lg border border-line lg:h-[calc(100dvh-14rem)]"
-            />
+            <div className="map-edge">
+              <MapView
+                tracks={mapTracks}
+                cursor={cursor}
+                trail={settings.trailMode}
+                windDir={shared}
+                windByRider={windByRider}
+                overlay={loaded.length > 1 ? <LiveInfo riders={live} cursor={cursor} /> : undefined}
+                className="size-full"
+              />
+            </div>
           ) : (
-            <div className="flex h-[46vh] min-h-[300px] items-center justify-center rounded-lg border border-line text-ink-2">Carico le tracce…</div>
+            <div className="map-edge flex items-center justify-center text-ink-2">Carico le tracce…</div>
           )}
           <ReplayBar replay={replay} t0={t0} t1={t1} />
           {loaded.length > 1 && <TrailToggle value={settings.trailMode} onChange={(trailMode) => update({ trailMode })} />}
@@ -283,7 +285,7 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
           </div>
           {tracks && loaded.length > 0 && (
             <div className={`${card} p-3`}>
-              <p className="font-display text-[16px] leading-tight font-semibold">Velocità di tutti</p>
+              <p className="card-title">Velocità di tutti</p>
               <EChart option={speedOpt} height={280} label="Velocità dei rider durante la giornata" />
             </div>
           )}

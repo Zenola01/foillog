@@ -70,7 +70,7 @@ export default function GearPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold">Attrezzatura</h1>
+        <h1 className="page-title">Attrezzatura</h1>
         <p className="text-sm text-ink-2">
           Ali, tavole e foil: in ogni uscita scegli cosa hai usato.{' '}
           {inAccount ? 'La lista è nel tuo account, su tutti i tuoi dispositivi.' : 'La lista resta su questo dispositivo finché non entri nella crew.'}
@@ -112,7 +112,7 @@ export default function GearPage() {
 function GearGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className={card} aria-label={title}>
-      <h2 className="px-3.5 pt-3 font-display text-[16px] leading-tight font-semibold">{title}</h2>
+      <h2 className="px-3.5 pt-3 card-title">{title}</h2>
       <ul className="divide-y divide-[var(--border)]">{children}</ul>
     </section>
   )
@@ -218,7 +218,7 @@ function GearForm({
       <div className="flex flex-wrap gap-2">
         <label className="block min-w-0 flex-[2_1_12rem] text-sm">
           <span className="text-ink-2">Nome</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder={k.nameHint} className={input} />
+          <input name="gearName" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder={k.nameHint} className={input} />
         </label>
         <label className="block min-w-0 flex-[1_1_7rem] text-sm">
           <span className="text-ink-2">Misura{k.unit ? ` (${k.unit})` : ''}</span>
@@ -226,6 +226,8 @@ function GearForm({
             value={size}
             onChange={(e) => setSize(e.target.value)}
             maxLength={30}
+            name="gearSize"
+            autoComplete="off"
             inputMode={k.unit ? 'decimal' : 'text'}
             placeholder={k.sizeHint}
             className={input}

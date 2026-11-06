@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { DEFAULT_FOIL_KN } from './analysis/analyze'
 import type { GearItem } from './types'
 import type { DistUnit, SpeedUnit } from './units'
@@ -13,9 +13,9 @@ export type VideoMetric = Exclude<LiveMetric, 'foil'>
 export const PALETTES = [
   { id: 'giallo', name: 'Giallo', swatch: '#c8f31d' },
   { id: 'arancio', name: 'Arancio', swatch: '#ff7a1a' },
-  { id: 'oceano', name: 'Oceano', swatch: '#3fd8f2' },
+  { id: 'oceano', name: 'Azzurro', swatch: '#38c6f4' },
   { id: 'rosso', name: 'Rosso', swatch: '#ff4757' },
-  { id: 'bianco', name: 'Bianco', swatch: '#f2f4f5' },
+  { id: 'bianco', name: 'Bianco', swatch: '#ffffff' },
 ] as const
 
 export type Palette = (typeof PALETTES)[number]['id']
@@ -68,8 +68,15 @@ interface SettingsValue {
 
 const Ctx = createContext<SettingsValue | null>(null)
 
+/** The browser's own bars take the colour of the page. */
+const tintBars = () => {
+  const page = getComputedStyle(document.documentElement).getPropertyValue('--page').trim()
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', page)
+}
+
 const wear = (palette: Palette) => {
   document.documentElement.dataset.palette = palette
+  tintBars()
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -78,6 +85,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     wear(loaded.palette)
     return loaded
   })
+  useEffect(() => {
+    const scheme = window.matchMedia('(prefers-color-scheme: dark)')
+    scheme.addEventListener('change', tintBars)
+    return () => scheme.removeEventListener('change', tintBars)
+  }, [])
   const update = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch }

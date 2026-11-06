@@ -23,7 +23,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-sm space-y-4">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold">{mode === 'signup' ? 'Crea il tuo account' : 'Entra in FoilLog'}</h1>
+        <h1 className="page-title">{mode === 'signup' ? 'Crea il tuo account' : 'Entra in FoilLog'}</h1>
         <p className="text-sm text-ink-2">Con l'account condividi le uscite con la tua crew e vedi le loro.</p>
       </div>
       <Segmented
@@ -57,17 +57,18 @@ export default function LoginPage() {
         {mode === 'signup' && (
           <label className="block text-sm">
             <span className="text-ink-2">Il tuo nome (lo vede la crew)</span>
-            <input required maxLength={40} value={name} onChange={(e) => setName(e.target.value)} autoComplete="nickname" className={input} />
+            <input required name="name" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} autoComplete="nickname" className={input} />
           </label>
         )}
         <label className="block text-sm">
           <span className="text-ink-2">Email</span>
-          <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className={input} />
+          <input required name="email" spellCheck={false} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className={input} />
         </label>
         <label className="block text-sm">
           <span className="text-ink-2">Password{mode === 'signup' ? ' (almeno 6 caratteri)' : ''}</span>
           <input
             required
+            name="password"
             type="password"
             minLength={6}
             value={password}

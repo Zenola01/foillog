@@ -47,7 +47,7 @@ function Crews() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[30px] leading-none font-bold">Crew</h1>
+        <h1 className="page-title">Crew</h1>
         <p className="text-sm text-ink-2">Nella crew vedete le uscite gli uni degli altri. Si entra solo con il link d'invito.</p>
       </div>
       {error && <p className="rounded-lg bg-surface-2 px-4 py-3 text-sm text-critical">{error}</p>}
@@ -131,7 +131,9 @@ function Crews() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={60}
-            placeholder="Es. Barcola Wing"
+            name="crewName"
+            autoComplete="off"
+            placeholder="Es. Barcola Wing…"
             className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-base"
           />
           <button type="submit" className={btnPrimary} disabled={busy || !name.trim()}>
@@ -156,7 +158,10 @@ function Crews() {
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             maxLength={12}
-            placeholder="Es. 4F2A9C1B"
+            name="inviteCode"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Es. 4F2A9C1B…"
             className="tabular min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-base"
           />
           <button type="submit" className={btnSecondary} disabled={busy || !code.trim()}>

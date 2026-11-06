@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { currentGear, gearLabel, GEAR_KINDS, lastGear, sizeText, sortGear, toSessionGear } from '../lib/gear'
 import { useGear } from '../lib/gearList'
 import type { SessionGear as Gear } from '../lib/types'
-import { btnGhost, btnPrimary, btnSecondary, card } from './ui'
+import { btnGhost, btnPrimary, btnSecondary, card, instrumentLabel } from './ui'
 
 /** The gear a session was sailed with; the rider picks it from their list. */
 export function SessionGear({
@@ -32,7 +32,7 @@ export function SessionGear({
     return (
       <div className={`${card} flex items-start gap-3 p-3.5`}>
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] text-ink-2">Attrezzatura</p>
+          <p className={instrumentLabel}>Attrezzatura</p>
           {shown.length ? <p className="font-display text-[19px] leading-tight font-semibold">{shown.map(gearLabel).join(', ')}</p> : <p className="text-sm text-ink-2">Non indicata</p>}
         </div>
         {editable && (

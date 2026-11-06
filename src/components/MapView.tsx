@@ -200,6 +200,17 @@ function windGrid(b: LngLatBounds): FC {
   return { type: 'FeatureCollection', features }
 }
 
+/** The basemap wears the app's colours: its water is the page, so that it melts into it, its land one step up. */
+function paintBasemap(map: MapLibreMap, c: ThemeColors) {
+  for (const { id, type } of map.getStyle()?.layers ?? []) {
+    if (id.startsWith('fl-')) continue
+    if (type === 'background') map.setPaintProperty(id, 'background-color', c.land)
+    else if (type === 'fill' && id === 'water') map.setPaintProperty(id, 'fill-color', c.water)
+    else if (type === 'line' && id === 'waterway') map.setPaintProperty(id, 'line-color', c.water)
+    else if (type === 'fill' && /^(landcover|landuse|park)/.test(id)) map.setPaintProperty(id, 'fill-color', c.land)
+  }
+}
+
 const SVG_NS = 'http://www.w3.org/2000/svg'
 /** Board seen from above, nose up: rotated to the course while replaying. */
 const BOARD_PATH = 'M0 -14 C3.6 -9 5 -2 4.8 6 C4.7 10 4 13 3 14 L-3 14 C-4 13 -4.7 10 -4.8 6 C-5 -2 -3.6 -9 0 -14 Z'
@@ -232,7 +243,7 @@ function boatEl(color: string, label: string | undefined, c: ThemeColors): { el:
   if (label) {
     pill = document.createElement('div')
     pill.textContent = label
-    pill.style.cssText = `position:absolute;left:17px;top:-11px;font:600 12px system-ui,-apple-system,sans-serif;color:${c.ink};background:${c.surface};border:1px solid ${c.border};border-radius:999px;padding:1px 7px;white-space:nowrap;`
+    pill.style.cssText = `position:absolute;left:17px;top:-11px;font:600 14px "Barlow Condensed",system-ui,sans-serif;color:${c.ink};background:${c.surface};border-radius:999px;padding:2px 8px;white-space:nowrap;`
     el.appendChild(pill)
   }
   return { el, hull, pill }
@@ -276,6 +287,8 @@ function MapViewImpl(props: Props) {
   const tailMs = (props.tailSeconds ?? 60) * 1000
   const multi = tracks.length > 1
   const replaying = cursor != null
+  // Only the trail, while the replay runs: nothing else on the water.
+  const tailAlone = trail === 'tail' && replaying && !range && !segments?.length
   const { dark, colors } = useTheme()
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -326,6 +339,8 @@ function MapViewImpl(props: Props) {
     })
     map.touchZoomRotate.disableRotation()
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+    // Folded into its button from the start, as it is after the first drag: the numbers on the map stay readable.
+    map.once('load', () => box.current?.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show'))
     map.on('style.load', () => {
       styleReady.current = true
       setStyleGen((g) => g + 1)
@@ -362,6 +377,11 @@ function MapViewImpl(props: Props) {
     if (map && !bounds.isEmpty()) map.fitBounds(bounds, { padding: 36, animate: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trackKey])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (map && styleReady.current) paintBasemap(map, colors)
+  }, [styleGen, colors])
 
   // Wind on the water: faint arrows under the tracks, rotated to where the wind blows.
   useEffect(() => {
@@ -623,7 +643,7 @@ function MapViewImpl(props: Props) {
     el.style.cssText = 'display:flex;flex-direction:column;align-items:center;pointer-events:none;'
     const pill = document.createElement('div')
     pill.textContent = pin.text
-    pill.style.cssText = `font:600 12px system-ui,-apple-system,sans-serif;color:${colors.ink};background:${colors.surface};border:1px solid ${colors.border};border-radius:8px;padding:2px 7px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.2);`
+    pill.style.cssText = `font:600 15px "Barlow Condensed",system-ui,sans-serif;color:${colors.ink};background:${colors.surface};border-radius:999px;padding:2px 9px;white-space:nowrap;`
     const stem = document.createElement('div')
     stem.style.cssText = `width:2px;height:10px;background:${colors.ink};`
     const dot = document.createElement('div')
@@ -632,34 +652,41 @@ function MapViewImpl(props: Props) {
     pinMarker.current = new Marker({ element: el, anchor: 'bottom', offset: [0, 4] }).setLngLat([t.lon[pin.i], t.lat[pin.i]]).addTo(map)
   }, [pin, tracks, colors, styleGen])
 
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !styleReady.current) return
+    for (const id of ['fl-mnv', 'fl-stop']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', tailAlone ? 'none' : 'visible')
+    const pinEl = pinMarker.current?.getElement()
+    if (pinEl) pinEl.style.display = tailAlone ? 'none' : ''
+  }, [tailAlone, pin, tracks, colors, styleGen])
+
   return (
     <div className={`relative overflow-hidden ${className ?? ''}`}>
       {/* MapLibre's stylesheet sets position:relative on this node (and wins over Tailwind's layered
           utilities), so it is sized with height/width rather than absolute insets. */}
       <div ref={box} className="h-full w-full" />
-      {(windDir != null || !!windByRider?.length || legend || props.overlay) && (
-        <div className="pointer-events-none absolute top-2 left-2 flex max-w-[calc(100%-3.75rem)] flex-col items-start gap-1.5">
+      {props.overlay && <div className="pointer-events-none absolute top-2 left-2 flex max-w-[calc(100%-3.75rem)] flex-col items-start gap-1.5">{props.overlay}</div>}
+      {/* What the colours and the arrows on the water mean, small along the bottom: the map is the picture. */}
+      {(windDir != null || !!windByRider?.length || legend) && (
+        <div className="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-2.75rem)] flex-wrap items-end gap-1.5 font-display text-[15px] leading-none font-semibold tabular">
           {windDir != null && (
-            <div className="flex items-center gap-2 rounded-lg border border-line bg-surface/90 px-2 py-1.5">
-              <svg width="30" height="30" viewBox="-15 -15 30 30" aria-hidden="true">
-                <circle r="14" fill="none" stroke="var(--axis)" />
+            <div className="flex h-8 items-center gap-1.5 rounded-full bg-surface/90 pr-3 pl-1.5">
+              <svg width="20" height="20" viewBox="-10 -10 20 20" aria-hidden="true">
                 <g transform={`rotate(${windDir})`}>
-                  <path d="M0 -13 L0 7" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M-4.5 3 L0 9 L4.5 3" fill="none" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                  <path d="M0 -8.5 L0 7" stroke="var(--ink)" strokeWidth="1.8" strokeLinecap="round" />
+                  <path d="M-3.8 3 L0 7.5 L3.8 3" fill="none" stroke="var(--ink)" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
                 </g>
               </svg>
-              <div className="text-xs leading-tight">
-                <p className="text-ink-2">Vento da</p>
-                <p className="font-semibold">
-                  {compass(windDir)} {Math.round(windDir)}°
-                </p>
-              </div>
+              <span>
+                <span className="sr-only">Vento da </span>
+                {compass(windDir)} {Math.round(windDir)}°
+              </span>
             </div>
           )}
           {windDir == null && !!windByRider?.length && (
-            <div className="rounded-lg border border-line bg-surface/90 px-2.5 py-1.5 text-xs">
-              <p className="mb-1 text-ink-2">Vento da</p>
-              <ul className="space-y-1">
+            <div className="rounded-2xl bg-surface/90 px-2.5 py-2">
+              <p className="mb-1.5 text-ink-2">Vento da</p>
+              <ul className="space-y-1.5">
                 {windByRider.map((w) => (
                   <li key={w.label} className="flex items-center gap-1.5">
                     <svg width="16" height="16" viewBox="-8 -8 16 16" aria-hidden="true" className="shrink-0">
@@ -668,8 +695,8 @@ function MapViewImpl(props: Props) {
                         <path d="M-3.2 1.8 L0 6 L3.2 1.8" fill="none" stroke={w.color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
                       </g>
                     </svg>
-                    <span className="max-w-[6rem] truncate font-medium">{w.label}</span>
-                    <span className="tabular">
+                    <span className="max-w-[6rem] truncate">{w.label}</span>
+                    <span>
                       {compass(w.dir)} {Math.round(w.dir)}°
                     </span>
                   </li>
@@ -677,17 +704,17 @@ function MapViewImpl(props: Props) {
               </ul>
             </div>
           )}
-          {legend && (
-            <div className="rounded-lg border border-line bg-surface/90 px-2.5 py-1.5 text-xs">
-              <p className="mb-1 text-ink-2">Velocità ({legend.unit})</p>
-              <div className="h-1.5 w-28 rounded-full" style={{ background: `linear-gradient(90deg, ${colors.speed.join(',')})` }} />
-              <div className="mt-0.5 flex justify-between tabular text-ink-2">
-                <span>{legend.min}</span>
-                <span>{legend.max}</span>
-              </div>
+          {legend && !tailAlone && (
+            <div className="flex h-8 items-center gap-1.5 rounded-full bg-surface/90 px-3">
+              <span className="sr-only">Velocità in {legend.unit}: da </span>
+              <span>{legend.min}</span>
+              <span aria-hidden className="h-1.5 w-16 rounded-full" style={{ background: `linear-gradient(90deg, ${colors.speed.join(',')})` }} />
+              <span>
+                <span className="sr-only">a </span>
+                {legend.max} {legend.unit}
+              </span>
             </div>
           )}
-          {props.overlay}
         </div>
       )}
     </div>

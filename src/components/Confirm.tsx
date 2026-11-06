@@ -44,7 +44,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={ask}>
       {children}
       {pending && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4 sm:items-center" onClick={() => close(false)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center overscroll-contain bg-black/60 p-4 sm:items-center" onClick={() => close(false)}>
           <div
             role="alertdialog"
             aria-modal="true"

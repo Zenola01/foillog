@@ -6,7 +6,6 @@ import { fmtTime } from '../lib/units'
 import { IconComment } from './icons'
 import { Avatar } from './RequireAuth'
 import { SessionLine } from './Scores'
-import { card } from './ui'
 
 /** The 🤙 button: optimistic, reverts if the server says no. */
 export function KudosButton({ s, userId }: { s: Pick<CloudSession, 'id' | 'kudos'>; userId: string }) {
@@ -29,8 +28,8 @@ export function KudosButton({ s, userId }: { s: Pick<CloudSession, 'id' | 'kudos
           setK(before)
         }
       }}
-      className={`press relative inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 font-display text-[16px] font-semibold ${
-        mine ? 'border-[var(--accent-text)] text-ink' : 'border-line text-ink-2 hover:bg-surface-2'
+      className={`press relative inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 font-display text-[16px] font-semibold ${
+        mine ? 'bg-ink text-page' : 'bg-surface-2 text-ink-2 hover:text-ink'
       }`}
     >
       <span aria-hidden key={bursts} className={bursts ? 'kudos-pop' : undefined}>
@@ -67,7 +66,7 @@ export function FeedCard({
   const name = s.profile?.display_name ?? 'Rider'
   const comments = s.comments[0]?.count ?? 0
   return (
-    <li className={`press ${card} p-3 ${selected ? 'ring-2 ring-[var(--accent-text)]' : ''}`}>
+    <li className={`[contain-intrinsic-size:auto_170px] [content-visibility:auto] ${selected ? 'rounded-2xl ring-2 ring-[var(--accent-text)]' : ''}`}>
       <div className="flex items-center gap-2">
         <Link to={`/rider/${s.user_id}`}>
           <Avatar name={name} size={26} />
@@ -104,14 +103,14 @@ export function FeedCard({
           </label>
         )}
       </div>
-      <Link to={`/c/${s.id}`} className="mt-2 flex items-center gap-3">
-        <SessionLine s={s} windSpeed={s.wind_speed} about="" settings={settings} />
+      <Link to={`/c/${s.id}`} className="press mt-2 flex items-center gap-3 rounded-2xl">
+        <SessionLine s={s} heading={s.title.startsWith('Uscita del ') ? '' : s.title} windSpeed={s.wind_speed} about="" settings={settings} />
       </Link>
       <div className="mt-2 flex items-center gap-2">
         <KudosButton s={s} userId={userId} />
         <Link
           to={`/c/${s.id}`}
-          className="press inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3 font-display text-[16px] font-semibold text-ink-2 hover:bg-surface-2"
+          className="press inline-flex min-h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3 font-display text-[16px] font-semibold text-ink-2 hover:text-ink"
           aria-label={`${comments} commenti`}
         >
           <IconComment width={16} height={16} />

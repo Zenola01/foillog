@@ -4,7 +4,7 @@ import { DOWNWIND_MIN, UPWIND_MAX, type Course } from '../lib/analysis/pointsOfS
 import { useSettings, type Settings } from '../lib/settings'
 import type { Leg } from '../lib/types'
 import { fmtDuration, fmtSpeed, SPEED_SHORT } from '../lib/units'
-import { btnSecondary, card, LineKey, Segmented, StatTile } from './ui'
+import { btnSecondary, card, LineKey, Segmented, StatTile, zones } from './ui'
 
 const SHARES = [
   { value: 1, label: 'Tutti' },
@@ -79,14 +79,14 @@ export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Set
             </span>
           </p>
           {best && course !== 'reach' && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className={`${zones} [--cols:3] [--zone:var(--surface-2)]`}>
               <StatTile label="VMG" value={sp(best.vmg)} unit={u} sub={ref(all, (a) => sp(a.vmg))} />
               <StatTile label="Velocità" value={sp(best.speed)} unit={u} sub={ref(all, (a) => sp(a.speed))} />
               <StatTile label="Angolo" value={deg(best.angle)} sub={ref(all, (a) => deg(a.angle))} />
             </div>
           )}
           {best && all && course === 'reach' && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className={`${zones} [--cols:3] [--zone:var(--surface-2)]`}>
               <StatTile label="Velocità" value={sp(best.speed)} unit={u} sub={ref(all, (a) => sp(a.speed))} />
               <StatTile label="Angolo" value={deg(best.angle)} sub={ref(all, (a) => deg(a.angle))} />
               <StatTile label="Tempo a traverso" value={fmtDuration(all.seconds)} sub={`${all.legs} ${legsWord(all.legs)} in tutto`} />
@@ -172,7 +172,7 @@ export function BestLegsCompare({
   return (
     <div className={`${card} overflow-x-auto`}>
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-3">
-        <p className="font-display text-[16px] leading-tight font-semibold">Bordi migliori a confronto ({u})</p>
+        <p className="card-title">Bordi migliori a confronto ({u})</p>
         <TopShareToggle />
       </div>
       <table className="mt-1 w-full text-sm">

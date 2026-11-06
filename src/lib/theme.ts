@@ -9,6 +9,9 @@ export interface ThemeColors {
   grid: string
   axis: string
   border: string
+  /** The basemap's water and land. */
+  water: string
+  land: string
   accent: string
   good: string
   critical: string
@@ -30,6 +33,8 @@ function read(): ThemeColors {
     grid: v('--grid'),
     axis: v('--axis'),
     border: v('--border'),
+    water: v('--water'),
+    land: v('--land'),
     accent: v('--accent-text'),
     good: v('--good'),
     critical: v('--critical'),
