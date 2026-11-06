@@ -168,6 +168,11 @@ function Player({
   // Leaving the session stops a video being made: its result would have nowhere to go.
   useEffect(() => () => job.current?.cancel(), [])
 
+  // The numbers over the video are drawn, so their font must be there before the first frame.
+  useEffect(() => {
+    for (const weight of [500, 600, 700]) void document.fonts?.load(`${weight} 40px "Barlow Condensed"`)
+  }, [])
+
   const shift = (next: number) => {
     setStart(next)
     saveStart(file, next)
@@ -269,7 +274,7 @@ function Player({
 
   return (
     <div className={`${card} space-y-3 p-3`}>
-      <div className="relative mx-auto overflow-hidden rounded-xl bg-black" style={{ width: `min(100%, calc(72vh * ${aspect}))`, aspectRatio: aspect }}>
+      <div className="relative mx-auto overflow-hidden rounded-lg bg-black" style={{ width: `min(100%, calc(72vh * ${aspect}))`, aspectRatio: aspect }}>
         {url && (
           <video
             ref={video}
@@ -349,7 +354,7 @@ function Player({
                   role="checkbox"
                   aria-checked={on}
                   onClick={() => toggleMetric(m.key)}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition ${
                     on ? 'border-transparent bg-accent-btn text-on-accent' : 'border-line bg-surface text-ink hover:bg-surface-2'
                   }`}
                 >

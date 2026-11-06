@@ -193,7 +193,7 @@ export default function HomePage() {
       </div>
 
       {!persistent && (
-        <p className="rounded-xl bg-surface-2 px-4 py-3 text-sm">
+        <p className="rounded-lg bg-surface-2 px-4 py-3 text-sm">
           Questo browser non permette di salvare dati: le uscite resteranno solo finché la pagina è aperta.
         </p>
       )}
@@ -214,7 +214,7 @@ export default function HomePage() {
       {jobs.length > 0 && (
         <div className={`${card} p-3`}>
           <div className="mb-1 flex items-center justify-between">
-            <p className="text-sm font-semibold">Importazione</p>
+            <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Importazione</p>
             {jobs.every((j) => j.status === 'done' || j.status === 'duplicate' || j.status === 'error') && (
               <button type="button" onClick={dismissJobs} className="rounded-lg p-1 text-ink-2 hover:bg-surface-2" aria-label="Chiudi">
                 <IconX width={18} height={18} />
@@ -243,7 +243,7 @@ export default function HomePage() {
 
       {view === 'feed' && ready && !user && (
         <div className={`${card} space-y-2 p-4`}>
-          <p className="font-semibold">Condividi le uscite con la tua crew</p>
+          <p className="font-display text-[19px] leading-tight font-semibold">Condividi le uscite con la tua crew</p>
           <p className="text-sm text-ink-2">
             Con un account gratuito le tue uscite vanno nel feed degli amici, e vedi «La giornata» con il replay di tutti quelli che erano in
             acqua.
@@ -255,7 +255,7 @@ export default function HomePage() {
       )}
       {view === 'feed' && user && crewCount === 0 && (
         <div className={`${card} space-y-2 p-4`}>
-          <p className="font-semibold">Non sei ancora in una crew</p>
+          <p className="font-display text-[19px] leading-tight font-semibold">Non sei ancora in una crew</p>
           <p className="text-sm text-ink-2">Creane una e manda il link agli amici, oppure apri il link d'invito che ti hanno mandato.</p>
           <Link to="/crew" className={btnPrimary}>
             Vai alle crew
@@ -273,7 +273,7 @@ export default function HomePage() {
         }
       }} />}
 
-      {user && listError && <p className="rounded-xl bg-surface-2 px-4 py-3 text-sm text-critical">{listError}</p>}
+      {user && listError && <p className="rounded-lg bg-surface-2 px-4 py-3 text-sm text-critical">{listError}</p>}
       {user && rows == null && !listError && <p className="text-sm text-ink-2">{view === 'mine' ? 'Carico le tue uscite…' : 'Carico il feed della crew…'}</p>}
       {view === 'feed' && user && rows != null && days.length === 0 && !!crewCount && <p className="text-sm text-ink-2">Ancora nessuna uscita nella crew.</p>}
 
@@ -335,7 +335,7 @@ export default function HomePage() {
 
       {view === 'feed' && selected.length > 0 && (
         <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4 md:bottom-6">
-          <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-2.5 shadow-lg">
+          <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-2.5 shadow-lg">
             <span className="text-sm">{selected.length === 1 ? 'Scegli un’altra uscita nello stesso orario' : `${selected.length} uscite selezionate`}</span>
             <button
               type="button"
@@ -358,7 +358,7 @@ export default function HomePage() {
 function DemoCard({ busy, onDemo }: { busy: boolean; onDemo: () => void }) {
   return (
     <div className={`${card} space-y-3 p-5`}>
-      <p className="font-semibold">Vuoi vedere come funziona?</p>
+      <p className="font-display text-[19px] leading-tight font-semibold">Vuoi vedere come funziona?</p>
       <p className="text-sm text-ink-2">
         Carica due uscite di esempio sul Lago di Garda, la tua e quella di un amico nello stesso pomeriggio: potrai provare mappa, grafici,
         manovre e confronto prima di caricare i tuoi file. Gli esempi restano su questo dispositivo.

@@ -95,7 +95,7 @@ function Picker({ initial, onConfirm }: { initial: string[]; onConfirm: (ids: st
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Confronta</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Confronta</h1>
         <p className="text-sm text-ink-2">Sovrapponi le tracce di chi era in acqua nello stesso momento: stesso vento, stesso campo, un solo replay.</p>
       </div>
       {loading && <p className="py-8 text-center text-ink-2">Cerco le uscite nello stesso orario…</p>}
@@ -148,7 +148,7 @@ function TogetherGroup({ items, initial, onConfirm }: { items: PickItem[]; initi
           const blocked = !on && !canAdd(it)
           return (
             <li key={it.id}>
-              <label className={`flex items-center gap-3 rounded-xl p-2 ${on ? 'bg-surface-2' : ''} ${blocked ? 'opacity-60' : 'cursor-pointer'}`}>
+              <label className={`flex items-center gap-3 rounded-lg p-2 ${on ? 'bg-surface-2' : ''} ${blocked ? 'opacity-60' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
                   checked={on}
@@ -312,7 +312,7 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Confronto</h1>
+          <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Confronto</h1>
           <p className="text-sm text-ink-2 first-letter:uppercase">
             {fmtDate(clockStart)} · in acqua nello stesso momento
           </p>
@@ -343,7 +343,7 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
             windDir={wind}
             windByRider={windByRider}
             overlay={<LiveInfo riders={riders} cursor={cursor} />}
-            className="h-[46vh] min-h-[300px] rounded-2xl border border-line lg:h-[calc(100dvh-13rem)]"
+            className="h-[46vh] min-h-[300px] rounded-lg border border-line lg:h-[calc(100dvh-13rem)]"
           />
           <ReplayBar replay={replay} t0={clockStart} t1={clockEnd} />
           <TrailToggle value={settings.trailMode} onChange={(trailMode) => update({ trailMode })} />
@@ -353,13 +353,13 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
           <CompareTable series={series} settings={settings} />
           <BestLegsCompare riders={legRiders} unit={unit} sharedWind={wind != null} />
           <div className={`${card} p-3`}>
-            <p className="text-sm font-semibold">Velocità</p>
+            <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità</p>
             <p className="text-xs text-ink-2">Ora del giorno.</p>
             <EChart option={speedOpt} height={280} label="Velocità delle uscite a confronto" />
           </div>
           {polarSessions.length > 0 && (
             <div className={`${card} p-3`}>
-              <p className="text-sm font-semibold">Polari a confronto</p>
+              <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Polari a confronto</p>
               <p className="text-xs text-ink-2">Velocità in foil ({u}) per angolo dal vento. Vento dall'alto.</p>
               <EChart option={polarOpt} height={340} label="Diagrammi polari a confronto" />
               <p className="flex justify-between px-2 text-xs text-ink-2">

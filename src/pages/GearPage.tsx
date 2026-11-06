@@ -70,7 +70,7 @@ export default function GearPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Attrezzatura</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Attrezzatura</h1>
         <p className="text-sm text-ink-2">
           Ali, tavole e foil: in ogni uscita scegli cosa hai usato.{' '}
           {inAccount ? 'La lista è nel tuo account, su tutti i tuoi dispositivi.' : 'La lista resta su questo dispositivo finché non entri nella crew.'}
@@ -79,7 +79,7 @@ export default function GearPage() {
 
       {adding || items.length === 0 ? (
         <div className={card}>
-          <p className="px-3.5 pt-3.5 font-semibold">Aggiungi</p>
+          <p className="px-3.5 pt-3.5 font-display text-[19px] leading-tight font-semibold">Aggiungi</p>
           <GearForm
             submitLabel="Aggiungi"
             onSubmit={async (v) => {
@@ -112,7 +112,7 @@ export default function GearPage() {
 function GearGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className={card} aria-label={title}>
-      <h2 className="px-3.5 pt-3 text-sm font-semibold">{title}</h2>
+      <h2 className="px-3.5 pt-3 font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">{title}</h2>
       <ul className="divide-y divide-[var(--border)]">{children}</ul>
     </section>
   )

@@ -54,7 +54,7 @@ export default function App() {
                         path="*"
                         element={
                           <div className={`${card} space-y-3 p-5`}>
-                            <p className="font-semibold">Pagina non trovata</p>
+                            <p className="font-display text-[19px] leading-tight font-semibold">Pagina non trovata</p>
                             <Link to="/" className={btnSecondary}>
                               Torna alle uscite
                             </Link>

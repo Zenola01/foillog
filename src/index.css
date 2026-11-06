@@ -168,6 +168,25 @@ label {
   font-variant-numeric: tabular-nums;
 }
 
+/* Tables read like an instrument: numbers in the condensed face, small headings. */
+table {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+caption,
+thead th {
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+caption {
+  font-size: 16px;
+}
+thead th {
+  font-size: 13px;
+}
+
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }

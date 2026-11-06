@@ -64,7 +64,7 @@ export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Set
     <div className={`${card} space-y-3 p-3.5`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-semibold">Bordi migliori</p>
+          <p className="font-display text-[19px] leading-tight font-semibold">Bordi migliori</p>
           <p className="text-xs text-ink-2">La media dei bordi migliori: gli angoli e le velocità a cui puntare.</p>
         </div>
         <TopShareToggle />
@@ -96,7 +96,7 @@ export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Set
       ))}
 
       {groups.some((g) => g.best) && (
-        <div className="overflow-x-auto rounded-xl border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full min-w-[400px] text-sm">
             <caption className="px-3 pt-2.5 text-left text-sm font-semibold">Per mure ({u})</caption>
             <thead className="text-xs text-ink-2">
@@ -172,7 +172,7 @@ export function BestLegsCompare({
   return (
     <div className={`${card} overflow-x-auto`}>
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-3">
-        <p className="text-sm font-semibold">Bordi migliori a confronto ({u})</p>
+        <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Bordi migliori a confronto ({u})</p>
         <TopShareToggle />
       </div>
       <table className="mt-1 w-full text-sm">

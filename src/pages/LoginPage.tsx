@@ -23,7 +23,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-sm space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{mode === 'signup' ? 'Crea il tuo account' : 'Entra in FoilLog'}</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">{mode === 'signup' ? 'Crea il tuo account' : 'Entra in FoilLog'}</h1>
         <p className="text-sm text-ink-2">Con l'account condividi le uscite con la tua crew e vedi le loro.</p>
       </div>
       <Segmented

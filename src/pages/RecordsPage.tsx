@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { EChart } from '../components/EChart'
 import { BestPolarsCard } from '../components/Polars'
 import { RequireAuth } from '../components/RequireAuth'
-import { TrackThumb } from '../components/TrackThumb'
+import { SessionLine } from '../components/Scores'
 import { btnGhost, btnSecondary, card, Segmented, StatTile } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { progressOption } from '../lib/charts'
@@ -90,7 +90,7 @@ function Records({ userId }: { userId?: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{me ? 'I tuoi record' : `Record di ${name}`}</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">{me ? 'I tuoi record' : `Record di ${name}`}</h1>
         <p className="text-sm text-ink-2">
           Dalle uscite condivise nella crew{me ? '' : ' che puoi vedere'}.
           {me && (
@@ -171,7 +171,7 @@ function Records({ userId }: { userId?: string }) {
           />
           {shown.length > 1 && (
             <div className={`${card} p-3`}>
-              <p className="text-sm font-semibold">Progressi</p>
+              <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Progressi</p>
               <p className="text-xs text-ink-2">Velocità massima su 10 secondi di ogni uscita ({u}).</p>
               <EChart option={progress} height={220} label="Velocità massima su 10 secondi nelle varie uscite" />
             </div>
@@ -190,7 +190,7 @@ function EnterWind({ rows, unit, onSaved }: { rows: CloudSession[]; unit: SpeedU
   const [open, setOpen] = useState(false)
   const n = rows.length
   return (
-    <div className="space-y-2 rounded-xl bg-surface-2 p-3 text-sm">
+    <div className="space-y-2 rounded-lg bg-surface-2 p-3 text-sm">
       <p>
         {n === 1 ? 'Un’uscita non ha' : `${n} uscite non hanno`} il vento medio in acqua: finché non lo inserisci {n === 1 ? 'resta fuori' : 'restano fuori'}{' '}
         dalle polari migliori.
@@ -290,7 +290,7 @@ function AddPolars({ rows, onDone }: { rows: CloudSession[]; onDone: () => void 
   }
   const n = rows.length
   return (
-    <div className="space-y-2 rounded-xl bg-surface-2 p-3 text-sm">
+    <div className="space-y-2 rounded-lg bg-surface-2 p-3 text-sm">
       <p>
         {n === 1
           ? 'Un’uscita è stata caricata prima delle polari: per aggiungerla, FoilLog ne scarica la traccia e la analizza di nuovo.'
@@ -305,19 +305,17 @@ function AddPolars({ rows, onDone }: { rows: CloudSession[]; onDone: () => void 
 }
 
 function SessionList({ rows, settings, showName }: { rows: CloudSession[]; settings: Settings; showName?: boolean }) {
-  const u = SPEED_SHORT[settings.speedUnit]
   return (
-    <ul className="space-y-2">
+    <ul className="divide-y divide-[var(--border)] border-y border-line">
       {rows.slice(0, 50).map((r) => (
-        <li key={r.id}>
-          <Link to={`/c/${r.id}`} className={`${card} flex items-center gap-3 p-2.5`}>
-            <TrackThumb points={r.preview} className="h-12 w-[76px] shrink-0" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-medium">{showName ? `${r.profile?.display_name ?? 'Rider'} · ${r.title}` : r.title}</span>
-              <span className="block text-sm text-ink-2">
-                {fmtShortDate(Date.parse(r.started_at))} · {fmtDist(r.summary.distance, settings.distUnit)} · max {fmtSpeed(r.summary.records.s2, settings.speedUnit)} {u}
-              </span>
-            </span>
+        <li key={r.id} className="py-2.5">
+          <Link to={`/c/${r.id}`} className="flex items-center gap-3">
+            <SessionLine
+              s={r}
+              windSpeed={r.wind_speed}
+              about={showName ? `${r.profile?.display_name ?? 'Rider'} · ${fmtShortDate(Date.parse(r.started_at))}` : fmtShortDate(Date.parse(r.started_at))}
+              settings={settings}
+            />
           </Link>
         </li>
       ))}
@@ -367,7 +365,7 @@ function SpotView({ id }: { id: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">{name}</h1>
         <p className="text-sm text-ink-2">{rows.length} uscite della crew in questo spot.</p>
       </div>
       <div className="flex flex-wrap gap-2">

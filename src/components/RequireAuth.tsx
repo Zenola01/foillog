@@ -11,7 +11,7 @@ export function RequireAuth({ children, why }: { children: ReactNode; why: strin
   if (!user) {
     return (
       <div className={`${card} space-y-3 p-5`}>
-        <p className="font-semibold">Serve l'accesso</p>
+        <p className="font-display text-[19px] leading-tight font-semibold">Serve l'accesso</p>
         <p className="text-sm text-ink-2">{why}</p>
         <Link to={`/accedi?next=${encodeURIComponent(loc.pathname + loc.search)}`} className={btnPrimary}>
           Entra o crea un account

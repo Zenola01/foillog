@@ -39,10 +39,10 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-semibold tracking-tight">Impostazioni</h1>
+      <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Impostazioni</h1>
 
       <section className={`${card} space-y-3 p-4`}>
-        <h2 className="text-base font-semibold">Account e crew</h2>
+        <h2 className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Account e crew</h2>
         {user ? (
           <>
             <label className="block text-sm">
@@ -104,7 +104,7 @@ export default function SettingsPage() {
           </label>
         )}
         <div className="space-y-2 p-4">
-          <p className="text-sm font-semibold">Velocità</p>
+          <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità</p>
           <Segmented
             label="Unità di velocità"
             value={settings.speedUnit}
@@ -117,7 +117,7 @@ export default function SettingsPage() {
           />
         </div>
         <div className="space-y-2 p-4">
-          <p className="text-sm font-semibold">Distanze</p>
+          <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Distanze</p>
           <Segmented
             label="Unità di distanza"
             value={settings.distUnit}
@@ -129,7 +129,7 @@ export default function SettingsPage() {
           />
         </div>
         <div className="space-y-2 p-4">
-          <p className="text-sm font-semibold">
+          <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">
             Soglia del foil: {fmtNum(thrInUnit, settings.speedUnit === 'ms' ? 1 : 0)} {u}
           </p>
           <p className="text-sm text-ink-2">
@@ -153,9 +153,9 @@ export default function SettingsPage() {
       </section>
 
       <section className={`${card} space-y-4 p-4 text-sm`}>
-        <h2 className="text-base font-semibold">Come caricare i file</h2>
+        <h2 className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Come caricare i file</h2>
         <div className="space-y-1.5">
-          <p className="font-semibold">Dal Vakaros</p>
+          <p className="font-display text-[19px] leading-tight font-semibold">Dal Vakaros</p>
           <p className="text-ink-2">
             Nell'app Vakaros Connect apri la sezione delle sessioni, scarica l'uscita dallo strumento e scegli Esporta, formato VKX
             (oppure CSV): il VKX contiene anche sbandamento e beccheggio. Poi:
@@ -170,7 +170,7 @@ export default function SettingsPage() {
           </ul>
         </div>
         <div className="space-y-1.5">
-          <p className="font-semibold">Il comando rapido «FoilLog»</p>
+          <p className="font-display text-[19px] leading-tight font-semibold">Il comando rapido «FoilLog»</p>
           <p className="text-ink-2">
             L'iPhone non lascia comparire le web app nel menu Condividi e non passa loro i file copiati. Un comando rapido sì: copia la
             traccia come testo, che FoilLog sa sempre incollare. Si prepara una volta sola, nell'app Comandi:
@@ -195,14 +195,14 @@ export default function SettingsPage() {
           </p>
         </div>
         <div>
-          <p className="font-semibold">Dall'Apple Watch o dall'iPhone</p>
+          <p className="font-display text-[19px] leading-tight font-semibold">Dall'Apple Watch o dall'iPhone</p>
           <p className="text-ink-2">
             Usa un'app che esporta in GPX, per esempio WorkOutDoors o Waterspeed, oppure HealthFit per gli allenamenti già salvati in
             Salute. Esporta in GPX, salva in File e caricalo qui. Da Strava puoi scaricare il GPX delle tue attività dal sito.
           </p>
         </div>
         <div>
-          <p className="font-semibold">Installa FoilLog su iPhone e iPad</p>
+          <p className="font-display text-[19px] leading-tight font-semibold">Installa FoilLog su iPhone e iPad</p>
           <p className="text-ink-2">
             Apri questa pagina in Safari, tocca Condividi e poi «Aggiungi alla schermata Home». FoilLog si aprirà a tutto schermo come
             un'app, anche senza connessione.
@@ -211,7 +211,7 @@ export default function SettingsPage() {
       </section>
 
       <section className={`${card} space-y-3 p-4 text-sm`}>
-        <h2 className="text-base font-semibold">I tuoi dati</h2>
+        <h2 className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">I tuoi dati</h2>
         <p className="text-ink-2">
           Su questo dispositivo ci sono {sessions?.length ?? 0} uscite. Quelle condivise con la crew stanno anche sul server della crew
           (Supabase) e le vedono solo i membri delle tue crew. Per stimare il vento, FoilLog invia a Open-Meteo la zona (arrotondata a circa

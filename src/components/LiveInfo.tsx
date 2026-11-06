@@ -119,7 +119,7 @@ export function LiveInfo({ riders, cursor }: { riders: LiveRider[]; cursor: numb
   const sides = shown.some((m) => m.key === 'twa')
 
   return (
-    <div className="pointer-events-auto max-w-full rounded-xl border border-line bg-surface/90 text-xs shadow-sm backdrop-blur">
+    <div className="pointer-events-auto max-w-full rounded-lg border border-line bg-surface/90 text-xs shadow-sm backdrop-blur">
       <div className="flex items-center justify-between gap-3 py-1 pr-1 pl-2.5">
         <span className="font-semibold">In questo momento</span>
         <button

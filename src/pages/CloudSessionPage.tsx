@@ -113,7 +113,7 @@ function CloudSessionLoader({ id }: { id: string }) {
   if (error) {
     return (
       <div className={`${card} space-y-3 p-5`}>
-        <p className="font-semibold">Qualcosa non va</p>
+        <p className="font-display text-[19px] leading-tight font-semibold">Qualcosa non va</p>
         <p className="text-sm text-ink-2">{error}</p>
         <Link to="/" className={btnSecondary}>
           Torna alle uscite
@@ -124,7 +124,7 @@ function CloudSessionLoader({ id }: { id: string }) {
   if (row === null) {
     return (
       <div className={`${card} space-y-3 p-5`}>
-        <p className="font-semibold">Uscita non trovata</p>
+        <p className="font-display text-[19px] leading-tight font-semibold">Uscita non trovata</p>
         <p className="text-sm text-ink-2">È stata eliminata, oppure non sei nella crew di chi l'ha caricata.</p>
         <Link to="/" className={btnSecondary}>
           Torna alle uscite
@@ -230,7 +230,7 @@ function Social({ row, userId }: { row: CloudSession; userId: string }) {
         <span className="text-sm text-ink-2">Dai un 🤙 se l'uscita ti piace</span>
       </div>
       <div className="space-y-2.5">
-        <p className="text-sm font-semibold">Commenti</p>
+        <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Commenti</p>
         {comments?.length === 0 && <p className="text-sm text-ink-2">Nessun commento: scrivi tu il primo.</p>}
         {comments?.map((c) => (
           <div key={c.id} className="flex gap-2.5">
@@ -314,7 +314,7 @@ function OwnerControls({
   return (
     <section className={`${card} space-y-3 p-3.5`}>
       <div className="space-y-1.5">
-        <p className="text-sm font-semibold">Chi la vede</p>
+        <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Chi la vede</p>
         <Segmented
           label="Visibilità"
           value={row.visibility}

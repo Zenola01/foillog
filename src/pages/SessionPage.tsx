@@ -138,7 +138,7 @@ function LocalSession({ id }: { id: string }) {
   if (error) {
     return (
       <div className={`${card} space-y-3 p-5`}>
-        <p className="font-semibold">Qualcosa non va</p>
+        <p className="font-display text-[19px] leading-tight font-semibold">Qualcosa non va</p>
         <p className="text-sm text-ink-2">{error}</p>
         <Link to="/" className={btnSecondary}>
           Torna alle uscite
@@ -149,7 +149,7 @@ function LocalSession({ id }: { id: string }) {
   if (sessions && !rec) {
     return (
       <div className={`${card} space-y-3 p-5`}>
-        <p className="font-semibold">Uscita non trovata</p>
+        <p className="font-display text-[19px] leading-tight font-semibold">Uscita non trovata</p>
         <Link to="/" className={btnSecondary}>
           Torna alle uscite
         </Link>
@@ -398,7 +398,7 @@ export function SessionView({
             windDir={wind.dir}
             speedDomain={domain}
             legend={{ min: sp(domain[0]), max: sp(domain[1]), unit: u }}
-            className="h-[46vh] min-h-[300px] rounded-2xl border border-line lg:h-[calc(100dvh-11rem)]"
+            className="h-[46vh] min-h-[300px] rounded-lg border border-line lg:h-[calc(100dvh-11rem)]"
           />
           <ReplayBar replay={replay} t0={t0} t1={t1} readout={readout} />
           {(a.maneuvers.length > 0 || a.stops.length > 0) && (
@@ -411,7 +411,7 @@ export function SessionView({
               </span>
               {a.stops.length > 0 && (
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-2.5 w-2.5 rounded-full border-2" style={{ borderColor: 'var(--critical)' }} /> caduta o sosta
+                  <span className="h-2.5 w-2.5 rounded-md border-2" style={{ borderColor: 'var(--critical)' }} /> caduta o sosta
                 </span>
               )}
               <span>Tocca un pallino per i dettagli.</span>
@@ -437,12 +437,12 @@ export function SessionView({
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] text-ink-2">Vento</p>
                   {wind.dir != null ? (
-                    <p className="font-semibold">
+                    <p className="font-display text-[19px] leading-tight font-semibold">
                       da {compass(wind.dir)} · {Math.round(wind.dir)}°{' '}
                       <span className="font-normal text-ink-2">{wind.source ? WIND_SOURCE[wind.source] : ''}</span>
                     </p>
                   ) : (
-                    <p className="font-semibold">sconosciuto</p>
+                    <p className="font-display text-[19px] leading-tight font-semibold">sconosciuto</p>
                   )}
                   {rec.modelWind && rec.modelWind.label !== 'esempio' && (
                     <p className="text-sm text-ink-2">
@@ -467,7 +467,7 @@ export function SessionView({
                 />
               )}
               {lowConfidence && (
-                <div className="rounded-xl bg-surface-2 p-3 text-sm">
+                <div className="rounded-lg bg-surface-2 p-3 text-sm">
                   <p>
                     Non sono sicuro della direzione del vento. Il vento arrivava davvero da <b>{compass(wind.dir!)}</b> ({Math.round(wind.dir!)}°)?
                   </p>
@@ -610,7 +610,7 @@ export function SessionView({
           {tab === 'grafici' && (
             <div className="space-y-4">
               <div className={`${card} p-3`}>
-                <p className="text-sm font-semibold">Velocità</p>
+                <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità</p>
                 <p className="text-xs text-ink-2">
                   {coarse ? 'Tocca il grafico per i valori; ' : 'Passa sopra il grafico per i valori; '}trascina le maniglie in basso per
                   selezionare un tratto.
@@ -662,7 +662,7 @@ export function SessionView({
           {readOnly ? (
             rec.notes && (
               <div className={`${card} p-3.5`}>
-                <p className="text-sm font-semibold">Note</p>
+                <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Note</p>
                 <p className="mt-1 text-sm whitespace-pre-wrap">{rec.notes}</p>
               </div>
             )
@@ -723,7 +723,7 @@ function WindEditor({ initial, canReset, onSave, onCancel }: { initial: number; 
   const [dir, setDir] = useState(initial)
   return (
     <div className={`${card} space-y-3 p-3.5`}>
-      <p className="font-semibold">Da dove arrivava il vento?</p>
+      <p className="font-display text-[19px] leading-tight font-semibold">Da dove arrivava il vento?</p>
       <p className="text-sm text-ink-2">Tocca o trascina sul bordo della bussola il punto da cui soffiava il vento.</p>
       <div className="flex justify-center">
         <WindDial value={dir} onChange={setDir} />
@@ -760,7 +760,7 @@ function Histogram({ tr, a, unit, colors }: { tr: SessionData['track']; a: Sessi
   const option = useMemo(() => histogramOption(tr, a, unit, colors), [tr, a, unit, colors])
   return (
     <div className={`${card} p-3`}>
-      <p className="text-sm font-semibold">Velocità in foil</p>
+      <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità in foil</p>
       <p className="text-xs text-ink-2">Minuti passati in ogni fascia di velocità.</p>
       <EChart option={option} height={220} label="Distribuzione della velocità in foil" />
     </div>
@@ -771,7 +771,7 @@ function Orientation({ data, colors, coarse }: { data: SessionData; colors: Them
   const option = useMemo(() => orientationOption(data.track, colors, coarse), [data, colors, coarse])
   return (
     <div className={`${card} p-3`}>
-      <p className="text-sm font-semibold">Sbandamento e beccheggio</p>
+      <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Sbandamento e beccheggio</p>
       <p className="text-xs text-ink-2">Dall'orientamento registrato dal Vakaros, in gradi.</p>
       <EChart option={option} height={240} label="Sbandamento e beccheggio nel tempo" />
     </div>
@@ -782,7 +782,7 @@ function HeartRate({ data, colors, coarse }: { data: SessionData; colors: ThemeC
   const option = useMemo(() => heartRateOption(data.track, colors, coarse), [data, colors, coarse])
   return (
     <div className={`${card} p-3`}>
-      <p className="text-sm font-semibold">Battito cardiaco</p>
+      <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Battito cardiaco</p>
       <EChart option={option} height={220} label="Battito cardiaco nel tempo" />
     </div>
   )
@@ -859,7 +859,7 @@ function SailTab({
       </div>
       <div className={`${card} space-y-3 p-3`}>
         <div>
-          <p className="text-sm font-semibold">Polare</p>
+          <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Polare</p>
           <p className="text-xs text-ink-2">Velocità in foil (90° percentile, {u}) per angolo dal vento. Vento dall'alto.</p>
         </div>
         {windSpeed != null && band && (

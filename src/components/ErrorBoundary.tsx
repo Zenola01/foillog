@@ -17,7 +17,7 @@ class Boundary extends Component<{ children: ReactNode; resetKey: string }, { er
     if (!this.state.error) return this.props.children
     return (
       <div className={`${card} space-y-3 p-5`}>
-        <p className="font-semibold">Qualcosa è andato storto</p>
+        <p className="font-display text-[19px] leading-tight font-semibold">Qualcosa è andato storto</p>
         <p className="text-sm text-ink-2">{this.state.error.message}</p>
         <button type="button" className={btnSecondary} onClick={() => window.location.reload()}>
           Ricarica la pagina

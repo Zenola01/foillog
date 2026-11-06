@@ -232,7 +232,7 @@ function Overlay({
     <div className="space-y-4">
       <div className={`${card} space-y-3 p-3`}>
         <div>
-          <p className="text-sm font-semibold">Traiettorie sovrapposte</p>
+          <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Traiettorie sovrapposte</p>
           <p className="text-xs text-ink-2">Allineate {PASSAGE[kind]} (il pallino). Tocca una linea per i numeri.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -299,7 +299,7 @@ function Overlay({
         <>
           <div className={`${card} space-y-2 p-3`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="text-sm font-semibold">Velocità angolare (°/s)</p>
+              <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità angolare (°/s)</p>
               {tr.hdg && (
                 <Segmented
                   compact
@@ -318,13 +318,13 @@ function Overlay({
 
           {heelLines.length > 0 && (
             <div className={`${card} space-y-2 p-3`}>
-              <p className="text-sm font-semibold">Inclinazione verso l’interno della curva (°)</p>
+              <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Inclinazione verso l’interno della curva (°)</p>
               <TimeChart lines={heelLines} seconds={seconds} unit="°" colors={colors} onPick={onSelect} height={170} label="Inclinazione nel tempo, attorno al passaggio" />
             </div>
           )}
 
           <div className={`${card} space-y-2 p-3`}>
-            <p className="text-sm font-semibold">Velocità ({u})</p>
+            <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità ({u})</p>
             <TimeChart lines={speedLines} seconds={seconds} unit={u} digits={1} colors={colors} onPick={onSelect} height={170} label="Velocità nel tempo, attorno al passaggio" />
           </div>
         </>

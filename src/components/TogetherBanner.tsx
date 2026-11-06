@@ -51,7 +51,7 @@ export function TogetherBanner({ id, start, end }: { id: string; start: number; 
   return (
     <Link
       to={`/confronta?ids=${[id, ...chosen.map((o) => o.id)].join(',')}`}
-      className="mt-2.5 flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5 text-sm transition hover:brightness-[.97]"
+      className="mt-2.5 flex items-center gap-3 rounded-lg bg-surface-2 px-3 py-2.5 text-sm transition hover:brightness-[.97]"
     >
       <IconCompare width={20} height={20} className="shrink-0 text-ink-2" aria-hidden />
       <span className="min-w-0 flex-1">

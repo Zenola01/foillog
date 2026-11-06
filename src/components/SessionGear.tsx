@@ -33,7 +33,7 @@ export function SessionGear({
       <div className={`${card} flex items-start gap-3 p-3.5`}>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] text-ink-2">Attrezzatura</p>
-          {shown.length ? <p className="font-semibold">{shown.map(gearLabel).join(' · ')}</p> : <p className="text-sm text-ink-2">Non indicata</p>}
+          {shown.length ? <p className="font-display text-[19px] leading-tight font-semibold">{shown.map(gearLabel).join(' · ')}</p> : <p className="text-sm text-ink-2">Non indicata</p>}
         </div>
         {editable && (
           <button type="button" className={btnGhost} onClick={() => setDraft(shown.map((g) => g.id))}>
@@ -63,7 +63,7 @@ export function SessionGear({
 
   return (
     <div className={`${card} space-y-3 p-3.5`}>
-      <p className="font-semibold">Che attrezzatura hai usato?</p>
+      <p className="font-display text-[19px] leading-tight font-semibold">Che attrezzatura hai usato?</p>
       {listError && <p className="text-sm text-critical">{listError}</p>}
       {choices.length === 0 ? (
         <p className="text-sm text-ink-2">
@@ -90,7 +90,7 @@ export function SessionGear({
                       role="checkbox"
                       aria-checked={on}
                       onClick={() => toggle(g.id)}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                      className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition ${
                         on ? 'border-transparent bg-accent-btn text-on-accent' : 'border-line bg-surface text-ink hover:bg-surface-2'
                       }`}
                     >

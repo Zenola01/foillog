@@ -55,11 +55,11 @@ function Day() {
 
   return (
     <div className="space-y-4">
+      <div>
+        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">La giornata</h1>
+        <p className="text-sm text-ink-2 first-letter:uppercase">{fmtDate(from.getTime())}</p>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight first-letter:uppercase">La giornata</h1>
-          <p className="text-sm text-ink-2 first-letter:uppercase">{fmtDate(from.getTime())}</p>
-        </div>
         <button type="button" className={btnGhost} onClick={() => navigate(`/giornata/${shiftDay(day, -1)}`)} aria-label="Giorno prima">
           ← Prima
         </button>
@@ -220,10 +220,10 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
               windDir={shared}
               windByRider={windByRider}
               overlay={loaded.length > 1 ? <LiveInfo riders={live} cursor={cursor} /> : undefined}
-              className="h-[46vh] min-h-[300px] rounded-2xl border border-line lg:h-[calc(100dvh-14rem)]"
+              className="h-[46vh] min-h-[300px] rounded-lg border border-line lg:h-[calc(100dvh-14rem)]"
             />
           ) : (
-            <div className="flex h-[46vh] min-h-[300px] items-center justify-center rounded-2xl border border-line text-ink-2">Carico le tracce…</div>
+            <div className="flex h-[46vh] min-h-[300px] items-center justify-center rounded-lg border border-line text-ink-2">Carico le tracce…</div>
           )}
           <ReplayBar replay={replay} t0={t0} t1={t1} />
           {loaded.length > 1 && <TrailToggle value={settings.trailMode} onChange={(trailMode) => update({ trailMode })} />}
@@ -283,7 +283,7 @@ function DayView({ rows, settings }: { rows: CloudSession[]; settings: Settings 
           </div>
           {tracks && loaded.length > 0 && (
             <div className={`${card} p-3`}>
-              <p className="text-sm font-semibold">Velocità di tutti</p>
+              <p className="font-display text-[16px] leading-tight font-semibold tracking-wider uppercase">Velocità di tutti</p>
               <EChart option={speedOpt} height={280} label="Velocità dei rider durante la giornata" />
             </div>
           )}

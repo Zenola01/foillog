@@ -47,10 +47,10 @@ function Crews() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Crew</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Crew</h1>
         <p className="text-sm text-ink-2">Nella crew vedete le uscite gli uni degli altri. Si entra solo con il link d'invito.</p>
       </div>
-      {error && <p className="rounded-xl bg-surface-2 px-4 py-3 text-sm text-critical">{error}</p>}
+      {error && <p className="rounded-lg bg-surface-2 px-4 py-3 text-sm text-critical">{error}</p>}
       {crews == null && !error && <p className="text-ink-2">Caricamento…</p>}
 
       {crews?.map((c) => {
@@ -58,7 +58,7 @@ function Crews() {
         return (
           <section key={c.id} className={`${card} space-y-3 p-4`}>
             <div className="flex items-start gap-2">
-              <h2 className="min-w-0 flex-1 text-lg font-semibold">{c.name}</h2>
+              <h2 className="min-w-0 flex-1 font-display text-[24px] leading-tight font-bold tracking-wide">{c.name}</h2>
               <button
                 type="button"
                 className={`${btnGhost} text-critical`}
@@ -82,7 +82,7 @@ function Crews() {
                 </li>
               ))}
             </ul>
-            <div className="rounded-xl bg-surface-2 p-3 text-sm">
+            <div className="rounded-lg bg-surface-2 p-3 text-sm">
               <p className="font-medium">Invita gli amici</p>
               <p className="text-ink-2">
                 Manda loro questo link: aprendolo creano l'account ed entrano nella crew. Codice <b className="tabular">{c.invite_code}</b>.
@@ -125,7 +125,7 @@ function Crews() {
           })
         }}
       >
-        <p className="font-semibold">{crews?.length ? 'Crea un’altra crew' : 'Crea la tua crew'}</p>
+        <p className="font-display text-[19px] leading-tight font-semibold">{crews?.length ? 'Crea un’altra crew' : 'Crea la tua crew'}</p>
         <div className="flex gap-2">
           <input
             value={name}
@@ -150,7 +150,7 @@ function Crews() {
           })
         }}
       >
-        <p className="font-semibold">Hai un codice d'invito?</p>
+        <p className="font-display text-[19px] leading-tight font-semibold">Hai un codice d'invito?</p>
         <div className="flex gap-2">
           <input
             value={code}
@@ -177,7 +177,7 @@ export function JoinPage() {
   if (!user) {
     return (
       <div className={`${card} mx-auto max-w-md space-y-3 p-5`}>
-        <p className="text-lg font-semibold">Ti hanno invitato in una crew su FoilLog</p>
+        <p className="font-display text-[24px] leading-tight font-bold">Ti hanno invitato in una crew su FoilLog</p>
         <p className="text-sm text-ink-2">
           FoilLog analizza le uscite in wing foil e le condivide con gli amici. Crea un account (è gratis) per entrare nella crew.
         </p>
@@ -209,7 +209,7 @@ function JoinConfirm({ code }: { code: string }) {
   if (name === null) {
     return (
       <div className={`${card} mx-auto max-w-md space-y-3 p-5`}>
-        <p className="font-semibold">Invito non valido</p>
+        <p className="font-display text-[19px] leading-tight font-semibold">Invito non valido</p>
         <p className="text-sm text-ink-2">Il codice «{code}» non corrisponde a nessuna crew. Chiedi un nuovo link a chi ti ha invitato.</p>
         <Link to="/crew" className={btnSecondary}>
           Vai alle crew
@@ -219,7 +219,7 @@ function JoinConfirm({ code }: { code: string }) {
   }
   return (
     <div className={`${card} mx-auto max-w-md space-y-3 p-5`}>
-      <p className="text-lg font-semibold">Entrare nella crew «{name}»?</p>
+      <p className="font-display text-[24px] leading-tight font-bold">Entrare nella crew «{name}»?</p>
       <p className="text-sm text-ink-2">Vedrai le uscite dei membri e loro vedranno le tue (tranne quelle «solo per me»).</p>
       <button
         type="button"
