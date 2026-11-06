@@ -2,10 +2,10 @@ import { useMemo } from 'react'
 
 const W = 100
 const H = 64
-const PAD = 7
+const PAD = 3
 
 /** Mini map of a track (no tiles), from the simplified preview points. */
-export function TrackThumb({ points, color = 'var(--series-1)', className }: { points: [number, number][]; color?: string; className?: string }) {
+export function TrackThumb({ points, color = 'var(--track)', className }: { points: [number, number][]; color?: string; className?: string }) {
   const d = useMemo(() => {
     if (points.length < 2) return ''
     const k = Math.cos((points[0][0] * Math.PI) / 180)
@@ -22,8 +22,7 @@ export function TrackThumb({ points, color = 'var(--series-1)', className }: { p
   }, [points])
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className={className} aria-hidden="true">
-      <rect width={W} height={H} rx="9" fill="var(--surface-2)" />
-      <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <path d={d} fill="none" stroke={color} strokeWidth="1.25" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </svg>
   )
 }

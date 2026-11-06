@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <header className="safe-top sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-          <Link to="/" className="flex items-center gap-2 text-[17px] font-semibold tracking-tight">
+          <Link to="/" className="flex items-center gap-2 font-display text-[21px] font-bold tracking-wider uppercase">
             <Logo className="h-7 w-7" />
             FoilLog
           </Link>
@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `rounded-lg px-3 py-1.5 text-sm font-medium transition ${isActive ? 'bg-surface-2 text-ink' : 'text-ink-2 hover:text-ink'}`
+                  `rounded-md px-3 py-1.5 font-display text-[16px] font-semibold tracking-wider uppercase transition ${isActive ? 'text-accent' : 'text-ink-2 hover:text-ink'}`
                 }
               >
                 {label}
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               to={to}
               end={end}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-0.5 pt-2 pb-1.5 text-[11px] font-medium ${isActive ? 'text-accent' : 'text-ink-2'}`
+                `flex flex-col items-center gap-0.5 pt-2 pb-1.5 font-display text-[12px] font-semibold tracking-wider uppercase ${isActive ? 'text-accent' : 'text-ink-2'}`
               }
             >
               <Icon />

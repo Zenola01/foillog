@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react'
 
 export const btnPrimary =
-  'inline-flex items-center justify-center gap-2 rounded-xl bg-accent-btn px-4 py-2.5 text-[15px] font-semibold text-white transition active:opacity-80 disabled:opacity-50'
+  'inline-flex items-center justify-center gap-2 rounded-md bg-accent-btn px-4 py-2 font-display text-[17px] font-semibold tracking-wide text-on-accent uppercase transition active:opacity-80 disabled:opacity-50'
 export const btnSecondary =
-  'inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-[15px] font-medium text-ink transition hover:bg-surface-2 active:opacity-80 disabled:opacity-50'
+  'inline-flex items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 py-2 font-display text-[17px] font-semibold tracking-wide text-ink uppercase transition hover:bg-surface-2 active:opacity-80 disabled:opacity-50'
 export const btnGhost =
-  'inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-accent transition hover:bg-surface-2'
-export const card = 'rounded-2xl border border-line bg-surface'
+  'inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 font-display text-[16px] font-semibold tracking-wide text-accent transition hover:bg-surface-2'
+export const card = 'rounded-lg border border-line bg-surface'
+/** A small heading in the instrument's voice: «BOLINA», «GIO 29 OTT». */
+export const instrumentLabel = 'font-display text-[14px] font-semibold tracking-wider text-ink-2 uppercase'
 
 export function StatTile({
   label,
@@ -25,15 +27,15 @@ export function StatTile({
 }) {
   const body = (
     <>
-      <p className="text-[13px] text-ink-2">{label}</p>
-      <p className="mt-0.5 text-xl leading-tight font-semibold">
+      <p className="font-display text-[13px] leading-tight font-semibold tracking-wider text-ink-2 uppercase">{label}</p>
+      <p className="mt-1 font-display text-[28px] leading-none font-semibold tabular">
         {value}
-        {unit && <span className="ml-1 text-sm font-normal text-ink-2">{unit}</span>}
+        {unit && <span className="ml-1 text-[15px] font-medium text-ink-2">{unit}</span>}
       </p>
-      {sub && <p className="mt-0.5 text-xs text-ink-2">{sub}</p>}
+      {sub && <p className="mt-1 text-xs leading-tight text-ink-2">{sub}</p>}
     </>
   )
-  const cls = `rounded-xl px-3 py-2.5 text-left ${active ? 'bg-surface ring-2 ring-[var(--series-1)]' : 'bg-surface-2'}`
+  const cls = `flex flex-col items-start justify-start rounded-md border border-line bg-surface px-3 py-2.5 text-left ${active ? 'ring-2 ring-[var(--accent-text)]' : ''}`
   return onClick ? (
     <button type="button" onClick={onClick} className={`${cls} transition hover:brightness-[.97]`}>
       {body}
@@ -59,7 +61,7 @@ export function Segmented<T extends string | number>({
   compact?: boolean
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex max-w-full rounded-xl bg-surface-2 p-1">
+    <div role="radiogroup" aria-label={label} className={`inline-flex max-w-full ${compact ? 'gap-2.5' : 'gap-3.5'}`}>
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -67,8 +69,8 @@ export function Segmented<T extends string | number>({
           role="radio"
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
-          className={`rounded-lg py-1.5 font-medium whitespace-nowrap transition ${compact ? 'px-2.5 text-[13px]' : 'px-3 text-sm'} ${
-            o.value === value ? 'bg-surface text-ink shadow-sm' : 'text-ink-2 hover:text-ink'
+          className={`border-b-2 py-1 font-display font-semibold tracking-wider whitespace-nowrap uppercase transition ${compact ? 'text-[14px]' : 'text-[16px]'} ${
+            o.value === value ? 'border-[var(--accent-text)] text-accent' : 'border-transparent text-ink-2 hover:text-ink'
           }`}
         >
           {o.label}

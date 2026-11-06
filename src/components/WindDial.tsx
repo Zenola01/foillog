@@ -65,8 +65,8 @@ export function WindDial({ value, onChange, size = 200 }: { value: number; onCha
         </text>
       ))}
       <g transform={`rotate(${value})`}>
-        <path d="M0 -92 L0 -46" stroke="var(--series-1)" strokeWidth="5" strokeLinecap="round" />
-        <path d="M-10 -56 L0 -42 L10 -56" fill="none" stroke="var(--series-1)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M0 -92 L0 -46" stroke="var(--accent-text)" strokeWidth="5" strokeLinecap="round" />
+        <path d="M-10 -56 L0 -42 L10 -56" fill="none" stroke="var(--accent-text)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
       </g>
       <text y="6" textAnchor="middle" fontSize="20" fontWeight="700" fill="var(--ink)">
         {value}°

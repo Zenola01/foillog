@@ -12,6 +12,8 @@
     "icons": "pwa-assets-generator"
   },
   "dependencies": {
+    "@fontsource/barlow": "5.2.8",
+    "@fontsource/barlow-condensed": "5.2.8",
     "@supabase/supabase-js": "^2.118.0",
     "echarts": "^6.1.0",
     "idb-keyval": "^6.3.0",

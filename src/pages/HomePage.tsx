@@ -3,9 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { FeedCard } from '../components/FeedCard'
 import { FileDrop } from '../components/FileDrop'
 import { IconShare, IconX } from '../components/icons'
-import { ScoredThumb } from '../components/Scores'
-import { btnGhost, btnPrimary, btnSecondary, card, Segmented } from '../components/ui'
-import { lacksPerf } from '../lib/analysis/scores'
+import { ScorePanel, SessionLine } from '../components/Scores'
+import { btnGhost, btnPrimary, btnSecondary, card, instrumentLabel, Segmented } from '../components/ui'
+import { lacksPerf, sessionScores } from '../lib/analysis/scores'
 import { useAuth } from '../lib/auth'
 import { feed, myCrews, type CloudSession } from '../lib/cloud'
 import { byDay } from '../lib/crewStats'
@@ -15,7 +15,7 @@ import { isMyName, useSettings, type Settings } from '../lib/settings'
 import type { SessionRecord } from '../lib/store'
 import { together, type Span } from '../lib/together'
 import type { SessionSummary } from '../lib/types'
-import { fmtDate, fmtDist, fmtDuration, fmtPct, fmtSpeed, fmtTime, SPEED_SHORT } from '../lib/units'
+import { fmtDate, fmtShortDate, fmtTime } from '../lib/units'
 
 const STATUS: Record<ImportJob['status'], string> = {
   reading: 'Lettura…',
@@ -122,6 +122,17 @@ export default function HomePage() {
     ]
     return byDay(entries, (e) => e.at)
   }, [rows, othersPerf, view, myLocal, local])
+  // Your latest session with an overall score heads your own list.
+  const latest = useMemo(() => {
+    if (view !== 'mine') return null
+    for (const g of days) {
+      for (const e of g.items) {
+        const scores = e.row ? sessionScores(e.row.summary.perf, e.row.wind_speed) : sessionScores(e.rec.summary.perf, e.rec.windSpeed)
+        if (scores?.overall != null) return { e, scores }
+      }
+    }
+    return null
+  }, [view, days])
 
   const onFiles = async (files: File[]) => {
     const created = await importFiles(files)
@@ -166,7 +177,7 @@ export default function HomePage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Uscite</h1>
+        <h1 className="font-display text-[30px] leading-none font-bold tracking-wider uppercase">Uscite</h1>
         <Segmented
           label="Quali uscite vedere"
           value={view}
@@ -185,6 +196,12 @@ export default function HomePage() {
         <p className="rounded-xl bg-surface-2 px-4 py-3 text-sm">
           Questo browser non permette di salvare dati: le uscite resteranno solo finché la pagina è aperta.
         </p>
+      )}
+
+      {latest && (
+        <Link to={latest.e.row ? `/c/${latest.e.row.id}` : `/s/${latest.e.rec.id}`} className="block">
+          <ScorePanel scores={latest.scores} caption={`${fmtShortDate(latest.e.at)} · Overall`} />
+        </Link>
       )}
 
       {view === 'mine' && (
@@ -263,14 +280,14 @@ export default function HomePage() {
       {days.map((g) => (
         <section key={g.key} className="space-y-2">
           <div className="flex items-center gap-2">
-            <h2 className="min-w-0 flex-1 text-sm font-semibold text-ink-2 first-letter:uppercase">{dayLabel(g.items[0].at)}</h2>
+            <h2 className={`min-w-0 flex-1 ${instrumentLabel}`}>{dayLabel(g.items[0].at)}</h2>
             {view === 'feed' && new Set(g.items.flatMap((e) => e.row?.user_id ?? [])).size > 1 && (
               <Link to={`/giornata/${g.key}`} className={btnGhost}>
                 La giornata →
               </Link>
             )}
           </div>
-          <ul className="space-y-2">
+          <ul className="divide-y divide-[var(--border)] border-y border-line">
             {g.items.map((e) =>
               e.rec ? (
                 <LocalCard
@@ -385,30 +402,11 @@ function OutingCard({
   blocked?: string
   children?: ReactNode
 }) {
-  const sum = s.summary
-  const u = SPEED_SHORT[settings.speedUnit]
   return (
-    <li className={`${card} p-2.5 ${selected ? 'ring-2 ring-[var(--series-1)]' : ''}`}>
+    <li className={`py-2.5 ${selected ? 'bg-surface-2' : ''}`}>
       <div className="flex items-center gap-3">
         <Link to={to} className="flex min-w-0 flex-1 items-center gap-3">
-          <ScoredThumb s={s} windSpeed={windSpeed} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold">{s.title}</p>
-            {about && <p className="truncate text-sm text-ink-2">{about}</p>}
-            <p className="mt-0.5 flex flex-wrap gap-x-3 text-sm">
-              <span>{fmtDist(sum.distance, settings.distUnit)}</span>
-              <span>{fmtDuration(sum.duration)}</span>
-              <span>
-                max {fmtSpeed(sum.records.s2, settings.speedUnit)} {u}
-              </span>
-              <span>{fmtPct(sum.foilShare)} in foil</span>
-              {sum.jibes > 0 && (
-                <span>
-                  strambate {sum.jibesFoiled}/{sum.jibes}
-                </span>
-              )}
-            </p>
-          </div>
+          <SessionLine s={s} windSpeed={windSpeed} about={about} settings={settings} />
         </Link>
         {onToggle && (
           <label className={`flex shrink-0 flex-col items-center gap-0.5 px-1 text-[11px] text-ink-2 ${blocked ? 'opacity-60' : 'cursor-pointer'}`}>
@@ -417,7 +415,7 @@ function OutingCard({
               checked={!!selected}
               disabled={!!blocked}
               onChange={onToggle}
-              className="h-5 w-5 accent-[var(--series-1)]"
+              className="h-5 w-5 accent-[var(--accent-btn)]"
               aria-label={`Seleziona ${s.title} per il confronto`}
             />
             {blocked ?? 'confronta'}

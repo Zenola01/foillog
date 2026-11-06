@@ -91,12 +91,12 @@ export function SessionGear({
                       aria-checked={on}
                       onClick={() => toggle(g.id)}
                       className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                        on ? 'border-transparent bg-accent-btn text-white' : 'border-line bg-surface text-ink hover:bg-surface-2'
+                        on ? 'border-transparent bg-accent-btn text-on-accent' : 'border-line bg-surface text-ink hover:bg-surface-2'
                       }`}
                     >
                       {on && <span aria-hidden>✓</span>}
                       {g.name.trim() || k.name}
-                      {sizeText(g) && <span className={on ? 'text-white/80' : 'text-ink-2'}>{sizeText(g)}</span>}
+                      {sizeText(g) && <span className={on ? 'text-on-accent/70' : 'text-ink-2'}>{sizeText(g)}</span>}
                     </button>
                   )
                 })}

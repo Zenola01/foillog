@@ -1,21 +1,33 @@
 @import "tailwindcss";
+@import "@fontsource/barlow/latin-400.css";
+@import "@fontsource/barlow/latin-500.css";
+@import "@fontsource/barlow/latin-600.css";
+@import "@fontsource/barlow-condensed/latin-500.css";
+@import "@fontsource/barlow-condensed/latin-600.css";
+@import "@fontsource/barlow-condensed/latin-700.css";
 
-/* Colour tokens. Chart and series values come from the validated data-viz palette
+/* Colour tokens: a race instrument, black and lime in the dark theme, ink and olive in the light one.
+   Chart and series values come from the validated data-viz palette
    (light and dark are separate, selected steps, not an automatic flip). */
 :root {
   color-scheme: light;
-  --page: #f9f9f7;
-  --surface: #fcfcfb;
-  --surface-2: #f1f0ec;
-  --ink: #0b0b0b;
-  --ink-2: #52514e;
-  --muted: #898781;
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.1);
-  --accent-text: #1c5cab;
-  --accent-btn: #256abf;
-  --brand: #0d3b52;
+  --page: #f1f3ec;
+  --surface: #f8f9f4;
+  --surface-2: #e7eadf;
+  --ink: #0b0e10;
+  --ink-2: #4d565b;
+  --muted: #7a8388;
+  --grid: #dde0d4;
+  --axis: #bfc4b6;
+  --border: rgba(11, 14, 16, 0.14);
+  --accent-text: #4c5f00;
+  --accent-btn: #c8f31d;
+  --on-accent: #0a0d0f;
+  --brand: #4c5f00;
+  --score: #0b0e10;
+  --bar: #8db000;
+  --bar-track: #dde0d4;
+  --track: #2e3a00;
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
@@ -27,28 +39,33 @@
   --good: #0ca30c;
   --good-text: #006300;
   --critical: #d03b3b;
-  --speed-1: #86b6ef;
-  --speed-2: #5598e7;
-  --speed-3: #2a78d6;
-  --speed-4: #1c5cab;
-  --speed-5: #0d366b;
+  --speed-1: #bfd86b;
+  --speed-2: #97b92f;
+  --speed-3: #6e9210;
+  --speed-4: #4a6a00;
+  --speed-5: #263a00;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: #0d0d0d;
-    --surface: #1a1a19;
-    --surface-2: #252523;
-    --ink: #f0efec;
-    --ink-2: #c3c2b7;
-    --muted: #898781;
-    --grid: #2c2c2a;
-    --axis: #383835;
-    --border: rgba(255, 255, 255, 0.1);
-    --accent-text: #6da7ec;
-    --accent-btn: #256abf;
-    --brand: #6da7ec;
+    --page: #0a0d0f;
+    --surface: #11161a;
+    --surface-2: #1a2126;
+    --ink: #e9eef0;
+    --ink-2: #9aa5aa;
+    --muted: #6f7a80;
+    --grid: #232a2e;
+    --axis: #333c41;
+    --border: rgba(233, 238, 240, 0.12);
+    --accent-text: #c8f31d;
+    --accent-btn: #c8f31d;
+    --on-accent: #0a0d0f;
+    --brand: #c8f31d;
+    --score: #c8f31d;
+    --bar: #c8f31d;
+    --bar-track: #232a2e;
+    --track: #c8f31d;
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
@@ -60,28 +77,33 @@
     --good: #0ca30c;
     --good-text: #0ca30c;
     --critical: #d03b3b;
-    --speed-1: #184f95;
-    --speed-2: #256abf;
-    --speed-3: #3987e5;
-    --speed-4: #6da7ec;
-    --speed-5: #b7d3f6;
+    --speed-1: #1e5b63;
+    --speed-2: #2a8c80;
+    --speed-3: #62b85a;
+    --speed-4: #a3de35;
+    --speed-5: #dffb5c;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #252523;
-  --ink: #f0efec;
-  --ink-2: #c3c2b7;
-  --muted: #898781;
-  --grid: #2c2c2a;
-  --axis: #383835;
-  --border: rgba(255, 255, 255, 0.1);
-  --accent-text: #6da7ec;
-  --accent-btn: #256abf;
-  --brand: #6da7ec;
+  --page: #0a0d0f;
+  --surface: #11161a;
+  --surface-2: #1a2126;
+  --ink: #e9eef0;
+  --ink-2: #9aa5aa;
+  --muted: #6f7a80;
+  --grid: #232a2e;
+  --axis: #333c41;
+  --border: rgba(233, 238, 240, 0.12);
+  --accent-text: #c8f31d;
+  --accent-btn: #c8f31d;
+  --on-accent: #0a0d0f;
+  --brand: #c8f31d;
+  --score: #c8f31d;
+  --bar: #c8f31d;
+  --bar-track: #232a2e;
+  --track: #c8f31d;
   --series-1: #3987e5;
   --series-2: #d95926;
   --series-3: #199e70;
@@ -93,11 +115,11 @@
   --good: #0ca30c;
   --good-text: #0ca30c;
   --critical: #d03b3b;
-  --speed-1: #184f95;
-  --speed-2: #256abf;
-  --speed-3: #3987e5;
-  --speed-4: #6da7ec;
-  --speed-5: #b7d3f6;
+  --speed-1: #1e5b63;
+  --speed-2: #2a8c80;
+  --speed-3: #62b85a;
+  --speed-4: #a3de35;
+  --speed-5: #dffb5c;
 }
 
 @theme inline {
@@ -111,11 +133,14 @@
   --color-line: var(--border);
   --color-accent: var(--accent-text);
   --color-accent-btn: var(--accent-btn);
+  --color-on-accent: var(--on-accent);
   --color-brand: var(--brand);
+  --color-score: var(--score);
   --color-good: var(--good);
   --color-good-text: var(--good-text);
   --color-critical: var(--critical);
-  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 html,

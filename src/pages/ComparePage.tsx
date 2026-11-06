@@ -155,7 +155,7 @@ function TogetherGroup({ items, initial, onConfirm }: { items: PickItem[]; initi
                   disabled={blocked}
                   onChange={() => toggle(it)}
                   aria-label={`${it.rider}, ${fmtTime(it.start)}–${fmtTime(it.end)}`}
-                  className="h-5 w-5 shrink-0 accent-[var(--series-1)]"
+                  className="h-5 w-5 shrink-0 accent-[var(--accent-btn)]"
                 />
                 <TrackThumb points={it.preview} className="h-12 w-[76px] shrink-0" />
                 <span className="min-w-0 flex-1">

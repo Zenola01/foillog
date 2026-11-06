@@ -143,7 +143,7 @@ export default function SettingsPage() {
             value={settings.foilOnKn}
             onChange={(e) => update({ foilOnKn: Number(e.target.value) })}
             aria-label="Soglia del foil"
-            className="w-full max-w-sm accent-[var(--series-1)]"
+            className="w-full max-w-sm accent-[var(--accent-btn)]"
           />
           {busy && <p className="text-sm text-ink-2">Ricalcolo le uscite…</p>}
           <p className="text-xs text-ink-2">

@@ -290,7 +290,7 @@ function Player({
           type="button"
           onClick={toggle}
           aria-label={playing ? 'Metti in pausa il video' : 'Avvia il video'}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-btn text-white active:opacity-80"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-btn text-on-accent active:opacity-80"
         >
           {playing ? <IconPause width={18} height={18} /> : <IconPlay width={18} height={18} />}
         </button>
@@ -302,7 +302,7 @@ function Player({
             step={0.1}
             value={seconds}
             aria-label="Posizione nel video"
-            className="w-full accent-[var(--series-1)]"
+            className="w-full accent-[var(--accent-btn)]"
             onChange={(e) => {
               const s = Number(e.target.value)
               setSeconds(s)
@@ -350,7 +350,7 @@ function Player({
                   aria-checked={on}
                   onClick={() => toggleMetric(m.key)}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                    on ? 'border-transparent bg-accent-btn text-white' : 'border-line bg-surface text-ink hover:bg-surface-2'
+                    on ? 'border-transparent bg-accent-btn text-on-accent' : 'border-line bg-surface text-ink hover:bg-surface-2'
                   }`}
                 >
                   {on && <span aria-hidden>✓</span>}

@@ -355,7 +355,7 @@ export function SessionView({
         ) : (
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl leading-tight font-semibold tracking-tight">{rec.title}</h1>
+              <h1 className="font-display text-[30px] leading-[1.05] font-bold tracking-wide">{rec.title}</h1>
               <p className="mt-0.5 text-sm text-ink-2 first-letter:uppercase">
                 {fmtDate(sum.start)} · {fmtTime(sum.start)}–{fmtTime(sum.end)} · {rec.rider}
                 {rec.device ? ` · ${rec.device}` : ''}
@@ -592,7 +592,7 @@ export function SessionView({
           )}
 
           {/* Tabs */}
-          <div role="tablist" aria-label="Dettagli" className="flex gap-1 rounded-xl bg-surface-2 p-1">
+          <div role="tablist" aria-label="Dettagli" className="flex gap-1 border-b border-line">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -600,7 +600,7 @@ export function SessionView({
                 role="tab"
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex-1 rounded-lg px-2 py-1.5 text-sm font-medium transition ${tab === t.id ? 'bg-surface text-ink shadow-sm' : 'text-ink-2'}`}
+                className={`-mb-px flex-1 border-b-2 px-1 py-2 font-display text-[16px] font-semibold tracking-wider uppercase transition ${tab === t.id ? 'border-[var(--accent-text)] text-accent' : 'border-transparent text-ink-2'}`}
               >
                 {t.label}
               </button>

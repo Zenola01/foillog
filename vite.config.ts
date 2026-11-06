@@ -24,8 +24,8 @@ export default defineConfig({
         scope: '/foillog/',
         display: 'standalone',
         orientation: 'any',
-        theme_color: '#0d3b52',
-        background_color: '#0d3b52',
+        theme_color: '#0a0d0f',
+        background_color: '#0a0d0f',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },

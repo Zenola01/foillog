@@ -1,51 +1,88 @@
-import { sessionScores } from '../lib/analysis/scores'
+import { sessionScores, type SessionScores } from '../lib/analysis/scores'
 import type { SessionPerf, SessionSummary } from '../lib/types'
+import { fmtDist, fmtDuration, fmtPct, fmtSpeed, SPEED_SHORT } from '../lib/units'
+import type { Settings } from '../lib/settings'
 import { TrackThumb } from './TrackThumb'
-import { card } from './ui'
+import { instrumentLabel } from './ui'
 
-/** The scores of a session; nothing without a wind direction or with too little sailing to score. */
-export function ScoreCard({ perf, windSpeed }: { perf: SessionPerf | null | undefined; windSpeed: number | null | undefined }) {
-  const s = sessionScores(perf, windSpeed)
-  if (!s) return null
+/** The big overall number with a bar for each part, as on an instrument's display. */
+export function ScorePanel({ scores, caption }: { scores: SessionScores; caption: string }) {
   const parts = [
-    { label: 'Bolina', value: s.up },
-    { label: 'Poppa', value: s.down },
-    { label: 'Virate', value: s.tack },
-    { label: 'Strambate', value: s.jibe },
+    { label: 'Bolina', value: scores.up },
+    { label: 'Poppa', value: scores.down },
+    { label: 'Virate', value: scores.tack },
+    { label: 'Strambate', value: scores.jibe },
   ]
   return (
-    <div className={`${card} space-y-2 p-3 lg:max-w-md`}>
-      <dl className="flex items-center gap-3">
-        <div className="flex shrink-0 flex-col-reverse border-r border-line pr-3 text-center">
-          <dt className="mt-1 text-xs text-ink-2">Overall</dt>
-          <dd className="text-[34px] leading-none font-semibold tabular">{s.overall ?? '–'}</dd>
-        </div>
-        <div className="grid min-w-0 flex-1 grid-cols-4 gap-1 text-center">
+    <div className="border-y border-line py-2.5 lg:max-w-md">
+      <p className={instrumentLabel}>{caption}</p>
+      <div className="flex items-center gap-4">
+        <p className={`font-display text-[96px] leading-[.95] font-bold tabular ${scores.overall == null ? 'text-muted' : 'text-score'}`}>{scores.overall ?? '–'}</p>
+        <dl className="min-w-0 flex-1 space-y-1.5 font-display text-[15px] font-semibold tracking-wide uppercase">
           {parts.map((p) => (
-            <div key={p.label} className="flex min-w-0 flex-col-reverse">
-              <dt className="mt-0.5 truncate text-[11px] text-ink-2">{p.label}</dt>
-              <dd className="text-xl leading-tight font-semibold tabular">{p.value ?? '–'}</dd>
+            <div key={p.label}>
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="truncate text-ink-2">{p.label}</dt>
+                <dd className="tabular">{p.value ?? '–'}</dd>
+              </div>
+              <div className="mt-0.5 h-[3px] bg-[var(--bar-track)]">
+                <div className="h-[3px] bg-[var(--bar)]" style={{ width: `${p.value ?? 0}%` }} />
+              </div>
             </div>
           ))}
-        </div>
-      </dl>
+        </dl>
+      </div>
+    </div>
+  )
+}
+
+/** The scores on a session's page; nothing without a wind direction or with too little sailing to score. */
+export function ScoreCard({ perf, windSpeed }: { perf: SessionPerf | null | undefined; windSpeed: number | null | undefined }) {
+  const scores = sessionScores(perf, windSpeed)
+  if (!scores) return null
+  return (
+    <div className="space-y-1.5">
+      <ScorePanel scores={scores} caption="Overall" />
       {windSpeed == null && <p className="text-xs text-ink-2">Vento in acqua non inserito: calcolato come vento medio.</p>}
     </div>
   )
 }
 
-/** The mini map of a session in a list, with its overall score on a corner. */
-export function ScoredThumb({ s, windSpeed }: { s: { preview: [number, number][]; summary: SessionSummary }; windSpeed: number | null | undefined }) {
-  const score = sessionScores(s.summary.perf, windSpeed)?.overall
+/** A session in a list: its mini map, what it was, and its overall score. Goes inside a link. */
+export function SessionLine({
+  s,
+  windSpeed,
+  about,
+  settings,
+}: {
+  s: { title: string; preview: [number, number][]; summary: SessionSummary }
+  windSpeed: number | null | undefined
+  /** The line under the title. */
+  about: string
+  settings: Settings
+}) {
+  const sum = s.summary
+  const score = sessionScores(sum.perf, windSpeed)?.overall
+  const stats = [
+    fmtDist(sum.distance, settings.distUnit),
+    fmtDuration(sum.duration),
+    `max ${fmtSpeed(sum.records.s2, settings.speedUnit)} ${SPEED_SHORT[settings.speedUnit]}`,
+    `${fmtPct(sum.foilShare)} foil`,
+  ].map((stat) => stat.replace(/ /g, ' ')) // A line breaks only between two numbers, never inside one.
   return (
-    <span className="relative block h-16 w-[100px] shrink-0">
-      <TrackThumb points={s.preview} className="h-16 w-[100px]" />
+    <>
+      <TrackThumb points={s.preview} className="h-11 w-[68px] shrink-0" />
+      <span className="block min-w-0 flex-1">
+        <span className="block truncate font-display text-[19px] leading-tight font-semibold">{s.title.replace(/^Uscita del /, '')}</span>
+        {about && <span className="block truncate text-sm leading-tight text-ink-2">{about}</span>}
+        <span className="mt-0.5 block font-display text-[15px] leading-tight font-medium text-ink-2 tabular">{stats.join(' · ')}</span>
+      </span>
       {score != null && (
-        <span className="absolute top-1 right-1 rounded-md bg-surface px-1.5 text-[13px] leading-5 font-semibold tabular">
+        <span className="shrink-0 font-display text-[34px] leading-none font-bold text-score tabular">
           <span className="sr-only">Punteggio </span>
           {score}
         </span>
       )}
-    </span>
+    </>
   )
 }

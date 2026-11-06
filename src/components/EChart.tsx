@@ -51,7 +51,7 @@ export function EChart({
   useEffect(() => {
     const c = chart.current
     if (!c) return
-    c.setOption(option, { notMerge: true })
+    c.setOption({ textStyle: { fontFamily: 'Barlow, system-ui, sans-serif' }, ...option }, { notMerge: true })
     after.current?.(c)
   }, [option])
 

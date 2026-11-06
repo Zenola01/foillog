@@ -63,12 +63,12 @@ export function useReplay(t0: number, t1: number): Replay {
 export function ReplayBar({ replay, t0, t1, relative, readout }: { replay: Replay; t0: number; t1: number; relative?: boolean; readout?: string }) {
   const label = relative ? fmtClockDuration((replay.t - t0) / 1000) : fmtTimeSec(replay.t)
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-line bg-surface px-2.5 py-2">
+    <div className="flex items-center gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-2">
       <button
         type="button"
         onClick={replay.toggle}
         aria-label={replay.playing ? 'Metti in pausa il replay' : 'Avvia il replay'}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-btn text-white active:opacity-80"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-btn text-on-accent active:opacity-80"
       >
         {replay.playing ? <IconPause width={18} height={18} /> : <IconPlay width={18} height={18} />}
       </button>
@@ -81,7 +81,7 @@ export function ReplayBar({ replay, t0, t1, relative, readout }: { replay: Repla
           value={replay.t}
           onChange={(e) => replay.setT(Number(e.target.value))}
           aria-label="Posizione del replay"
-          className="w-full accent-[var(--series-1)]"
+          className="w-full accent-[var(--accent-btn)]"
         />
         <div className="flex justify-between text-xs text-ink-2">
           <span className="tabular">{label}</span>

@@ -69,21 +69,27 @@ export function FileDrop({ onFiles, compact }: { onFiles: (files: File[]) => voi
         const files = [...e.dataTransfer.files]
         if (files.length) onFiles(files)
       }}
-      className={`${card} ${over ? 'ring-2 ring-[var(--series-1)]' : ''} flex flex-col items-center gap-2 px-5 ${compact ? 'py-4' : 'py-7'} text-center`}
+      className={
+        compact
+          ? `flex flex-col gap-2 rounded-md ${over ? 'ring-2 ring-[var(--accent-btn)]' : ''}`
+          : `${card} ${over ? 'ring-2 ring-[var(--accent-btn)]' : ''} flex flex-col items-center gap-2 px-5 py-7 text-center`
+      }
     >
       {!compact && (
-        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-2 text-accent">
-          <IconUpload />
-        </span>
+        <>
+          <span className="flex h-11 w-11 items-center justify-center rounded-md bg-surface-2 text-accent">
+            <IconUpload />
+          </span>
+          <p className="font-display text-[20px] font-semibold">Carica le tue uscite</p>
+          <p className="max-w-md text-sm text-ink-2">
+            File GPX (Apple Watch, iPhone, Strava), VKX o CSV (Vakaros). Puoi sceglierne più di uno insieme
+            <span className="hidden md:inline">, trascinarli qui o incollarli (⌘V)</span>.
+          </p>
+        </>
       )}
-      <p className="font-semibold">Carica le tue uscite</p>
-      <p className="max-w-md text-sm text-ink-2">
-        File GPX (Apple Watch, iPhone, Strava), VKX o CSV (Vakaros). Puoi sceglierne più di uno insieme
-        <span className="hidden md:inline">, trascinarli qui o incollarli (⌘V)</span>.
-      </p>
-      <div className="mt-1 flex flex-wrap justify-center gap-2">
+      <div className={`flex flex-wrap gap-2 ${compact ? '' : 'mt-1 justify-center'}`}>
         <button type="button" className={btnPrimary} onClick={() => input.current?.click()}>
-          Scegli i file
+          {compact ? 'Carica uscite' : 'Scegli i file'}
         </button>
         <button type="button" className={btnSecondary} onClick={paste} disabled={reading}>
           <IconPaste width={18} height={18} />
