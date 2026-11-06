@@ -21,13 +21,13 @@
   --border: rgba(10, 10, 10, 0.13);
   --water: #dde3e5;
   --land: #f7f8f8;
-  --accent-text: #4c5f00;
-  --accent-btn: #c8f31d;
-  --on-accent: #0a0a0a;
-  --brand: #4c5f00;
-  --bar: #769400;
+  --accent-text: #a84300;
+  --accent-btn: #ff7a1a;
+  --on-accent: #160a00;
+  --brand: #a84300;
+  --bar: #e8650a;
   --bar-track: #e1e3e3;
-  --track: #2e3a00;
+  --track: #8a3700;
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
@@ -60,13 +60,13 @@
     --border: rgba(255, 255, 255, 0.12);
     --water: #000000;
     --land: #1b1c1d;
-    --accent-text: #c8f31d;
-    --accent-btn: #c8f31d;
-    --on-accent: #0a0a0a;
-    --brand: #c8f31d;
-    --bar: #c8f31d;
+    --accent-text: #ff9650;
+    --accent-btn: #ff7a1a;
+    --on-accent: #160a00;
+    --brand: #ff9650;
+    --bar: #ff7a1a;
     --bar-track: #2a2c2e;
-    --track: #c8f31d;
+    --track: #ff8f40;
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
@@ -86,14 +86,14 @@
   }
 }
 
-/* The colours the app can wear, chosen under Altro; yellow on black is the default above. */
-:root[data-palette="arancio"] {
-  --accent-btn: #ff7a1a;
-  --on-accent: #160a00;
-  --accent-text: #a84300;
-  --brand: #a84300;
-  --bar: #e8650a;
-  --track: #8a3700;
+/* The other colours the app can wear, chosen under Altro; orange on black is the default above. */
+:root[data-palette="giallo"] {
+  --accent-btn: #c8f31d;
+  --on-accent: #0a0a0a;
+  --accent-text: #4c5f00;
+  --brand: #4c5f00;
+  --bar: #769400;
+  --track: #2e3a00;
 }
 :root[data-palette="oceano"] {
   --page: #e8f2f7;
@@ -133,11 +133,11 @@
   --track: #0a0a0a;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-palette="arancio"] {
-    --accent-text: #ff9650;
-    --brand: #ff9650;
-    --bar: #ff7a1a;
-    --track: #ff8f40;
+  :root[data-palette="giallo"] {
+    --accent-text: #c8f31d;
+    --brand: #c8f31d;
+    --bar: #c8f31d;
+    --track: #c8f31d;
   }
   :root[data-palette="oceano"] {
     --page: #041627;

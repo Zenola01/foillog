@@ -11,8 +11,8 @@ export type VideoMetric = Exclude<LiveMetric, 'foil'>
 
 /** The colours the app can wear. */
 export const PALETTES = [
-  { id: 'giallo', name: 'Giallo', swatch: '#c8f31d' },
   { id: 'arancio', name: 'Arancio', swatch: '#ff7a1a' },
+  { id: 'giallo', name: 'Giallo', swatch: '#c8f31d' },
   { id: 'oceano', name: 'Azzurro', swatch: '#38c6f4' },
   { id: 'rosso', name: 'Rosso', swatch: '#ff4757' },
   { id: 'bianco', name: 'Bianco', swatch: '#ffffff' },
@@ -39,7 +39,7 @@ export interface Settings {
 
 const KEY = 'foillog.settings'
 const DEFAULTS: Settings = {
-  palette: 'giallo',
+  palette: 'arancio',
   speedUnit: 'kn',
   distUnit: 'km',
   foilOnKn: DEFAULT_FOIL_KN,

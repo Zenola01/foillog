@@ -31,17 +31,25 @@ const PAGE = 30
 const WEEKDAY = new Intl.DateTimeFormat('it-IT', { weekday: 'short' })
 const MONTH = new Intl.DateTimeFormat('it-IT', { month: 'short' })
 
-/** A day as in a ship's log: down the left of its sessions, staying in sight while they scroll past. */
-function DayMark({ at }: { at: number }) {
-  const d = new Date(at)
+/** What heads a day (today, yesterday or the day of the week), and its year if it is not this one. */
+function dayWords(d: Date): { top: string; year: string } {
   const today = new Date()
   const yest = new Date()
   yest.setDate(today.getDate() - 1)
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString()
-  const year = d.getFullYear() === today.getFullYear() ? '' : ` ${String(d.getFullYear()).slice(2)}`
+  return {
+    top: same(d, today) ? 'Oggi' : same(d, yest) ? 'Ieri' : WEEKDAY.format(d),
+    year: d.getFullYear() === today.getFullYear() ? '' : ` ${String(d.getFullYear()).slice(2)}`,
+  }
+}
+
+/** A day as in a ship's log: down the left of its sessions, staying in sight while they scroll past. */
+function DayMark({ at }: { at: number }) {
+  const d = new Date(at)
+  const { top, year } = dayWords(d)
   return (
     <h2 className="sticky top-[calc(env(safe-area-inset-top)+0.75rem)] z-10 self-start text-center font-display leading-none md:top-[4.25rem]">
-      <span className="block text-[15px] font-semibold text-ink-2 first-letter:uppercase">{same(d, today) ? 'Oggi' : same(d, yest) ? 'Ieri' : WEEKDAY.format(d)}</span>
+      <span className="block text-[15px] font-semibold text-ink-2 first-letter:uppercase">{top}</span>
       <span className="big-number my-0.5 block text-[34px]">{d.getDate()}</span>
       <span className="block text-[15px] font-semibold whitespace-nowrap text-ink-2">
         {MONTH.format(d)}
