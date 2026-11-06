@@ -5,7 +5,7 @@ import { useConfirm } from '../components/Confirm'
 import { EChart, type Chart } from '../components/EChart'
 import { IconBack, IconEdit, IconTrash } from '../components/icons'
 import { ManeuversTab } from '../components/Maneuvers'
-import { MapView, type MapTrack } from '../components/MapView'
+import { MapView, TrailToggle, type MapTrack } from '../components/MapView'
 import { bandNote, useVsBest, VsBestSummary, whose, WindSpeedField, type VsBest, type Whose } from '../components/Polars'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { ScoreCard } from '../components/Scores'
@@ -223,6 +223,7 @@ export function SessionView({
   const t1 = tr.t[n - 1]
   const sum = a.summary
   const unit = settings.speedUnit
+  const { update: updateSettings } = useSettings()
   const u = SPEED_SHORT[unit]
   const sp = (ms: number | null | undefined) => fmtSpeed(ms, unit)
   const coarse = useMemo(isCoarsePointer, [])
@@ -409,10 +410,12 @@ export function SessionView({
             pin={pin}
             windDir={wind.dir}
             speedDomain={domain}
+            trail={settings.trailMode}
             legend={{ min: sp(domain[0]), max: sp(domain[1]), unit: u }}
             className="h-[46vh] min-h-[300px] rounded-lg border border-line lg:h-[calc(100dvh-11rem)]"
           />
           <ReplayBar replay={replay} t0={t0} t1={t1} readout={readout} />
+          <TrailToggle value={settings.trailMode} onChange={(trailMode) => updateSettings({ trailMode })} />
           {(a.maneuvers.length > 0 || a.stops.length > 0) && (
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs text-ink-2">
               <span className="inline-flex items-center gap-1">

@@ -53,8 +53,8 @@ interface Props {
   speedDomain?: [number, number]
   legend?: { min: string; max: string; unit: string }
   /**
-   * Several riders: 'full' keeps every track (thin and faint while replaying), 'tail' shows only the
-   * trail each rider leaves behind, which fades out after `tailSeconds`.
+   * 'full' keeps every track (with several riders, thin and faint while replaying), 'tail' shows only
+   * the trail each rider leaves behind, which fades out after `tailSeconds`.
    */
   trail?: 'full' | 'tail'
   tailSeconds?: number
@@ -433,7 +433,7 @@ function MapViewImpl(props: Props) {
     // One fading trail per rider (line-gradient needs its own source with line metrics).
     tracks.forEach((t, k) => {
       const id = `fl-tail-${k}`
-      const color = t.color ?? colors.ink
+      const color = t.color ?? colors.accent
       const gradient = ['interpolate', ['linear'], ['line-progress'], 0, alpha(color, 0), 0.5, alpha(color, 0.55), 1, alpha(color, 1)]
       if (!map.getSource(id)) {
         map.addSource(id, { type: 'geojson', data: empty, lineMetrics: true })
@@ -490,7 +490,7 @@ function MapViewImpl(props: Props) {
   }, [styleGen, tracks, colors, domain, multi])
 
   // How the whole tracks show: set back around a picked stretch (range or best legs); with several
-  // riders, faint (or hidden, in trail mode) while the replay runs so the moving trails stand out.
+  // riders, faint while the replay runs; in trail mode, hidden, so the moving trails stand out.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !styleReady.current) return
@@ -500,8 +500,9 @@ function MapViewImpl(props: Props) {
       if (!map.getLayer(line)) return
       // A speed-coloured track turns grey rather than see-through: its many short pieces would show
       // a bead at every joint.
-      const grey = picked && !t.color
-      const op = grey ? 1 : picked ? 0.35 : !multi ? 1 : replaying ? (trail === 'tail' ? 0 : 0.28) : trail === 'tail' ? 0.3 : 0.85
+      const tailOnly = trail === 'tail'
+      const grey = (picked || (tailOnly && !replaying)) && !t.color
+      const op = tailOnly && replaying && !picked ? 0 : grey ? 1 : picked ? 0.35 : !multi ? 1 : replaying ? 0.28 : tailOnly ? 0.3 : 0.85
       map.setPaintProperty(line, 'line-color', grey ? mix(colors.muted, colors.surface, 0.45) : (t.color ?? speedColor(colors, domain)))
       map.setPaintProperty(line, 'line-opacity', op)
       map.setPaintProperty(`fl-trk-${k}-casing`, 'line-opacity', op * 0.6)
@@ -598,18 +599,18 @@ function MapViewImpl(props: Props) {
       // Standing still the GPS course is noise: the board keeps its last heading.
       const crs = t.track.crs[i]
       if (t.track.spd[i] > 1 && Number.isFinite(crs)) boat.hull.style.transform = `rotate(${Math.round(crs)}deg)`
-      if (multi && tail) {
+      if ((multi || trail === 'tail') && tail) {
         const i0 = indexAtTime(t.track.t, cursor! - off - tailMs)
         const coords: [number, number][] = []
         for (let j = i0 + 1; j <= i; j++) coords.push([t.track.lon[j], t.track.lat[j]])
         coords.push(pos)
         tail.setData(coords.length >= 2 ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } } : empty)
-      }
+      } else tail?.setData(empty)
     })
     for (let k = tracks.length; k < cursorMarkers.current.length; k++) cursorMarkers.current[k]?.marker.remove()
     cursorMarkers.current.length = tracks.length
     if (multi) placeLabels(map, cursorMarkers.current)
-  }, [cursor, tracks, colors, styleGen, multi, tailMs])
+  }, [cursor, tracks, colors, styleGen, multi, trail, tailMs])
 
   // Labelled pin (top speed).
   useEffect(() => {
@@ -695,7 +696,7 @@ function MapViewImpl(props: Props) {
 
 export const MapView = memo(MapViewImpl)
 
-/** Whole tracks (faint while replaying) or only the trail each rider leaves behind. */
+/** Whole tracks or only the trail each rider leaves behind while replaying. */
 export function TrailToggle({ value, onChange }: { value: Settings['trailMode']; onChange: (v: Settings['trailMode']) => void }) {
   return (
     <Segmented

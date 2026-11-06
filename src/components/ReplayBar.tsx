@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { fmtClockDuration, fmtTimeSec } from '../lib/units'
 import { IconPause, IconPlay } from './icons'
 
-const SPEEDS = [1, 10, 30, 60, 120]
+const SPEEDS = [1, 5, 10, 20]
 
 export interface Replay {
   t: number
@@ -19,7 +19,7 @@ export interface Replay {
 export function useReplay(t0: number, t1: number): Replay {
   const [t, setTState] = useState(t0)
   const [playing, setPlaying] = useState(false)
-  const [speed, setSpeed] = useState(30)
+  const [speed, setSpeed] = useState(10)
   const [touched, setTouched] = useState(false)
 
   useEffect(() => {
