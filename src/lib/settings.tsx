@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { DEFAULT_FOIL_KN } from './analysis/analyze'
 import type { GearItem } from './types'
 import type { DistUnit, SpeedUnit } from './units'
@@ -9,19 +9,7 @@ export type LiveMetric = 'spd' | 'vmg' | 'twa' | 'crs' | 'dist' | 'foil' | 'hr' 
 /** Numbers that can be written over a video. */
 export type VideoMetric = Exclude<LiveMetric, 'foil'>
 
-/** The colours the app can wear. */
-export const PALETTES = [
-  { id: 'arancio', name: 'Arancio', swatch: '#ff7a1a' },
-  { id: 'giallo', name: 'Giallo', swatch: '#c8f31d' },
-  { id: 'oceano', name: 'Azzurro', swatch: '#38c6f4' },
-  { id: 'rosso', name: 'Rosso', swatch: '#ff4757' },
-  { id: 'bianco', name: 'Bianco', swatch: '#ffffff' },
-] as const
-
-export type Palette = (typeof PALETTES)[number]['id']
-
 export interface Settings {
-  palette: Palette
   speedUnit: SpeedUnit
   distUnit: DistUnit
   foilOnKn: number
@@ -39,7 +27,6 @@ export interface Settings {
 
 const KEY = 'foillog.settings'
 const DEFAULTS: Settings = {
-  palette: 'arancio',
   speedUnit: 'kn',
   distUnit: 'km',
   foilOnKn: DEFAULT_FOIL_KN,
@@ -68,32 +55,11 @@ interface SettingsValue {
 
 const Ctx = createContext<SettingsValue | null>(null)
 
-/** The browser's own bars take the colour of the page. */
-const tintBars = () => {
-  const page = getComputedStyle(document.documentElement).getPropertyValue('--page').trim()
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', page)
-}
-
-const wear = (palette: Palette) => {
-  document.documentElement.dataset.palette = palette
-  tintBars()
-}
-
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState(() => {
-    const loaded = load()
-    wear(loaded.palette)
-    return loaded
-  })
-  useEffect(() => {
-    const scheme = window.matchMedia('(prefers-color-scheme: dark)')
-    scheme.addEventListener('change', tintBars)
-    return () => scheme.removeEventListener('change', tintBars)
-  }, [])
+  const [settings, setSettings] = useState(load)
   const update = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch }
-      wear(next.palette)
       try {
         localStorage.setItem(KEY, JSON.stringify(next))
       } catch {

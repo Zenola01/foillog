@@ -86,98 +86,6 @@
   }
 }
 
-/* The other colours the app can wear, chosen under Altro; orange on black is the default above. */
-:root[data-palette="giallo"] {
-  --accent-btn: #c8f31d;
-  --on-accent: #0a0a0a;
-  --accent-text: #4c5f00;
-  --brand: #4c5f00;
-  --bar: #769400;
-  --track: #2e3a00;
-}
-:root[data-palette="oceano"] {
-  --page: #e8f2f7;
-  --surface: #ffffff;
-  --surface-2: #d8e8f1;
-  --ink: #03202f;
-  --ink-2: #41606f;
-  --muted: #587584;
-  --grid: #d9e7ee;
-  --axis: #b5cbd6;
-  --border: rgba(3, 32, 47, 0.14);
-  --water: #cfe3ee;
-  --land: #f4f8fa;
-  --accent-btn: #0a79ad;
-  --on-accent: #ffffff;
-  --accent-text: #086a98;
-  --brand: #086a98;
-  --bar: #0a8cc7;
-  --bar-track: #d3e3ea;
-  --track: #075f88;
-}
-:root[data-palette="rosso"] {
-  --accent-btn: #e5283a;
-  --on-accent: #ffffff;
-  --accent-text: #b81c2c;
-  --brand: #b81c2c;
-  --bar: #d92636;
-  --track: #8f1521;
-}
-:root[data-palette="bianco"] {
-  --accent-btn: #0a0a0a;
-  --on-accent: #ffffff;
-  --accent-text: #0a0a0a;
-  --brand: #0a0a0a;
-  --bar: #0a0a0a;
-  --bar-track: #dcdfe0;
-  --track: #0a0a0a;
-}
-@media (prefers-color-scheme: dark) {
-  :root[data-palette="giallo"] {
-    --accent-text: #c8f31d;
-    --brand: #c8f31d;
-    --bar: #c8f31d;
-    --track: #c8f31d;
-  }
-  :root[data-palette="oceano"] {
-    --page: #041627;
-    --surface: #0a2236;
-    --surface-2: #12304a;
-    --ink: #eef6fb;
-    --ink-2: #a0b9c9;
-    --muted: #7f9db0;
-    --grid: #173650;
-    --axis: #27506c;
-    --border: rgba(220, 235, 245, 0.13);
-    --water: #041627;
-    --land: #0f2a40;
-    --accent-btn: #38c6f4;
-    --on-accent: #031421;
-    --accent-text: #5fd2f7;
-    --brand: #5fd2f7;
-    --bar: #38c6f4;
-    --bar-track: #173650;
-    --track: #7adcff;
-  }
-  :root[data-palette="rosso"] {
-    --accent-btn: #ff4757;
-    --on-accent: #1a0306;
-    --accent-text: #ff6b78;
-    --brand: #ff6b78;
-    --bar: #ff4757;
-    --track: #ff6b78;
-  }
-  :root[data-palette="bianco"] {
-    --accent-btn: #ffffff;
-    --on-accent: #000000;
-    --accent-text: #ffffff;
-    --brand: #ffffff;
-    --bar: #ffffff;
-    --bar-track: #2a2c2e;
-    --track: #ffffff;
-  }
-}
-
 @theme inline {
   --color-page: var(--page);
   --color-surface: var(--surface);
@@ -253,12 +161,6 @@ p {
     font-weight: 700;
     line-height: 1;
   }
-}
-
-/* With a white accent a link has nothing but its underline to tell it from the text. */
-:root[data-palette="bianco"] a.text-accent {
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 /* Tables read like an instrument: numbers in the condensed face, small headings. */
