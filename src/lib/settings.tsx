@@ -9,7 +9,19 @@ export type LiveMetric = 'spd' | 'vmg' | 'twa' | 'crs' | 'dist' | 'foil' | 'hr' 
 /** Numbers that can be written over a video. */
 export type VideoMetric = Exclude<LiveMetric, 'foil'>
 
+/** The colours the app can wear. */
+export const PALETTES = [
+  { id: 'giallo', name: 'Giallo', swatch: '#c8f31d' },
+  { id: 'arancio', name: 'Arancio', swatch: '#ff7a1a' },
+  { id: 'oceano', name: 'Oceano', swatch: '#3fd8f2' },
+  { id: 'rosso', name: 'Rosso', swatch: '#ff4757' },
+  { id: 'bianco', name: 'Bianco', swatch: '#f2f4f5' },
+] as const
+
+export type Palette = (typeof PALETTES)[number]['id']
+
 export interface Settings {
+  palette: Palette
   speedUnit: SpeedUnit
   distUnit: DistUnit
   foilOnKn: number
@@ -27,6 +39,7 @@ export interface Settings {
 
 const KEY = 'foillog.settings'
 const DEFAULTS: Settings = {
+  palette: 'giallo',
   speedUnit: 'kn',
   distUnit: 'km',
   foilOnKn: DEFAULT_FOIL_KN,
@@ -55,11 +68,20 @@ interface SettingsValue {
 
 const Ctx = createContext<SettingsValue | null>(null)
 
+const wear = (palette: Palette) => {
+  document.documentElement.dataset.palette = palette
+}
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState(load)
+  const [settings, setSettings] = useState(() => {
+    const loaded = load()
+    wear(loaded.palette)
+    return loaded
+  })
   const update = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch }
+      wear(next.palette)
       try {
         localStorage.setItem(KEY, JSON.stringify(next))
       } catch {

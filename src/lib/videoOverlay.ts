@@ -6,7 +6,8 @@ import type { OverlaySource, OverlayValues } from './videoData'
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 
 const FONT = '"Barlow Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif'
-const VALUE_COLOR = '#c8f31d'
+/** The numbers wear the app's colour. */
+const valueColor = () => getComputedStyle(document.documentElement).getPropertyValue('--accent-btn').trim() || '#c8f31d'
 const LABEL_COLOR = 'rgba(255, 255, 255, 0.78)'
 
 /** The numbers a video can show, in the order they are drawn. */
@@ -115,13 +116,14 @@ export function drawOverlay(ctx: Ctx, w: number, h: number, cells: OverlayCell[]
 
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
+  const value = valueColor()
   cells.forEach((c, n) => {
     const x = x0 + cellW * (n % cols) + base * 0.03 * k
     const y = y0 + rowH * Math.floor(n / cols)
     ctx.fillStyle = LABEL_COLOR
     ctx.font = `600 ${base * 0.034 * k}px ${FONT}`
     ctx.fillText(c.label, x, y + rowH * 0.3)
-    ctx.fillStyle = VALUE_COLOR
+    ctx.fillStyle = value
     ctx.font = `700 ${base * 0.09 * k}px ${FONT}`
     const valueW = drawValue(ctx, c.value, x, y + rowH * 0.84)
     ctx.fillStyle = LABEL_COLOR

@@ -118,8 +118,8 @@ export function Logo({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 512 512" className={className} aria-hidden="true">
       <rect width="512" height="512" rx="96" fill="#0a0d0f" />
-      <path d="M92 396c50-6 86-30 116-66" fill="none" stroke="#c8f31d" strokeWidth="26" strokeLinecap="round" opacity=".45" />
-      <path d="M96 318c46-86 118-112 168-62s108 52 152-58" fill="none" stroke="#c8f31d" strokeWidth="34" strokeLinecap="round" />
+      <path d="M92 396c50-6 86-30 116-66" fill="none" stroke="var(--accent-btn)" strokeWidth="26" strokeLinecap="round" opacity=".45" />
+      <path d="M96 318c46-86 118-112 168-62s108 52 152-58" fill="none" stroke="var(--accent-btn)" strokeWidth="34" strokeLinecap="round" />
       <circle cx="416" cy="198" r="34" fill="#ffffff" />
     </svg>
   )

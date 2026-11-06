@@ -4,7 +4,7 @@ import { useConfirm } from '../components/Confirm'
 import { btnPrimary, btnSecondary, card, Segmented } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useLibrary } from '../lib/library'
-import { useSettings } from '../lib/settings'
+import { PALETTES, useSettings } from '../lib/settings'
 import { fmtNum, fromUnit, MS_TO_KN, SPEED_SHORT, toUnit } from '../lib/units'
 
 export default function SettingsPage() {
@@ -85,6 +85,25 @@ export default function SettingsPage() {
           <span className="block text-sm text-ink-2">Ali, tavole e foil da scegliere in ogni uscita</span>
         </span>
       </Link>
+
+      <section className={`${card} space-y-3 p-4`}>
+        <h2 className="font-display text-[16px] leading-tight font-semibold">Colori</h2>
+        <div role="radiogroup" aria-label="Colori dell'app" className="grid grid-cols-5 gap-1.5">
+          {PALETTES.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              role="radio"
+              aria-checked={settings.palette === p.id}
+              onClick={() => update({ palette: p.id })}
+              className={`press flex min-w-0 flex-col items-center gap-1.5 rounded-xl border py-2.5 font-display text-[14px] font-semibold ${settings.palette === p.id ? 'border-[var(--accent-text)] text-ink' : 'border-line text-ink-2'}`}
+            >
+              <span aria-hidden className="size-7 rounded-full border border-line" style={{ background: p.swatch }} />
+              {p.name}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className={`${card} divide-y divide-[var(--border)]`}>
         {!user && (

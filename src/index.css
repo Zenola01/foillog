@@ -37,11 +37,11 @@
   --good: #0ca30c;
   --good-text: #006300;
   --critical: #d03b3b;
-  --speed-1: #bfd86b;
-  --speed-2: #97b92f;
-  --speed-3: #6e9210;
-  --speed-4: #4a6a00;
-  --speed-5: #263a00;
+  --speed-1: #d6a400;
+  --speed-2: #dd6a1c;
+  --speed-3: #cc3560;
+  --speed-4: #8a28a4;
+  --speed-5: #2f1488;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -75,11 +75,11 @@
     --good: #0ca30c;
     --good-text: #0ca30c;
     --critical: #d03b3b;
-    --speed-1: #1e5b63;
-    --speed-2: #2a8c80;
-    --speed-3: #62b85a;
-    --speed-4: #a3de35;
-    --speed-5: #dffb5c;
+    --speed-1: #5a3ce8;
+    --speed-2: #b23ac8;
+    --speed-3: #f4506f;
+    --speed-4: #ff9a36;
+    --speed-5: #fff23d;
   }
 }
 
@@ -113,11 +113,96 @@
   --good: #0ca30c;
   --good-text: #0ca30c;
   --critical: #d03b3b;
-  --speed-1: #1e5b63;
-  --speed-2: #2a8c80;
-  --speed-3: #62b85a;
-  --speed-4: #a3de35;
-  --speed-5: #dffb5c;
+  --speed-1: #5a3ce8;
+  --speed-2: #b23ac8;
+  --speed-3: #f4506f;
+  --speed-4: #ff9a36;
+  --speed-5: #fff23d;
+}
+
+/* Other colour combinations to try, chosen under Altro; yellow on black is the default above. */
+:root[data-palette="arancio"] {
+  --accent-btn: #ff7a1a;
+  --on-accent: #160a00;
+  --accent-text: #a84300;
+  --brand: #a84300;
+  --bar: #e8650a;
+  --track: #8a3700;
+}
+:root[data-palette="oceano"] {
+  --page: #eef5f8;
+  --surface: #f8fbfc;
+  --surface-2: #dfecf2;
+  --grid: #d3e3ea;
+  --bar-track: #d3e3ea;
+  --accent-btn: #2cc6e4;
+  --on-accent: #04202b;
+  --accent-text: #0a6a85;
+  --brand: #0a6a85;
+  --score: #06283b;
+  --bar: #0f9dbd;
+  --track: #0a5a73;
+}
+:root[data-palette="rosso"] {
+  --accent-btn: #e5283a;
+  --on-accent: #ffffff;
+  --accent-text: #b81c2c;
+  --brand: #b81c2c;
+  --bar: #d92636;
+  --track: #8f1521;
+}
+:root[data-palette="bianco"] {
+  --accent-btn: #0b0e10;
+  --on-accent: #ffffff;
+  --accent-text: #0b0e10;
+  --brand: #0b0e10;
+  --bar: #0b0e10;
+  --track: #0b0e10;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-palette="arancio"] {
+    --accent-text: #ff9650;
+    --brand: #ff9650;
+    --score: #ff8f40;
+    --bar: #ff7a1a;
+    --track: #ff8f40;
+  }
+  :root[data-palette="oceano"] {
+    --page: #06182a;
+    --surface: #0c2439;
+    --surface-2: #143349;
+    --ink: #e6f1f7;
+    --ink-2: #9db6c6;
+    --muted: #6f8ea2;
+    --grid: #1a3a52;
+    --axis: #27506c;
+    --border: rgba(220, 235, 245, 0.13);
+    --bar-track: #1a3a52;
+    --accent-btn: #3fd8f2;
+    --accent-text: #5fe0f6;
+    --brand: #5fe0f6;
+    --score: #5fe0f6;
+    --bar: #3fd8f2;
+    --track: #5fe0f6;
+  }
+  :root[data-palette="rosso"] {
+    --accent-btn: #ff4757;
+    --on-accent: #1a0306;
+    --accent-text: #ff6b78;
+    --brand: #ff6b78;
+    --score: #ff6b78;
+    --bar: #ff4757;
+    --track: #ff6b78;
+  }
+  :root[data-palette="bianco"] {
+    --accent-btn: #f2f4f5;
+    --on-accent: #0a0d0f;
+    --accent-text: #f2f4f5;
+    --brand: #f2f4f5;
+    --score: #ffffff;
+    --bar: #e6eaec;
+    --track: #e6eaec;
+  }
 }
 
 @theme inline {
