@@ -1,5 +1,14 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
-import { bestManeuver, detailAverages, maneuverDetails, rateSeriesOf, type ManeuverDetail, type RateSource } from '../lib/analysis/maneuverDetail'
+import {
+  averageSeries,
+  averageSpan,
+  bestManeuver,
+  detailAverages,
+  maneuverDetails,
+  rateSeriesOf,
+  type ManeuverDetail,
+  type RateSource,
+} from '../lib/analysis/maneuverDetail'
 import { maneuverOption, type ManeuverLine } from '../lib/charts'
 import type { SessionData } from '../lib/store'
 import type { ThemeColors } from '../lib/theme'
@@ -32,6 +41,22 @@ interface Drawn {
   dashed: boolean
 }
 
+/** What the numbers under the paths are about: the average of those shown, the best one, or one of them. */
+type View = 'avg' | 'best' | number
+
+type Figures = ReturnType<typeof detailAverages>
+
+/** The path of the average manoeuvre, in the same frame as the others. */
+interface AveragePath {
+  t: number[]
+  x: number[]
+  y: number[]
+  turnStart: number
+  turnEnd: number
+}
+
+const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : NaN)
+
 export function ManeuversTab({
   a,
   tr,
@@ -48,8 +73,8 @@ export function ManeuversTab({
   selected: number | null
   /** Picks a manoeuvre and zooms the map and the charts on it. */
   onPick: (k: number) => void
-  /** Only marks it: tapping one line after another must not move the page. */
-  onSelect: (k: number) => void
+  /** Only marks it (none for the average): tapping one line after another must not move the page. */
+  onSelect: (k: number | null) => void
 }) {
   if (a.wind.dir == null) return <p className={`${card} p-4 text-sm text-ink-2`}>Imposta il vento per riconoscere strambate e virate.</p>
   if (!a.maneuvers.length) return <p className={`${card} p-4 text-sm text-ink-2`}>Nessuna strambata o virata riconosciuta in questa uscita.</p>
@@ -73,22 +98,21 @@ function Analysis({
   colors: ThemeColors
   selected: number | null
   onPick: (k: number) => void
-  onSelect: (k: number) => void
+  onSelect: (k: number | null) => void
 }) {
   const u = SPEED_SHORT[unit]
   const ms = a.maneuvers
   const details = useMemo(() => maneuverDetails(tr, ms, windDir), [tr, ms, windDir])
 
-  const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : NaN)
   const jibes = ms.filter((m) => m.kind === 'jibe')
 
   return (
     <div className="space-y-4">
       <div className={`${zones} [--cols:2]`}>
-        <StatTile label="Velocità minima in strambata" value={fmtSpeed(avg(jibes.filter((m) => !m.fell).map((m) => m.minSpeed)), unit)} unit={u} sub="media" />
+        <StatTile label="Velocità minima in strambata" value={fmtSpeed(mean(jibes.filter((m) => !m.fell).map((m) => m.minSpeed)), unit)} unit={u} sub="media" />
         <StatTile
           label="Durata media strambata"
-          value={jibes.length ? `${fmtNum(avg(details.flatMap((d) => (d?.maneuver.kind === 'jibe' ? d.turnSeconds : []))), 0)} s` : '–'}
+          value={jibes.length ? `${fmtNum(mean(details.flatMap((d) => (d?.maneuver.kind === 'jibe' ? d.turnSeconds : []))), 0)} s` : '–'}
         />
         <StatTile label="Cadute o soste" value={String(a.summary.falls)} sub={`${ms.filter((m) => m.fell).length} in manovra`} />
       </div>
@@ -173,7 +197,7 @@ function Overlay({
   unit: SpeedUnit
   colors: ThemeColors
   selected: number | null
-  onSelect: (k: number) => void
+  onSelect: (k: number | null) => void
   onPick: (k: number) => void
 }) {
   const u = SPEED_SHORT[unit]
@@ -184,7 +208,9 @@ function Overlay({
   // A kind of manoeuvre may have been sailed from one side only.
   const side: Tack = count(kind, wantedSide) > 0 ? wantedSide : wantedSide === 'S' ? 'P' : 'S'
   const [source, setSource] = useState<RateSource>(tr.hdg ? 'compass' : 'track')
-  // A manoeuvre picked elsewhere (the map) brings its own group into view.
+  // The average comes first, then the best one, then each in turn.
+  const [view, setView] = useState<View>(() => (selected != null && details[selected] ? selected : 'avg'))
+  // A manoeuvre picked elsewhere (the map, a line) brings its own group into view, and its numbers.
   const [seen, setSeen] = useState(selected)
   if (selected !== seen) {
     setSeen(selected)
@@ -192,14 +218,44 @@ function Overlay({
     if (m) {
       setKind(m.kind)
       setSide(m.from)
+      setView(selected!)
     }
   }
 
   const shown = useMemo(() => all.filter((d) => d.maneuver.kind === kind && d.maneuver.from === side), [all, kind, side])
   const best = useMemo(() => bestManeuver(shown), [shown])
-  const picked = selected != null ? (shown.find((d) => d.index === selected) ?? null) : null
-  const focus = picked ?? best ?? shown[0] ?? null
+  const views = useMemo<View[]>(() => {
+    const each = shown.map((d) => d.index)
+    return shown.length > 1 ? ['avg', ...(best ? (['best'] as const) : []), ...each] : each
+  }, [shown, best])
+  // A manoeuvre of another group, or a best one that is not there: back to the first.
+  const current = views.includes(view) ? view : views[0]
+  const focus = current === 'avg' ? null : current === 'best' ? best : (shown.find((d) => d.index === current) ?? null)
   const focusColor = colors.series[1]
+  const go = (v: View) => {
+    const k = v === 'avg' ? null : v === 'best' ? best!.index : v
+    setView(v)
+    // Chosen here, not elsewhere: the map only marks it.
+    setSeen(k)
+    onSelect(k)
+  }
+
+  // The average manoeuvre: its figures, and its path and curves where most of the manoeuvres reach.
+  const figures = useMemo(() => detailAverages(focus ? [focus] : shown), [focus, shown])
+  const span = useMemo(() => averageSpan(shown), [shown])
+  const average = useMemo<AveragePath | null>(
+    () =>
+      current === 'avg'
+        ? {
+            t: span.times,
+            x: averageSeries(span.ds, (d) => d.x, span.times),
+            y: averageSeries(span.ds, (d) => d.y, span.times),
+            turnStart: mean(shown.map((d) => d.turnStart)),
+            turnEnd: mean(shown.map((d) => d.turnEnd)),
+          }
+        : null,
+    [current, shown, span],
+  )
 
   // Lighter or darker with the speed kept, on the same ramp as the map; the fastest ones on top.
   const foiled = shown.filter((d) => d.maneuver.foiled).map((d) => d.maneuver.minSpeed)
@@ -219,8 +275,9 @@ function Overlay({
   }, [shown])
 
   const lines = useCallback(
-    (values: (d: ManeuverDetail) => number[] | null, map: (v: number) => number = (v) => v): ManeuverLine[] =>
-      drawn.flatMap(({ d, color, dashed }) => {
+    (values: (d: ManeuverDetail) => number[] | null, map: (v: number) => number = (v) => v): ManeuverLine[] => {
+      const point = (s: number, y: number): [number, number | null] => [Math.round(s * 100) / 100, Number.isFinite(y) ? Math.round(map(y) * 10) / 10 : null]
+      const out = drawn.flatMap(({ d, color, dashed }) => {
         const ys = values(d)
         if (!ys) return []
         return [
@@ -230,11 +287,18 @@ function Overlay({
             color: d === focus ? focusColor : color,
             dashed,
             focus: d === focus,
-            data: d.t.map((s, i): [number, number | null] => [Math.round(s * 100) / 100, Number.isFinite(ys[i]) ? Math.round(map(ys[i]) * 10) / 10 : null]),
+            data: d.t.map((s, i) => point(s, ys[i])),
           },
         ]
-      }),
-    [drawn, focus, focusColor, tr.t],
+      })
+      // The average curve, on top of the others (its id matches no manoeuvre).
+      const ys = current === 'avg' ? averageSeries(span.ds, values, span.times) : []
+      if (ys.some(Number.isFinite)) {
+        out.push({ id: -1, name: `media di ${shown.length}`, color: focusColor, dashed: false, focus: true, data: span.times.map((s, i) => point(s, ys[i])) })
+      }
+      return out
+    },
+    [drawn, focus, focusColor, tr.t, current, shown.length, span],
   )
   const rateLines = useMemo(() => lines((d) => rateSeriesOf(d, source)), [lines, source])
   const heelLines = useMemo(() => lines((d) => d.heel), [lines])
@@ -268,7 +332,7 @@ function Overlay({
         </div>
         {shown.length > 0 && (
           <>
-            <PathsPlot drawn={drawn} focus={focus} focusColor={focusColor} colors={colors} tr={tr} unit={unit} onPick={onSelect} />
+            <PathsPlot drawn={drawn} focus={focus} average={average} focusColor={focusColor} colors={colors} tr={tr} unit={unit} onPick={onSelect} />
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-2">
               {foiled.length > 0 && (
                 <span className="inline-flex items-center gap-1.5">
@@ -286,28 +350,34 @@ function Overlay({
                   <span aria-hidden className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: colors.critical }} /> toccata
                 </span>
               )}
-              {focus && (
-                <span className="inline-flex items-center gap-1.5">
-                  <LineKey color={focusColor} /> {picked ? 'selezionata' : focus === best ? 'la migliore (minima più alta)' : 'in evidenza'}
-                </span>
-              )}
+              <span className="inline-flex items-center gap-1.5">
+                <LineKey color={focusColor} />{' '}
+                {views.length === 1 ? 'in evidenza' : current === 'avg' ? 'la media' : current === 'best' ? 'la migliore (minima più alta)' : 'selezionata'}
+              </span>
             </p>
-            {focus && (
-              <Readout
-                d={focus}
-                isBest={!picked && focus === best}
-                unit={unit}
-                tr={tr}
-                position={shown.indexOf(focus)}
-                count={shown.length}
-                onStep={(by) => onSelect(shown[(shown.indexOf(focus) + by + shown.length) % shown.length].index)}
-                onMap={() => {
-                  onPick(focus.index)
-                  // On a phone the map is up above; on a large screen it stays beside the charts.
-                  if (!window.matchMedia('(min-width: 1024px)').matches) window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-              />
-            )}
+            <Readout
+              fig={figures}
+              title={
+                focus
+                  ? `${current === 'best' ? 'La migliore: ' : ''}${KIND_NAME[focus.maneuver.kind]} ${arrow(focus.maneuver.from)}`
+                  : `Media di ${shown.length} ${PLURAL[kind].toLowerCase()} ${arrow(side)}`
+              }
+              when={focus ? fmtTimeSec(tr.t[focus.maneuver.i0]) : undefined}
+              ok={focus ? focus.maneuver.foiled : undefined}
+              note={focus ? undefined : `${shown.filter((d) => d.maneuver.foiled).length} in foil`}
+              place={current === 'avg' ? 'media' : current === 'best' ? 'migliore' : `${shown.findIndex((d) => d.index === current) + 1}/${shown.length}`}
+              unit={unit}
+              onStep={views.length > 1 ? (by) => go(views[(views.indexOf(current) + by + views.length) % views.length]) : undefined}
+              onMap={
+                focus
+                  ? () => {
+                      onPick(focus.index)
+                      // On a phone the map is up above; on a large screen it stays beside the charts.
+                      if (!window.matchMedia('(min-width: 1024px)').matches) window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }
+                  : undefined
+              }
+            />
           </>
         )}
         {pickedFall && <p className="text-sm text-ink-2">Caduta: traiettoria non disegnata.</p>}
@@ -380,69 +450,81 @@ function TimeChart({
   pick.current = onPick
   const onInit = useCallback((c: Chart) => {
     c.on('click', (e: unknown) => {
-      const id = (e as { seriesId?: string }).seriesId
-      if (id != null) pick.current(Number(id))
+      // The average curve (negative id) is no manoeuvre to pick.
+      const k = Number((e as { seriesId?: string }).seriesId)
+      if (k >= 0) pick.current(k)
     })
   }, [])
   return <EChart option={option} height={height} label={label} onInit={onInit} />
 }
 
-/** The numbers of the manoeuvre in evidence. */
+/** The numbers in evidence: of the average manoeuvre, of the best one, or of one of them. */
 function Readout({
-  d,
-  isBest,
+  fig,
+  title,
+  when,
+  ok,
+  note,
+  place,
   unit,
-  tr,
-  position,
-  count,
   onStep,
   onMap,
 }: {
-  d: ManeuverDetail
-  isBest: boolean
+  fig: Figures
+  title: string
+  /** Time of day of a single manoeuvre. */
+  when?: string
+  /** Whether a single manoeuvre stayed on the foil. */
+  ok?: boolean
+  /** A word on the average: how many of them stayed on the foil. */
+  note?: string
+  /** Where it stands: «media», «migliore», or its place in time order. */
+  place: string
   unit: SpeedUnit
-  tr: Track
-  /** Where it stands among those shown, in time order. */
-  position: number
-  count: number
-  onStep: (by: 1 | -1) => void
-  onMap: () => void
+  onStep?: (by: 1 | -1) => void
+  onMap?: () => void
 }) {
-  const m = d.maneuver
   const u = SPEED_SHORT[unit]
   return (
     <div className="space-y-2 border-t border-line pt-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-        <span className="font-semibold">
-          {isBest && 'La migliore: '}
-          {KIND_NAME[m.kind]} {arrow(m.from)}
-        </span>
-        <span className="text-ink-2 tabular">{fmtTimeSec(tr.t[m.i0])}</span>
-        <Outcome ok={m.foiled} />
+        <span className="font-semibold">{title}</span>
+        {when && <span className="text-ink-2 tabular">{when}</span>}
+        {ok != null && <Outcome ok={ok} />}
+        {note && <span className="text-ink-2">{note}</span>}
         <span className="ml-auto inline-flex items-center">
-          <button type="button" className={`${btnGhost} text-lg leading-none`} aria-label="Manovra precedente" onClick={() => onStep(-1)}>
-            ‹
-          </button>
-          <span className="text-xs text-ink-2 tabular">
-            {position + 1}/{count}
-          </span>
-          <button type="button" className={`${btnGhost} text-lg leading-none`} aria-label="Manovra successiva" onClick={() => onStep(1)}>
-            ›
-          </button>
-          <button type="button" className={btnGhost} onClick={onMap}>
-            Sulla mappa
-          </button>
+          {onStep && (
+            <>
+              <button type="button" className={`${btnGhost} text-lg leading-none`} aria-label="Precedente" onClick={() => onStep(-1)}>
+                ‹
+              </button>
+              <span className="text-xs text-ink-2 tabular">{place}</span>
+              <button type="button" className={`${btnGhost} text-lg leading-none`} aria-label="Successiva" onClick={() => onStep(1)}>
+                ›
+              </button>
+            </>
+          )}
+          {onMap && (
+            <button type="button" className={btnGhost} onClick={onMap}>
+              Sulla mappa
+            </button>
+          )}
         </span>
       </div>
       <div className={`${zones} [--cols:2] sm:[--cols:3]`}>
-        <StatTile label="Velocità angolare" value={rateText(d.turnRate)} unit={d.turnRate == null ? undefined : '°/s'} sub="media della curva" />
-        <StatTile label="Angolo al vento" value={<Pair text={anglesText(d.entryAngle, d.exitAngle)} />} sub="ingresso → uscita" />
-        <StatTile label="SOG" value={<Pair text={speedsText(d.entrySpeed, d.exitSpeed, unit)} />} unit={u} sub="ingresso → uscita" />
-        <StatTile label="VMG" value={<Pair text={speedsText(d.entryVmg, d.exitVmg, unit)} />} unit={u} sub="ingresso → uscita" />
-        <StatTile label="VMG medio" value={fmtSpeed(d.meanVmg, unit)} unit={u} sub="dall’ingresso all’uscita" />
-        <StatTile label="Velocità minima" value={fmtSpeed(m.minSpeed, unit)} unit={u} />
-        {d.heelIn != null && <StatTile label="Inclinazione" value={`${fmtNum(d.heelIn, 0)}°`} sub="massima verso l’interno" />}
-        <StatTile label="Raggio" value={d.radius == null ? '–' : fmtNum(d.radius, 0)} unit={d.radius == null ? undefined : 'm'} sub={`curva di ${fmtNum(d.turnSeconds, 0)} s`} />
+        <StatTile label="Velocità angolare" value={rateText(fig.turnRate)} unit={fig.turnRate == null ? undefined : '°/s'} sub="media della curva" />
+        <StatTile label="Angolo al vento" value={<Pair text={anglesText(fig.entryAngle, fig.exitAngle)} />} sub="ingresso → uscita" />
+        <StatTile label="SOG" value={<Pair text={speedsText(fig.entrySpeed, fig.exitSpeed, unit)} />} unit={u} sub="ingresso → uscita" />
+        <StatTile label="VMG" value={<Pair text={speedsText(fig.entryVmg, fig.exitVmg, unit)} />} unit={u} sub="ingresso → uscita" />
+        <StatTile label="VMG medio" value={fmtSpeed(fig.meanVmg, unit)} unit={u} sub="dall’ingresso all’uscita" />
+        <StatTile label="Velocità minima" value={fmtSpeed(fig.minSpeed, unit)} unit={u} />
+        {fig.heelIn != null && <StatTile label="Inclinazione" value={`${fmtNum(fig.heelIn, 0)}°`} sub="massima verso l’interno" />}
+        <StatTile
+          label="Raggio"
+          value={fig.radius == null ? '–' : fmtNum(fig.radius, 0)}
+          unit={fig.radius == null ? undefined : 'm'}
+          sub={fig.turnSeconds == null ? undefined : `curva di ${fmtNum(fig.turnSeconds, 0)} s`}
+        />
       </div>
     </div>
   )
@@ -483,6 +565,7 @@ function smoothPath(pts: [number, number][]) {
 function PathsPlot({
   drawn,
   focus,
+  average,
   focusColor,
   colors,
   tr,
@@ -491,6 +574,8 @@ function PathsPlot({
 }: {
   drawn: Drawn[]
   focus: ManeuverDetail | null
+  /** Drawn in evidence when no single manoeuvre is. */
+  average: AveragePath | null
   focusColor: string
   colors: ThemeColors
   tr: Track
@@ -533,8 +618,13 @@ function PathsPlot({
       ]),
     )
     const scale = [5, 10, 20, 25, 50, 100, 200, 500].filter((m) => m * s <= w * 0.3).pop() ?? 5
-    return { h, s, paths, ox: toX(0), oy: toY(0), onLeft, scale }
-  }, [drawn, w])
+    const avgAt = average ? average.t.flatMap((_, i) => (Number.isFinite(average.x[i]) && Number.isFinite(average.y[i]) ? [i] : [])) : []
+    const avg =
+      average && avgAt.length > 2
+        ? { t: avgAt.map((i) => average.t[i]), pts: avgAt.map((i) => [toX(average.x[i]), toY(average.y[i])] as [number, number]) }
+        : null
+    return { h, s, paths, avg, ox: toX(0), oy: toY(0), onLeft, scale }
+  }, [drawn, average, w])
 
   const nearest = (e: MouseEvent, within: number) => {
     const r = box.current!.getBoundingClientRect()
@@ -555,16 +645,29 @@ function PathsPlot({
   }
 
   const pathOf = (d: ManeuverDetail) => smoothPath(geo.paths.get(d)!)
-  const nearestIndex = (d: ManeuverDetail, s: number) => d.t.reduce((b, x, i) => (Math.abs(x - s) < Math.abs(d.t[b] - s) ? i : b), 0)
-  const chevron = (d: ManeuverDetail, s: number) => {
-    const pts = geo.paths.get(d)!
-    const i = Math.max(1, Math.min(pts.length - 2, nearestIndex(d, s)))
-    const angle = (Math.atan2(pts[i + 1][1] - pts[i - 1][1], pts[i + 1][0] - pts[i - 1][0]) * 180) / Math.PI
-    return <path d="M-6 -4.5L5 0L-6 4.5Z" fill={focusColor} transform={`translate(${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)}) rotate(${angle.toFixed(0)})`} />
-  }
-  const dot = (d: ManeuverDetail, s: number) => {
-    const [x, y] = geo.paths.get(d)![nearestIndex(d, s)]
-    return <circle cx={x} cy={y} r={3.5} fill={colors.surface} stroke={focusColor} strokeWidth={2} />
+  /** The path in evidence, over the others: dots where the turn starts and ends, arrows the way it goes. */
+  const highlight = (pts: [number, number][], t: number[], start: number, end: number, dashed: boolean) => {
+    const near = (s: number) => t.reduce((b, x, i) => (Math.abs(x - s) < Math.abs(t[b] - s) ? i : b), 0)
+    const chevron = (s: number) => {
+      const i = Math.max(1, Math.min(pts.length - 2, near(s)))
+      const angle = (Math.atan2(pts[i + 1][1] - pts[i - 1][1], pts[i + 1][0] - pts[i - 1][0]) * 180) / Math.PI
+      return <path d="M-6 -4.5L5 0L-6 4.5Z" fill={focusColor} transform={`translate(${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)}) rotate(${angle.toFixed(0)})`} />
+    }
+    const dot = (s: number) => {
+      const [x, y] = pts[near(s)]
+      return <circle cx={x} cy={y} r={3.5} fill={colors.surface} stroke={focusColor} strokeWidth={2} />
+    }
+    const d = smoothPath(pts)
+    return (
+      <>
+        <path d={d} fill="none" stroke={colors.surface} strokeWidth={6} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={d} fill="none" stroke={focusColor} strokeWidth={3} strokeDasharray={dashed ? '7 5' : undefined} strokeLinejoin="round" strokeLinecap="round" />
+        {dot(start)}
+        {dot(end)}
+        {chevron(start - 1.5)}
+        {chevron(end + 1.5)}
+      </>
+    )
   }
 
   // Wind and scale sit past the passage, where the paths leave room.
@@ -600,24 +703,8 @@ function PathsPlot({
             />
           ),
         )}
-        {focus && geo.paths.has(focus) && (
-          <>
-            <path d={pathOf(focus)} fill="none" stroke={colors.surface} strokeWidth={6} strokeLinejoin="round" strokeLinecap="round" />
-            <path
-              d={pathOf(focus)}
-              fill="none"
-              stroke={focusColor}
-              strokeWidth={3}
-              strokeDasharray={focus.maneuver.foiled ? undefined : '7 5'}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-            {dot(focus, focus.turnStart)}
-            {dot(focus, focus.turnEnd)}
-            {chevron(focus, focus.turnStart - 1.5)}
-            {chevron(focus, focus.turnEnd + 1.5)}
-          </>
-        )}
+        {focus && geo.paths.has(focus) && highlight(geo.paths.get(focus)!, focus.t, focus.turnStart, focus.turnEnd, !focus.maneuver.foiled)}
+        {!focus && geo.avg && average && highlight(geo.avg.pts, geo.avg.t, average.turnStart, average.turnEnd, false)}
         <circle cx={geo.ox} cy={geo.oy} r={4} fill={colors.ink} stroke={colors.surface} strokeWidth={2} />
         {/* Wind. */}
         <g transform={`translate(${edge} 8)`} fill={colors.ink2}>

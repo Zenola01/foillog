@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent as PasteEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { fileNameOnly, readClipboard, tracksFromPaste } from '../lib/clipboardTracks'
 import { isCoarsePointer } from '../lib/theme'
@@ -56,6 +56,13 @@ export function FileDrop({ onFiles, compact }: { onFiles: (files: File[]) => voi
     }
   }
 
+  // The iPhone hands a copied file over only to a real paste, into a field: the button gets text alone.
+  const pasteInto = (e: PasteEvent) => {
+    e.preventDefault()
+    const files = tracksFromPaste(e.clipboardData)
+    take(files, files.length ? null : fileNameOnly(e.clipboardData.getData('text/plain')))
+  }
+
   return (
     <div
       onDragOver={(e) => {
@@ -98,22 +105,36 @@ export function FileDrop({ onFiles, compact }: { onFiles: (files: File[]) => voi
       </div>
       {miss && (
         <p className="max-w-md text-xs text-ink-2" role="status">
-          {miss.kind === 'name' ? (
-            `Questo browser ha incollato solo il nome del file «${miss.name}», non il contenuto: trascina il file qui oppure usa «Scegli i file».`
-          ) : miss.kind === 'denied' ? (
+          {miss.kind === 'denied' ? (
             'FoilLog non ha potuto leggere gli appunti: tocca Incolla e poi conferma «Incolla» nel fumetto che compare.'
           ) : coarse ? (
             <>
-              Negli appunti non c’è una traccia: l’iPhone non passa alle web app i file copiati. Usa il comando rapido «FoilLog» (da Vakaros:
-              Condividi → FoilLog), poi torna qui e tocca Incolla.{' '}
+              Il pulsante Incolla riceve dall’iPhone solo testo. Se hai copiato il file, tocca il riquadro qui sotto, tienilo premuto e scegli
+              «Incolla»; altrimenti salvalo in File e usa «Scegli i file».{' '}
               <Link to="/impostazioni" className="font-medium text-accent">
-                Come prepararlo
+                Altri modi
               </Link>
             </>
+          ) : miss.kind === 'name' ? (
+            `Questo browser ha incollato solo il nome del file «${miss.name}», non il contenuto: trascina il file qui oppure usa «Scegli i file».`
           ) : (
             'Negli appunti non c’è una traccia: copia il file e riprova, oppure trascinalo qui.'
           )}
         </p>
+      )}
+      {miss && miss.kind !== 'denied' && coarse && (
+        <div
+          contentEditable
+          suppressContentEditableWarning
+          inputMode="none"
+          role="textbox"
+          aria-label="Incolla qui il file della traccia"
+          data-placeholder="Tieni premuto qui e scegli «Incolla»"
+          onPaste={pasteInto}
+          // Nothing but a paste: whatever gets typed in goes away.
+          onInput={(e) => (e.currentTarget.textContent = '')}
+          className="w-full max-w-md rounded-xl border-2 border-dashed border-line px-4 py-4 text-center text-sm text-ink-2 empty:before:content-[attr(data-placeholder)] focus:border-[var(--accent-btn)] focus:outline-none"
+        />
       )}
       <input
         ref={input}

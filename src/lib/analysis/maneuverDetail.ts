@@ -319,9 +319,15 @@ export const rateSeriesOf = (d: ManeuverDetail, source: RateSource): number[] =>
 
 const meanOf = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null)
 
-/** Averages over some manoeuvres, to compare one side with the other. */
+/**
+ * The figures of some manoeuvres, averaged: one side against the other, or the average manoeuvre.
+ * Over a single one they are its own.
+ */
 export function detailAverages(ds: ManeuverDetail[]) {
   return {
+    minSpeed: meanOf(ds.map((d) => d.maneuver.minSpeed)),
+    turnSeconds: meanOf(ds.map((d) => d.turnSeconds)),
+    radius: meanOf(ds.flatMap((d) => d.radius ?? [])),
     turnRate: meanOf(ds.flatMap((d) => d.turnRate ?? [])),
     entryAngle: meanOf(ds.flatMap((d) => d.entryAngle ?? [])),
     exitAngle: meanOf(ds.flatMap((d) => d.exitAngle ?? [])),
@@ -332,6 +338,47 @@ export function detailAverages(ds: ManeuverDetail[]) {
     meanVmg: meanOf(ds.flatMap((d) => d.meanVmg ?? [])),
     heelIn: meanOf(ds.flatMap((d) => d.heelIn ?? [])),
   }
+}
+
+/**
+ * Where an average path or curve means something: the stretch around the passage that four
+ * manoeuvres in five cover, read every `step` seconds, and the manoeuvres that cover all of it. The
+ * same ones all along, so that the average does not jump where one of them ends.
+ */
+export function averageSpan(ds: ManeuverDetail[], step = 0.5): { times: number[]; ds: ManeuverDetail[] } {
+  const ranged = ds.filter((d) => d.t.length > 0)
+  if (!ranged.length) return { times: [], ds: [] }
+  const starts = ranged.map((d) => d.t[0]).sort((a, b) => a - b)
+  const ends = ranged.map((d) => d.t[d.t.length - 1]).sort((a, b) => a - b)
+  const most = Math.ceil(ranged.length * 0.8)
+  const lo = Math.ceil(starts[most - 1] / step) * step
+  const hi = Math.floor(ends[ranged.length - most] / step) * step
+  const times: number[] = []
+  for (let s = lo; s <= hi + 1e-9; s += step) times.push(Math.round(s * 1000) / 1000)
+  return { times, ds: ranged.filter((d) => d.t[0] <= lo && d.t[d.t.length - 1] >= hi) }
+}
+
+/** One curve averaged over the manoeuvres at those times, each read between its own points; NaN where none has a value. */
+export function averageSeries(ds: ManeuverDetail[], values: (d: ManeuverDetail) => number[] | null, times: number[]): number[] {
+  const curves = ds.flatMap((d) => {
+    const ys = values(d)
+    return ys ? [{ t: d.t, ys }] : []
+  })
+  return times.map((s) => {
+    let sum = 0
+    let n = 0
+    for (const { t, ys } of curves) {
+      if (!t.length || s < t[0] || s > t[t.length - 1]) continue
+      let j = 0
+      while (t[j] < s) j++
+      const v = t[j] === s ? ys[j] : ys[j - 1] + ((ys[j] - ys[j - 1]) * (s - t[j - 1])) / (t[j] - t[j - 1])
+      if (Number.isFinite(v)) {
+        sum += v
+        n++
+      }
+    }
+    return n ? sum / n : NaN
+  })
 }
 
 /** The one that kept the most speed while staying on the foil: the reference to read the others against. */

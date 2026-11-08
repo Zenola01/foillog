@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { analyzeTrack } from '../src/lib/analysis/analyze'
-import { bestManeuver, detailAverages, maneuverDetails, rateSeriesOf } from '../src/lib/analysis/maneuverDetail'
+import { averageSeries, averageSpan, bestManeuver, detailAverages, maneuverDetails, rateSeriesOf, type ManeuverDetail } from '../src/lib/analysis/maneuverDetail'
 import type { SimLeg } from '../src/lib/sim'
 import type { Track } from '../src/lib/types'
 import { kn, simTrack } from './helpers'
@@ -239,6 +239,50 @@ describe('speed and VMG in a manoeuvre', () => {
     expect(avg.entryVmg).toBeCloseTo((a.entryVmg! + b.entryVmg!) / 2, 5)
     expect(avg.exitSpeed).toBeCloseTo((a.exitSpeed! + b.exitSpeed!) / 2, 5)
     expect(avg.meanVmg).toBeCloseTo((a.meanVmg! + b.meanVmg!) / 2, 5)
+  })
+})
+
+describe('the average manoeuvre', () => {
+  const fake = (t: number[], x: number[]) => ({ t, x }) as unknown as ManeuverDetail
+
+  it('averages the same manoeuvres all along, where four in five reach', () => {
+    const p = fake([-2, -1, 0, 1, 2], [0, 1, 2, 3, 4])
+    const q = fake([-1, 0, 1], [10, 20, 30])
+    const r = fake([-3, -2, -1, 0, 1, 2, 3], [5, 5, 5, 5, 5, 5, 5])
+    // Three of them: all must reach, so the stretch is the shortest one.
+    const span = averageSpan([p, q, r], 1)
+    expect(span.times).toEqual([-1, 0, 1])
+    expect(span.ds).toHaveLength(3)
+    const xs = averageSeries(span.ds, (d) => d.x, span.times)
+    expect(xs[0]).toBeCloseTo((1 + 10 + 5) / 3, 5)
+    expect(xs[1]).toBeCloseTo(9, 5)
+    // Among five, one short manoeuvre is left out rather than cutting the others short.
+    const wide = averageSpan([p, q, r, r, r], 1)
+    expect(wide.times).toEqual([-2, -1, 0, 1, 2])
+    expect(wide.ds).not.toContain(q)
+  })
+
+  it('reads each curve between its own points', () => {
+    const p = fake([-2, -1, 0, 1, 2], [0, 1, 2, 3, 4])
+    const q = fake([-1, 0, 1], [10, 20, 30])
+    expect(averageSeries([p, q], (d) => d.x, [0.5])[0]).toBeCloseTo((2.5 + 25) / 2, 5)
+  })
+
+  it('passes through the passage, like each of them', () => {
+    const { times, ds } = averageSpan([oneTurn(140, -140), oneTurn(140, -140, 3), oneTurn(150, -130)])
+    const k = times.indexOf(0)
+    expect(k).toBeGreaterThan(0)
+    expect(ds).toHaveLength(3)
+    expect(Math.abs(averageSeries(ds, (d) => d.x, times)[k])).toBeLessThan(3)
+    expect(Math.abs(averageSeries(ds, (d) => d.y, times)[k])).toBeLessThan(3)
+  })
+
+  it('gives a single manoeuvre its own figures', () => {
+    const d = oneTurn(150, -100)
+    const own = detailAverages([d])
+    expect(own.entryVmg).toBe(d.entryVmg)
+    expect(own.minSpeed).toBe(d.maneuver.minSpeed)
+    expect(own.turnSeconds).toBe(d.turnSeconds)
   })
 })
 
