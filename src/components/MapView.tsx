@@ -60,7 +60,16 @@ interface Props {
   tailSeconds?: number
   /** Panel drawn over the map (live numbers). */
   overlay?: ReactNode
+  /** One rider: the numbers written beside the board at point i of the track. */
+  boardInfo?: (i: number) => BoardRow[]
+  /** Over the whole screen: one finger moves the map, as there is no page to scroll past. */
+  fullscreen?: boolean
   className?: string
+}
+
+export interface BoardRow {
+  label: string
+  value: string
 }
 
 /** Paint objects with expressions built at runtime; MapLibre's static paint types cannot follow them. */
@@ -218,12 +227,13 @@ const BOARD_PATH = 'M0 -14 C3.6 -9 5 -2 4.8 6 C4.7 10 4 13 3 14 L-3 14 C-4 13 -4
 interface Boat {
   marker: Marker
   hull: SVGSVGElement
+  /** Beside the board: the rider's name (several riders) or the chosen numbers (one rider). */
   pill: HTMLElement | null
   /** Name label on the left of the board. */
   left: boolean
 }
 
-function boatEl(color: string, label: string | undefined, c: ThemeColors): { el: HTMLElement; hull: SVGSVGElement; pill: HTMLElement | null } {
+function boatEl(color: string, label: string | undefined, c: ThemeColors, numbers = false): { el: HTMLElement; hull: SVGSVGElement; pill: HTMLElement | null } {
   const el = document.createElement('div')
   el.style.cssText = 'position:relative;width:0;height:0;pointer-events:none;'
   const hull = document.createElementNS(SVG_NS, 'svg')
@@ -245,8 +255,33 @@ function boatEl(color: string, label: string | undefined, c: ThemeColors): { el:
     pill.textContent = label
     pill.style.cssText = `position:absolute;left:17px;top:-11px;font:600 14px "Barlow Condensed",system-ui,sans-serif;color:${c.ink};background:${c.surface};border-radius:999px;padding:2px 8px;white-space:nowrap;`
     el.appendChild(pill)
+  } else if (numbers) {
+    pill = document.createElement('div')
+    pill.style.cssText = `position:absolute;left:17px;top:0;transform:translateY(-50%);display:grid;grid-template-columns:auto auto;column-gap:8px;font:600 16px/1.25 "Barlow Condensed",system-ui,sans-serif;color:${c.ink};background:${alpha(c.surface, 0.92)};border-radius:10px;padding:4px 9px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3);`
+    el.appendChild(pill)
   }
   return { el, hull, pill }
+}
+
+/** Writes the numbers beside the board, a label and a value a row; the rows are rebuilt only when the choice changes. */
+function fillNumbers(pill: HTMLElement, rows: BoardRow[], c: ThemeColors) {
+  pill.style.display = rows.length ? 'grid' : 'none'
+  const key = rows.map((r) => r.label).join('|')
+  if (pill.dataset.key !== key) {
+    pill.dataset.key = key
+    pill.replaceChildren(
+      ...rows.flatMap((r) => {
+        const label = document.createElement('span')
+        label.textContent = r.label
+        label.style.cssText = `color:${c.ink2};font-size:13px;font-weight:500;align-self:center;`
+        // Wide enough for most values, so that the box does not jump as the digits change.
+        const value = document.createElement('span')
+        value.style.cssText = 'min-width:3.6em;text-align:right;font-variant-numeric:tabular-nums;'
+        return [label, value]
+      }),
+    )
+  }
+  rows.forEach((r, k) => (pill.children[2 * k + 1].textContent = r.value))
 }
 
 /**
@@ -282,7 +317,7 @@ function placeLabels(map: MapLibreMap, boats: (Boat | null)[]) {
 }
 
 function MapViewImpl(props: Props) {
-  const { tracks, cursor, range, segments, maneuvers, stops, selectedManeuver, onManeuverClick, pin, windDir, windByRider, legend, className } = props
+  const { tracks, cursor, range, segments, maneuvers, stops, selectedManeuver, onManeuverClick, pin, windDir, windByRider, legend, boardInfo, fullscreen, className } = props
   const trail = props.trail ?? 'full'
   const tailMs = (props.tailSeconds ?? 60) * 1000
   const multi = tracks.length > 1
@@ -377,6 +412,20 @@ function MapViewImpl(props: Props) {
     if (map && !bounds.isEmpty()) map.fitBounds(bounds, { padding: 36, animate: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trackKey])
+
+  // Into the whole screen and back: gestures as fits the size, and the tracks fitted again to it.
+  const wasFull = useRef(fullscreen)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || wasFull.current === fullscreen) return
+    wasFull.current = fullscreen
+    if (isCoarsePointer()) {
+      if (fullscreen) map.cooperativeGestures.disable()
+      else map.cooperativeGestures.enable()
+    }
+    map.resize()
+    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 36, animate: false })
+  }, [fullscreen, bounds])
 
   useEffect(() => {
     const map = mapRef.current
@@ -611,7 +660,7 @@ function MapViewImpl(props: Props) {
         return
       }
       if (!boat) {
-        const { el, hull, pill } = boatEl(color, multi ? t.label : undefined, colors)
+        const { el, hull, pill } = boatEl(color, multi ? t.label : undefined, colors, !multi && !!boardInfo)
         boat = { marker: new Marker({ element: el, anchor: 'center' }).setLngLat(pos).addTo(map), hull, pill, left: false }
         cursorMarkers.current[k] = boat
       } else boat.marker.setLngLat(pos)
@@ -619,6 +668,7 @@ function MapViewImpl(props: Props) {
       // Standing still the GPS course is noise: the board keeps its last heading.
       const crs = t.track.crs[i]
       if (t.track.spd[i] > 1 && Number.isFinite(crs)) boat.hull.style.transform = `rotate(${Math.round(crs)}deg)`
+      if (!multi && boardInfo && boat.pill) fillNumbers(boat.pill, boardInfo(i), colors)
       if ((multi || trail === 'tail') && tail) {
         const i0 = indexAtTime(t.track.t, cursor! - off - tailMs)
         const coords: [number, number][] = []
@@ -629,8 +679,8 @@ function MapViewImpl(props: Props) {
     })
     for (let k = tracks.length; k < cursorMarkers.current.length; k++) cursorMarkers.current[k]?.marker.remove()
     cursorMarkers.current.length = tracks.length
-    if (multi) placeLabels(map, cursorMarkers.current)
-  }, [cursor, tracks, colors, styleGen, multi, trail, tailMs])
+    if (multi || boardInfo) placeLabels(map, cursorMarkers.current)
+  }, [cursor, tracks, colors, styleGen, multi, trail, tailMs, boardInfo])
 
   // Labelled pin (top speed).
   useEffect(() => {

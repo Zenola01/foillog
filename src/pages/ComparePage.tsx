@@ -2,22 +2,23 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { BestLegsCompare } from '../components/BestLegs'
 import { EChart } from '../components/EChart'
-import { LiveInfo, type LiveRider } from '../components/LiveInfo'
+import { LiveInfo } from '../components/LiveInfo'
 import { MapView, TrailToggle, type MapTrack } from '../components/MapView'
 import { ReplayBar, useReplay } from '../components/ReplayBar'
 import { TrackThumb } from '../components/TrackThumb'
 import { btnPrimary, btnSecondary, card, LineKey } from '../components/ui'
 import { legsInWind } from '../lib/analysis/bestLegs'
 import { sharedWind } from '../lib/analysis/wind'
-import { compareSpeedOption, polarOption } from '../lib/charts'
+import { polarOption } from '../lib/charts'
 import { useAuth } from '../lib/auth'
 import { asRecord, feed, getSession, loadTrack } from '../lib/cloud'
 import { analyzeInWorker } from '../lib/engine'
 import { useLibrary } from '../lib/library'
+import type { LiveRider } from '../lib/liveMetrics'
 import { useSettings, type Settings } from '../lib/settings'
 import { getSessionData, type SessionData, type SessionRecord } from '../lib/store'
 import { groupTogether, together, type Span } from '../lib/together'
-import { isCoarsePointer, useTheme } from '../lib/theme'
+import { useTheme } from '../lib/theme'
 import type { SessionAnalysis, SessionSummary } from '../lib/types'
 import { fmtDate, fmtDist, fmtDuration, fmtPct, fmtSpeed, fmtTime, SPEED_SHORT } from '../lib/units'
 
@@ -259,7 +260,6 @@ function CompareView({ ids, onChange }: { ids: string[]; onChange: () => void })
 function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: Settings; onChange: () => void }) {
   const { colors } = useTheme()
   const { update } = useSettings()
-  const coarse = useMemo(isCoarsePointer, [])
   const unit = settings.speedUnit
   const u = SPEED_SHORT[unit]
 
@@ -296,11 +296,6 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
     () => series.map((s) => ({ id: s.rec.id, name: s.name, color: s.color, track: s.data.track, offset: 0, windDir: wind ?? s.a.wind.dir, foil: s.a.foil })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [items, colors, wind],
-  )
-  const speedOpt = useMemo(
-    () => compareSpeedOption(series.map((s) => ({ name: s.name, color: s.color, tr: s.data.track, offset: 0 })), unit, colors, false, coarse),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, colors, unit, coarse],
   )
   const polarSessions = series.filter((s) => s.a.polar && s.a.polar.length > 0)
   const polarOpt = useMemo(
@@ -356,11 +351,6 @@ function Comparison({ items, settings, onChange }: { items: Loaded[]; settings: 
         <div className="mt-4 space-y-4 lg:mt-0">
           <CompareTable series={series} settings={settings} />
           <BestLegsCompare riders={legRiders} unit={unit} sharedWind={wind != null} />
-          <div className={`${card} p-3`}>
-            <p className="card-title">Velocità</p>
-            <p className="text-xs text-ink-2">Ora del giorno.</p>
-            <EChart option={speedOpt} height={280} label="Velocità delle uscite a confronto" />
-          </div>
           {polarSessions.length > 0 && (
             <div className={`${card} p-3`}>
               <p className="card-title">Polari a confronto</p>

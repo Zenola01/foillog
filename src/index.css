@@ -192,7 +192,8 @@ thead th {
   height: 56svh;
   min-height: 340px;
 }
-.map-hero .maplibregl-ctrl-top-right {
+.map-hero .maplibregl-ctrl-top-right,
+.map-full .maplibregl-ctrl-top-right {
   top: env(safe-area-inset-top);
 }
 .map-edge {
@@ -297,8 +298,9 @@ thead th {
   }
 }
 
+/* Nothing held once played: a layer inside the page over the whole screen (the replay) must not stay under the bars. */
 .page-enter {
-  animation: fade 0.16s ease-out both;
+  animation: fade 0.16s ease-out backwards;
 }
 .press {
   transition: transform 0.12s ease-out, background-color 0.12s ease-out;

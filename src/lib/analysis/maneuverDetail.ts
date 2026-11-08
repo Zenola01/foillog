@@ -64,6 +64,14 @@ export interface ManeuverDetail {
   /** Angle from the wind (deg, 0–180) on the way into the turn and on the way out of it. */
   entryAngle: number | null
   exitAngle: number | null
+  /** Speed (m/s) on the way in and on the way out. */
+  entrySpeed: number | null
+  exitSpeed: number | null
+  /** VMG (m/s) on the way in and on the way out: towards the wind in a tack, away from it in a jibe. */
+  entryVmg: number | null
+  exitVmg: number | null
+  /** Mean VMG (m/s) from the way in to the way out: the ground the whole manoeuvre made, or lost. */
+  meanVmg: number | null
   /** Most heel towards the inside while turning (deg); negative if it never leaned in. */
   heelIn: number | null
   /** Mean radius of the turn (m). */
@@ -221,6 +229,11 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
     turnRate: null,
     entryAngle: null,
     exitAngle: null,
+    entrySpeed: null,
+    exitSpeed: null,
+    entryVmg: null,
+    exitVmg: null,
+    meanVmg: null,
     heelIn: null,
     radius: null,
   }
@@ -261,8 +274,27 @@ function detail(tr: Track, maneuvers: Maneuver[], k: number, windDir: number): M
   // Read from the track itself: the smoothed course already leans into the turn before it starts.
   const angleOf = (from: number, to: number) =>
     dist[to] - dist[from] >= WAY_MIN_M ? Math.abs(norm180(windDir - bearing(lat[from], lon[from], lat[to], lon[to]))) : null
-  out.entryAngle = angleOf(reach(t, i0, WAY_MS, -1, lo, hi), i0)
-  out.exitAngle = angleOf(i1, reach(t, i1, WAY_MS, 1, lo, hi))
+  const wayIn = reach(t, i0, WAY_MS, -1, lo, hi)
+  const wayOut = reach(t, i1, WAY_MS, 1, lo, hi)
+  out.entryAngle = angleOf(wayIn, i0)
+  out.exitAngle = angleOf(i1, wayOut)
+
+  // Speed and VMG on the same stretches. VMG counts towards the wind in a tack, away from it in a jibe.
+  const towards = m.kind === 'tack' ? 1 : -1
+  const speedOf = (from: number, to: number) => {
+    if (to <= from) return null
+    let s = 0
+    for (let i = from; i <= to; i++) s += spd[i]
+    return s / (to - from + 1)
+  }
+  const vmgOf = (speed: number | null, angle: number | null) => (speed == null || angle == null ? null : towards * speed * Math.cos(angle * RAD))
+  out.entrySpeed = speedOf(wayIn, i0)
+  out.exitSpeed = speedOf(i1, wayOut)
+  out.entryVmg = vmgOf(out.entrySpeed, out.entryAngle)
+  out.exitVmg = vmgOf(out.exitSpeed, out.exitAngle)
+  // Over the whole manoeuvre: how far it got up (or down) the wind, over the time it took.
+  const upwind = (i: number) => (lon[i] - lon0) * kx * sinW + (lat[i] - lat0) * ky * cosW
+  if (t[wayOut] > t[wayIn]) out.meanVmg = (towards * (upwind(wayOut) - upwind(wayIn))) / ((t[wayOut] - t[wayIn]) / 1000)
 
   // The angle turned, from the same rate as the turn's ends (the smoothed course lags behind them).
   let sum = 0
@@ -293,6 +325,11 @@ export function detailAverages(ds: ManeuverDetail[]) {
     turnRate: meanOf(ds.flatMap((d) => d.turnRate ?? [])),
     entryAngle: meanOf(ds.flatMap((d) => d.entryAngle ?? [])),
     exitAngle: meanOf(ds.flatMap((d) => d.exitAngle ?? [])),
+    entrySpeed: meanOf(ds.flatMap((d) => d.entrySpeed ?? [])),
+    exitSpeed: meanOf(ds.flatMap((d) => d.exitSpeed ?? [])),
+    entryVmg: meanOf(ds.flatMap((d) => d.entryVmg ?? [])),
+    exitVmg: meanOf(ds.flatMap((d) => d.exitVmg ?? [])),
+    meanVmg: meanOf(ds.flatMap((d) => d.meanVmg ?? [])),
     heelIn: meanOf(ds.flatMap((d) => d.heelIn ?? [])),
   }
 }

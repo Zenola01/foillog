@@ -19,9 +19,11 @@ const rateText = (v: number | null | undefined) => (v == null ? '–' : fmtNum(v
 const angleText = (v: number | null | undefined) => (v == null ? '–' : `${fmtNum(v, 0)}°`)
 /** «140° → 120°»: the angle from the wind going into the turn and coming out of it. */
 const anglesText = (entry: number | null | undefined, exit: number | null | undefined) => (entry == null && exit == null ? '–' : `${angleText(entry)} → ${angleText(exit)}`)
-/** «140→120°», for the narrow columns of a table on a phone. */
-const anglesShort = (entry: number | null | undefined, exit: number | null | undefined) =>
-  entry == null && exit == null ? '–' : `${entry == null ? '–' : fmtNum(entry, 0)}→${exit == null ? '–' : fmtNum(exit, 0)}°`
+/** «18,2 → 16,1»: a speed going into the turn and coming out of it. */
+const speedsText = (entry: number | null | undefined, exit: number | null | undefined, unit: SpeedUnit) =>
+  entry == null && exit == null ? '–' : `${fmtSpeed(entry, unit)} → ${fmtSpeed(exit, unit)}`
+/** Two numbers in one tile, a size smaller so that they stay on one line. */
+const Pair = ({ text }: { text: string }) => <span className="text-[24px] whitespace-nowrap">{text}</span>
 
 /** A manoeuvre as drawn: the colour says how much speed it kept, dashes that it touched the water. */
 interface Drawn {
@@ -76,23 +78,9 @@ function Analysis({
   const u = SPEED_SHORT[unit]
   const ms = a.maneuvers
   const details = useMemo(() => maneuverDetails(tr, ms, windDir), [tr, ms, windDir])
-  const hasHeel = details.some((d) => d?.heelIn != null)
 
   const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : NaN)
   const jibes = ms.filter((m) => m.kind === 'jibe')
-  const rows = (['jibe', 'tack'] as const)
-    .flatMap((kind) =>
-      (['S', 'P'] as const).map((from) => {
-        const xs = ms.filter((m) => m.kind === kind && m.from === from)
-        return {
-          label: `${PLURAL[kind]} da ${from === 'S' ? 'dritta' : 'sinistra'}`,
-          n: xs.length,
-          ok: xs.filter((m) => m.foiled).length,
-          avg: detailAverages(details.filter((d): d is ManeuverDetail => d != null && d.maneuver.kind === kind && d.maneuver.from === from)),
-        }
-      }),
-    )
-    .filter((r) => r.n > 0)
 
   return (
     <div className="space-y-4">
@@ -105,36 +93,65 @@ function Analysis({
         <StatTile label="Cadute o soste" value={String(a.summary.falls)} sub={`${ms.filter((m) => m.fell).length} in manovra`} />
       </div>
 
-      <Overlay details={details} tr={tr} unit={unit} colors={colors} selected={selected} onSelect={onSelect} onPick={onPick} />
+      <Overlay details={details} maneuvers={ms} tr={tr} unit={unit} colors={colors} selected={selected} onSelect={onSelect} onPick={onPick} />
+    </div>
+  )
+}
 
-      <div className={`${card} overflow-x-auto`}>
-        <table className="w-full text-sm">
-          <caption className="px-3 pt-3 text-left text-sm font-semibold">Medie per lato</caption>
-          <thead className="text-xs text-ink-2">
-            <tr>
-              <th className="py-2 pr-1 pl-3 text-left font-medium" />
-              <th className="px-2 py-2 text-right font-medium">Vel. ang. °/s</th>
-              <th className="px-2 py-2 text-right font-medium">Angolo vento</th>
-              {hasHeel && <th className="py-2 pr-3 pl-2 text-right font-medium">Inclinaz.</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.label} className="border-t border-line">
-                <td className="py-2 pr-1 pl-3 whitespace-nowrap">
-                  {r.label}
-                  <span className="block text-xs text-ink-2 tabular">
-                    {r.ok}/{r.n} in foil, <span className="font-semibold text-ink">{fmtPct(r.ok / r.n)}</span>
-                  </span>
-                </td>
-                <td className="px-2 py-2 text-right tabular">{rateText(r.avg.turnRate)}</td>
-                <td className="px-2 py-2 text-right whitespace-nowrap tabular">{anglesShort(r.avg.entryAngle, r.avg.exitAngle)}</td>
-                {hasHeel && <td className="py-2 pr-3 pl-2 text-right tabular">{angleText(r.avg.heelIn)}</td>}
-              </tr>
+/** One kind of manoeuvre, starboard and port side by side. */
+function SideAverages({ maneuvers, details, kind, unit }: { maneuvers: Maneuver[]; details: ManeuverDetail[]; kind: Kind; unit: SpeedUnit }) {
+  const u = SPEED_SHORT[unit]
+  const sides = (['S', 'P'] as const)
+    .map((from) => {
+      // Falls count as manoeuvres missed, though they have no path to measure.
+      const xs = maneuvers.filter((m) => m.kind === kind && m.from === from)
+      return {
+        from,
+        n: xs.length,
+        ok: xs.filter((m) => m.foiled).length,
+        avg: detailAverages(details.filter((d) => d.maneuver.kind === kind && d.maneuver.from === from)),
+      }
+    })
+    .filter((s) => s.n > 0)
+  type Side = (typeof sides)[number]
+  const rows: { label: string; value: (s: Side) => string }[] = [
+    { label: 'In foil', value: (s) => `${s.ok}/${s.n}, ${fmtPct(s.ok / s.n)}` },
+    { label: 'Velocità angolare (°/s)', value: (s) => rateText(s.avg.turnRate) },
+    { label: 'Angolo al vento', value: (s) => anglesText(s.avg.entryAngle, s.avg.exitAngle) },
+    { label: `SOG (${u})`, value: (s) => speedsText(s.avg.entrySpeed, s.avg.exitSpeed, unit) },
+    { label: `VMG (${u})`, value: (s) => speedsText(s.avg.entryVmg, s.avg.exitVmg, unit) },
+    { label: `VMG medio (${u})`, value: (s) => fmtSpeed(s.avg.meanVmg, unit) },
+  ]
+  if (details.some((d) => d.heelIn != null)) rows.push({ label: 'Inclinazione', value: (s) => angleText(s.avg.heelIn) })
+
+  return (
+    <div className={`${card} overflow-x-auto`}>
+      <table className="w-full text-sm">
+        <caption className="px-3 pt-3 text-left text-sm font-semibold">{PLURAL[kind]}, medie per lato</caption>
+        <thead className="text-xs text-ink-2">
+          <tr>
+            <th className="py-2 pr-1 pl-3 text-left font-medium" />
+            {sides.map((s) => (
+              <th key={s.from} className="px-3 py-2 text-right font-medium">
+                Da {s.from === 'S' ? 'dritta' : 'sinistra'}
+              </th>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.label} className="border-t border-line">
+              <td className="py-2 pr-1 pl-3 text-ink-2">{r.label}</td>
+              {sides.map((s) => (
+                <td key={s.from} className="px-3 py-2 text-right whitespace-nowrap tabular">
+                  {r.value(s)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="px-3 pb-3 text-xs text-ink-2">Angolo, SOG e VMG: ingresso → uscita.</p>
     </div>
   )
 }
@@ -142,6 +159,7 @@ function Analysis({
 /** The manoeuvres of one kind on top of each other: their paths and what happened along them. */
 function Overlay({
   details,
+  maneuvers,
   tr,
   unit,
   colors,
@@ -150,6 +168,7 @@ function Overlay({
   onPick,
 }: {
   details: (ManeuverDetail | null)[]
+  maneuvers: Maneuver[]
   tr: Track
   unit: SpeedUnit
   colors: ThemeColors
@@ -329,6 +348,8 @@ function Overlay({
           </div>
         </>
       )}
+
+      <SideAverages maneuvers={maneuvers} details={all} kind={kind} unit={unit} />
     </div>
   )
 }
@@ -415,10 +436,13 @@ function Readout({
       </div>
       <div className={`${zones} [--cols:2] sm:[--cols:3]`}>
         <StatTile label="Velocità angolare" value={rateText(d.turnRate)} unit={d.turnRate == null ? undefined : '°/s'} sub="media della curva" />
-        <StatTile label="Angolo al vento" value={anglesText(d.entryAngle, d.exitAngle)} sub="ingresso → uscita" />
+        <StatTile label="Angolo al vento" value={<Pair text={anglesText(d.entryAngle, d.exitAngle)} />} sub="ingresso → uscita" />
+        <StatTile label="SOG" value={<Pair text={speedsText(d.entrySpeed, d.exitSpeed, unit)} />} unit={u} sub="ingresso → uscita" />
+        <StatTile label="VMG" value={<Pair text={speedsText(d.entryVmg, d.exitVmg, unit)} />} unit={u} sub="ingresso → uscita" />
+        <StatTile label="VMG medio" value={fmtSpeed(d.meanVmg, unit)} unit={u} sub="dall’ingresso all’uscita" />
+        <StatTile label="Velocità minima" value={fmtSpeed(m.minSpeed, unit)} unit={u} />
         {d.heelIn != null && <StatTile label="Inclinazione" value={`${fmtNum(d.heelIn, 0)}°`} sub="massima verso l’interno" />}
         <StatTile label="Raggio" value={d.radius == null ? '–' : fmtNum(d.radius, 0)} unit={d.radius == null ? undefined : 'm'} sub={`curva di ${fmtNum(d.turnSeconds, 0)} s`} />
-        <StatTile label="Velocità minima" value={fmtSpeed(m.minSpeed, unit)} unit={u} sub={`entrata ${fmtSpeed(m.entrySpeed, unit)}, uscita ${fmtSpeed(m.exitSpeed, unit)}`} />
       </div>
     </div>
   )

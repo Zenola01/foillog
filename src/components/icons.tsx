@@ -70,6 +70,16 @@ export const IconX = (p: SVGProps<SVGSVGElement>) => (
     <path d="M6 6l12 12M18 6 6 18" />
   </svg>
 )
+export const IconExpand = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+  </svg>
+)
+export const IconShrink = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+  </svg>
+)
 export const IconTrash = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />

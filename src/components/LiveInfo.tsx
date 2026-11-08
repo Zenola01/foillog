@@ -1,120 +1,33 @@
-import { useId, useState, type ReactNode } from 'react'
-import { hasHeartRate, indexAtTime, MIN_HR } from '../lib/analysis/series'
-import { norm180, RAD } from '../lib/geo'
-import { useSettings, type LiveMetric, type Settings } from '../lib/settings'
-import type { Track } from '../lib/types'
-import { compass, fmtDist, fmtSpeed, SPEED_SHORT } from '../lib/units'
+import { useId, useState } from 'react'
+import { indexAtTime } from '../lib/analysis/series'
+import { METRICS, type LiveRider } from '../lib/liveMetrics'
+import { useSettings, type LiveMetric } from '../lib/settings'
 import { LineKey } from './ui'
 
-/** A rider replayed on the shared clock. */
-export interface LiveRider {
-  id: string
-  name: string
-  color: string
-  track: Track
-  /** Added to the track's own time to put it on the shared clock. */
-  offset: number
-  /** Direction the wind blows from (deg), when known. */
-  windDir: number | null
-  foil?: Uint8Array | null
+/** The boxes that pick the numbers; the choice is kept in the settings. */
+export function MetricChecks({ id, riders, omit = [], className }: { id: string; riders: LiveRider[]; omit?: LiveMetric[]; className?: string }) {
+  const { settings, update } = useSettings()
+  const toggle = (k: LiveMetric) =>
+    update({ liveMetrics: settings.liveMetrics.includes(k) ? settings.liveMetrics.filter((x) => x !== k) : [...settings.liveMetrics, k] })
+  return (
+    <fieldset id={id} className={`grid grid-cols-2 gap-x-3 gap-y-1.5 ${className ?? ''}`}>
+      <legend className="sr-only">Dati da mostrare</legend>
+      {METRICS.filter((m) => !omit.includes(m.key) && riders.some(m.available)).map((m) => (
+        <label key={m.key} className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap">
+          <input type="checkbox" checked={settings.liveMetrics.includes(m.key)} onChange={() => toggle(m.key)} className="h-4 w-4 accent-[var(--accent-btn)]" />
+          {m.label}
+        </label>
+      ))}
+    </fieldset>
+  )
 }
-
-interface MetricDef {
-  key: LiveMetric
-  /** Name in the menu. */
-  label: string
-  /** Column heading. */
-  head: (s: Settings) => string
-  available: (r: LiveRider) => boolean
-  value: (r: LiveRider, i: number, s: Settings) => ReactNode
-}
-
-const twaAt = (r: LiveRider, i: number) => norm180(r.windDir! - r.track.crs[i])
-const whole = (v: number, suffix = '') => (Number.isFinite(v) ? `${Math.round(v)}${suffix}` : '–')
-
-const METRICS: MetricDef[] = [
-  {
-    key: 'spd',
-    label: 'Velocità',
-    head: (s) => `Vel. ${SPEED_SHORT[s.speedUnit]}`,
-    available: () => true,
-    value: (r, i, s) => fmtSpeed(r.track.spd[i], s.speedUnit),
-  },
-  {
-    key: 'vmg',
-    label: 'VMG',
-    head: (s) => `VMG ${SPEED_SHORT[s.speedUnit]}`,
-    available: (r) => r.windDir != null,
-    value: (r, i, s) => {
-      const v = r.track.spd[i] * Math.cos(twaAt(r, i) * RAD)
-      return (
-        <>
-          {fmtSpeed(Math.abs(v), s.speedUnit)}
-          <span className="text-ink-2">{v >= 0 ? ' ↑' : ' ↓'}</span>
-        </>
-      )
-    },
-  },
-  {
-    key: 'twa',
-    label: 'Angolo al vento',
-    head: () => 'Angolo',
-    available: (r) => r.windDir != null,
-    value: (r, i) => {
-      const a = twaAt(r, i)
-      return (
-        <>
-          {Math.round(Math.abs(a))}°<span className="text-ink-2"> {a >= 0 ? 'dx' : 'sx'}</span>
-        </>
-      )
-    },
-  },
-  {
-    key: 'crs',
-    label: 'Rotta',
-    head: () => 'Rotta',
-    available: () => true,
-    value: (r, i) => `${Math.round(r.track.crs[i])}° ${compass(r.track.crs[i])}`,
-  },
-  {
-    key: 'dist',
-    label: 'Distanza percorsa',
-    head: () => 'Distanza',
-    available: () => true,
-    value: (r, i, s) => fmtDist(r.track.dist[i], s.distUnit),
-  },
-  {
-    key: 'foil',
-    label: 'In foil',
-    head: () => 'Foil',
-    available: (r) => r.foil != null,
-    value: (r, i) => (r.foil![i] ? 'sì' : 'no'),
-  },
-  {
-    key: 'hr',
-    label: 'Battito',
-    head: () => 'Battito',
-    available: (r) => hasHeartRate(r.track),
-    value: (r, i) => (r.track.hr![i] > MIN_HR ? whole(r.track.hr![i]) : '–'),
-  },
-  {
-    key: 'heel',
-    label: 'Sbandamento',
-    head: () => 'Sband.',
-    available: (r) => r.track.roll != null,
-    value: (r, i) => whole(Math.abs(r.track.roll![i]), '°'),
-  },
-]
 
 /** Each rider's numbers at the replay position, drawn over the map; the menu picks the numbers. */
 export function LiveInfo({ riders, cursor }: { riders: LiveRider[]; cursor: number | null }) {
-  const { settings, update } = useSettings()
+  const { settings } = useSettings()
   const [open, setOpen] = useState(false)
   const menuId = useId()
-  const offered = METRICS.filter((m) => riders.some(m.available))
-  const shown = offered.filter((m) => settings.liveMetrics.includes(m.key))
-  const toggle = (k: LiveMetric) =>
-    update({ liveMetrics: settings.liveMetrics.includes(k) ? settings.liveMetrics.filter((x) => x !== k) : [...settings.liveMetrics, k] })
+  const shown = METRICS.filter((m) => riders.some(m.available) && settings.liveMetrics.includes(m.key))
   const arrows = shown.some((m) => m.key === 'vmg')
   const sides = shown.some((m) => m.key === 'twa')
 
@@ -132,22 +45,7 @@ export function LiveInfo({ riders, cursor }: { riders: LiveRider[]; cursor: numb
           Dati {open ? '▴' : '▾'}
         </button>
       </div>
-      {open && (
-        <fieldset id={menuId} className="grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-line px-2.5 py-2">
-          <legend className="sr-only">Dati da mostrare</legend>
-          {offered.map((m) => (
-            <label key={m.key} className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap">
-              <input
-                type="checkbox"
-                checked={settings.liveMetrics.includes(m.key)}
-                onChange={() => toggle(m.key)}
-                className="h-4 w-4 accent-[var(--accent-btn)]"
-              />
-              {m.label}
-            </label>
-          ))}
-        </fieldset>
-      )}
+      {open && <MetricChecks id={menuId} riders={riders} className="border-t border-line px-2.5 py-2" />}
       {cursor == null ? (
         <p className="px-2.5 pb-2 text-ink-2">Premi ▶ sotto la mappa per i numeri di ognuno.</p>
       ) : (

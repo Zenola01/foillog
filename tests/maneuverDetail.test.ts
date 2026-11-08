@@ -3,7 +3,7 @@ import { analyzeTrack } from '../src/lib/analysis/analyze'
 import { bestManeuver, detailAverages, maneuverDetails, rateSeriesOf } from '../src/lib/analysis/maneuverDetail'
 import type { SimLeg } from '../src/lib/sim'
 import type { Track } from '../src/lib/types'
-import { simTrack } from './helpers'
+import { kn, simTrack } from './helpers'
 
 const WIND = 270
 
@@ -202,6 +202,43 @@ describe('angle from the wind', () => {
     expect(avg.entryAngle).toBeLessThan(144)
     expect(avg.exitAngle).toBeGreaterThan(106)
     expect(avg.exitAngle).toBeLessThan(114)
+  })
+})
+
+describe('speed and VMG in a manoeuvre', () => {
+  // The simulated legs run at 20 kn.
+  it('reads them on the way in and on the way out, along the wind', () => {
+    const jibe = oneTurn(150, -100)
+    expect(kn(jibe.entrySpeed)).toBeGreaterThan(19)
+    expect(kn(jibe.entrySpeed)).toBeLessThan(20.5)
+    expect(kn(jibe.exitSpeed)).toBeGreaterThan(19)
+    expect(kn(jibe.exitSpeed)).toBeLessThan(20.5)
+    // Downwind in a jibe: 20 kn at 150° from the wind make 17.3 kn of VMG, at 100° only 3.5.
+    expect(Math.abs(kn(jibe.entryVmg) - 17.3)).toBeLessThan(1)
+    expect(Math.abs(kn(jibe.exitVmg) - 3.5)).toBeLessThan(1)
+    // Upwind in a tack: 15.3 kn at 40°; coming out at 120° loses ground.
+    const tack = oneTurn(40, -120)
+    expect(Math.abs(kn(tack.entryVmg) - 15.3)).toBeLessThan(1)
+    expect(Math.abs(kn(tack.exitVmg) + 10)).toBeLessThan(1)
+  })
+
+  it('gives the mean VMG from the way in to the way out', () => {
+    // Slowed to 15 kn in the jibe, but heading straight downwind there: about what the legs make.
+    const jibe = oneTurn(140, -140)
+    expect(kn(jibe.meanVmg)).toBeGreaterThan(14)
+    expect(kn(jibe.meanVmg)).toBeLessThan(16.5)
+    const tack = oneTurn(50, -50)
+    expect(kn(tack.meanVmg)).toBeGreaterThan(12)
+    expect(kn(tack.meanVmg)).toBeLessThan(16)
+  })
+
+  it('averages over the manoeuvres', () => {
+    const a = oneTurn(150, -100)
+    const b = oneTurn(130, -120)
+    const avg = detailAverages([a, b])
+    expect(avg.entryVmg).toBeCloseTo((a.entryVmg! + b.entryVmg!) / 2, 5)
+    expect(avg.exitSpeed).toBeCloseTo((a.exitSpeed! + b.exitSpeed!) / 2, 5)
+    expect(avg.meanVmg).toBeCloseTo((a.meanVmg! + b.meanVmg!) / 2, 5)
   })
 })
 

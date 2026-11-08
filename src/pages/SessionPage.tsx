@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { BestLegsCard } from '../components/BestLegs'
 import { useConfirm } from '../components/Confirm'
 import { EChart, type Chart } from '../components/EChart'
-import { IconBack, IconEdit, IconTrash } from '../components/icons'
+import { IconBack, IconEdit, IconTrash, IconX } from '../components/icons'
+import { MetricChecks } from '../components/LiveInfo'
 import { ManeuversTab } from '../components/Maneuvers'
 import { MapView, TrailToggle, type MapTrack } from '../components/MapView'
 import { bandNote, useVsBest, VsBestSummary, whose, WindSpeedField, type VsBest, type Whose } from '../components/Polars'
@@ -25,6 +26,7 @@ import { analyzeInWorker } from '../lib/engine'
 import { norm360 } from '../lib/geo'
 import { pastOfRecord, pastOfRow, useHistory, type PastSession } from '../lib/history'
 import { useLibrary } from '../lib/library'
+import { boardRows, type LiveRider } from '../lib/liveMetrics'
 import { bandName, bandOfSpeed, windText } from '../lib/polars'
 import { isMyName, useSettings, type Settings } from '../lib/settings'
 import { getSessionData, type SessionData, type SessionRecord } from '../lib/store'
@@ -256,6 +258,44 @@ export function SessionView({
 
   const cursor = replay.playing ? replay.t : (hoverT ?? (replay.touched ? replay.t : null))
 
+  // The numbers picked under the replay, written beside the board.
+  const [dataOpen, setDataOpen] = useState(false)
+  const dataId = useId()
+  const rider = useMemo<LiveRider>(
+    () => ({ id: rec.id, name: rec.rider, color: colors.ink, track: tr, offset: 0, windDir: a.wind.dir, foil: a.foil }),
+    [rec.id, rec.rider, colors.ink, tr, a.wind.dir, a.foil],
+  )
+  const boardInfo = useMemo(() => boardRows(rider, settings), [rider, settings])
+
+  // The replay over the whole screen. Its column keeps its height meanwhile, so that the page behind
+  // does not move; nothing scrolls under it, and Esc (or leaving the browser's own full screen) closes it.
+  const [full, setFull] = useState(false)
+  const column = useRef<HTMLDivElement>(null)
+  const [held, setHeld] = useState(0)
+  useEffect(() => {
+    if (!full) return
+    const root = document.documentElement
+    root.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setFull(false)
+    const onScreen = () => !document.fullscreenElement && setFull(false)
+    window.addEventListener('keydown', onKey)
+    document.addEventListener('fullscreenchange', onScreen)
+    return () => {
+      root.style.overflow = ''
+      window.removeEventListener('keydown', onKey)
+      document.removeEventListener('fullscreenchange', onScreen)
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    }
+  }, [full])
+  const toggleFull = () => {
+    if (!full) {
+      setHeld(column.current?.offsetHeight ?? 0)
+      // Where the browser allows it (computers, iPad), its own bars go too; the iPhone has the app's screen.
+      if (document.fullscreenEnabled) void document.documentElement.requestFullscreen().catch(() => {})
+    }
+    setFull(!full)
+  }
+
   // Speed chart and its zoom, which doubles as the range selection.
   const chartRef = useRef<Chart | null>(null)
   const rangeRef = useRef(range)
@@ -327,13 +367,6 @@ export function SessionView({
     [a.records.s2, unit],
   )
 
-  const readout = (() => {
-    if (cursor == null) return undefined
-    const i = indexAtTime(tr.t, cursor)
-    const twa = a.twa ? Math.round(a.twa[i]) : null
-    return `${sp(tr.spd[i])} ${u}, ${a.foil[i] ? 'in foil' : 'giù'}${twa != null ? `, ${Math.abs(twa)}° ${twa >= 0 ? 'dritta' : 'sinistra'}` : ''}`
-  })()
-
   // Time on a reach (across the wind), kept out of the upwind and downwind numbers.
   const reach = (() => {
     const sides = [a.sail?.reach.S, a.sail?.reach.P].filter((x): x is SideStats => x != null)
@@ -356,56 +389,86 @@ export function SessionView({
 
   return (
     <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-5">
-        {/* Map and replay */}
-        <div className="space-y-2 lg:sticky lg:top-[4.25rem] lg:self-start">
-          <div className="map-hero relative">
-            <MapView
-              tracks={mapTracks}
-              cursor={cursor}
-              range={range}
-              segments={tab === 'bordi' ? top?.segments : null}
-              maneuvers={a.maneuvers}
-              stops={stopPoints}
-              selectedManeuver={selMnv}
-              onManeuverClick={(k) => {
-                pickManeuver(k)
-                setTab('manovre')
-              }}
-              pin={pin}
-              windDir={wind.dir}
-              speedDomain={domain}
-              trail={settings.trailMode}
-              legend={{ min: sp(domain[0]), max: sp(domain[1]), unit: u }}
-              className="size-full"
-            />
-            <button
-              type="button"
-              // Back where it came from; a session opened from a link has nowhere to go back to but the list.
-              onClick={() => ((window.history.state as { idx?: number } | null)?.idx ? navigate(-1) : navigate('/'))}
-              aria-label="Indietro"
-              className="press absolute top-[calc(env(safe-area-inset-top)+0.5rem)] left-2 flex size-10 items-center justify-center rounded-full bg-surface/90 text-ink"
-            >
-              <IconBack width={22} height={22} />
-            </button>
-          </div>
-          <ReplayBar replay={replay} t0={t0} t1={t1} readout={readout} profile={speedLine} />
-          <TrailToggle value={settings.trailMode} onChange={(trailMode) => updateSettings({ trailMode })} />
-          {(a.maneuvers.length > 0 || a.stops.length > 0) && (
-            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs text-ink-2">
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--good)' }} /> manovra in foil
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--critical)' }} /> manovra toccata o caduta
-              </span>
-              {a.stops.length > 0 && (
-                <span className="inline-flex items-center gap-1">
-                  <span className="h-2.5 w-2.5 rounded-md border-2" style={{ borderColor: 'var(--critical)' }} /> caduta o sosta
-                </span>
+        {/* Map and replay; over the whole screen, the replay alone. */}
+        <div ref={column} className={full ? undefined : 'lg:sticky lg:top-[4.25rem] lg:self-start'} style={full ? { height: held } : undefined}>
+          <div className={full ? 'fixed inset-0 z-40 flex flex-col bg-page' : 'space-y-2'}>
+            <div className={full ? 'map-full relative min-h-0 flex-1' : 'map-hero relative'}>
+              <MapView
+                tracks={mapTracks}
+                cursor={cursor}
+                range={range}
+                segments={tab === 'bordi' ? top?.segments : null}
+                maneuvers={a.maneuvers}
+                stops={stopPoints}
+                selectedManeuver={selMnv}
+                onManeuverClick={(k) => {
+                  pickManeuver(k)
+                  setTab('manovre')
+                }}
+                pin={pin}
+                windDir={wind.dir}
+                speedDomain={domain}
+                trail={settings.trailMode}
+                legend={{ min: sp(domain[0]), max: sp(domain[1]), unit: u }}
+                boardInfo={boardInfo}
+                fullscreen={full}
+                className="size-full"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (full) setFull(false)
+                  // Back where it came from; a session opened from a link has nowhere to go back to but the list.
+                  else if ((window.history.state as { idx?: number } | null)?.idx) navigate(-1)
+                  else navigate('/')
+                }}
+                aria-label={full ? 'Esci dallo schermo intero' : 'Indietro'}
+                className="press absolute top-[calc(env(safe-area-inset-top)+0.5rem)] left-2 flex size-10 items-center justify-center rounded-full bg-surface/90 text-ink"
+              >
+                {full ? <IconX width={22} height={22} /> : <IconBack width={22} height={22} />}
+              </button>
+            </div>
+            <div className={full ? 'mx-auto w-full max-w-3xl space-y-2 px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]' : 'space-y-2'}>
+              <ReplayBar
+                replay={replay}
+                t0={t0}
+                t1={t1}
+                profile={speedLine}
+                full={full}
+                onFull={toggleFull}
+                actions={
+                  <button
+                    type="button"
+                    aria-expanded={dataOpen}
+                    aria-controls={dataId}
+                    onClick={() => setDataOpen((o) => !o)}
+                    className="rounded-md px-1.5 py-1 text-accent hover:bg-surface-2"
+                  >
+                    Dati {dataOpen ? '▴' : '▾'}
+                  </button>
+                }
+              >
+                {dataOpen && <MetricChecks id={dataId} riders={[rider]} omit={['foil']} className="mt-2 border-t border-line px-1 pt-2 font-sans text-sm" />}
+              </ReplayBar>
+              <TrailToggle value={settings.trailMode} onChange={(trailMode) => updateSettings({ trailMode })} />
+              {!full && (a.maneuvers.length > 0 || a.stops.length > 0) && (
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs text-ink-2">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--good)' }} /> manovra in foil
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--critical)' }} /> manovra toccata o caduta
+                  </span>
+                  {a.stops.length > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="h-2.5 w-2.5 rounded-md border-2" style={{ borderColor: 'var(--critical)' }} /> caduta o sosta
+                    </span>
+                  )}
+                  <span>Tocca un pallino per i dettagli.</span>
+                </p>
               )}
-              <span>Tocca un pallino per i dettagli.</span>
-            </p>
-          )}
+            </div>
+          </div>
         </div>
 
         <div className="mt-4 space-y-4 lg:mt-0">

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { fmtClockDuration, fmtTimeSec } from '../lib/units'
-import { IconPause, IconPlay } from './icons'
+import { IconExpand, IconPause, IconPlay, IconShrink } from './icons'
 
 const SPEEDS = [1, 5, 10, 20]
 /** Half the width of the slider's needle: it never gets closer than this to the ends. */
@@ -76,16 +76,25 @@ export function ReplayBar({
   t0,
   t1,
   relative,
-  readout,
   profile,
+  full,
+  onFull,
+  actions,
+  children,
 }: {
   replay: Replay
   t0: number
   t1: number
   relative?: boolean
-  readout?: string
   /** The speed through the session, in even steps: the slider then runs over it, and shows where the fast stretches are. */
   profile?: number[]
+  /** Whether the replay is over the whole screen; with `onFull`, a button goes in and out of it. */
+  full?: boolean
+  onFull?: () => void
+  /** Buttons at the end of the line under the slider. */
+  actions?: ReactNode
+  /** Under it all, inside the bar: what those buttons open. */
+  children?: ReactNode
 }) {
   const label = relative ? fmtClockDuration((replay.t - t0) / 1000) : fmtTimeSec(replay.t)
   const played = Math.min(1, Math.max(0, (replay.t - t0) / (t1 - t0 || 1)))
@@ -149,11 +158,22 @@ export function ReplayBar({
             </option>
           ))}
         </select>
+        {onFull && (
+          <button
+            type="button"
+            onClick={onFull}
+            aria-label={full ? 'Esci dallo schermo intero' : 'Replay a schermo intero'}
+            className="press flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink"
+          >
+            {full ? <IconShrink width={18} height={18} /> : <IconExpand width={18} height={18} />}
+          </button>
+        )}
       </div>
-      <div className="mt-1 flex justify-between gap-2 px-1 font-display text-[15px] leading-tight font-medium text-ink-2">
+      <div className="mt-1 flex items-center justify-between gap-2 px-1 font-display text-[15px] leading-tight font-medium text-ink-2">
         <span className="tabular">{label}</span>
-        {readout && <span className="truncate text-ink tabular">{readout}</span>}
+        {actions}
       </div>
+      {children}
     </div>
   )
 }

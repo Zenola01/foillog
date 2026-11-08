@@ -126,7 +126,7 @@ export function BestLegsCard({ legs, unit, onSetWind }: { legs: Leg[]; unit: Set
   )
 }
 
-type RiderLegs = Record<Course, BestLegs | null> & { reachAll: BestLegs | null }
+type RiderLegs = Record<Course, BestLegs | null>
 
 interface Row {
   label: string
@@ -154,10 +154,8 @@ export function BestLegsCompare({
     up: bestLegs(r.legs, 'up', share),
     down: bestLegs(r.legs, 'down', share),
     reach: bestLegs(r.legs, 'reach', share),
-    reachAll: bestLegs(r.legs, 'reach', 1),
   }))
   if (stats.every((s) => !s.up && !s.down && !s.reach)) return null
-  const count = (b: BestLegs | null) => (b ? `${b.legs}/${b.of}` : '–')
   const rows: Row[] = [
     { label: 'Bolina, VMG', get: (s) => s.up?.vmg ?? null, fmt: sp, better: 'max' },
     { label: 'Bolina, velocità', get: (s) => s.up?.speed ?? null, fmt: sp, better: 'max' },
@@ -166,7 +164,6 @@ export function BestLegsCompare({
     { label: 'Poppa, velocità', get: (s) => s.down?.speed ?? null, fmt: sp, better: 'max' },
     { label: 'Poppa, angolo', get: (s) => s.down?.angle ?? null, fmt: deg },
     { label: 'Traverso, velocità', get: (s) => s.reach?.speed ?? null, fmt: sp, better: 'max' },
-    { label: 'Tempo a traverso', get: (s) => s.reachAll?.seconds ?? null, fmt: (v) => fmtDuration(v) },
   ]
 
   return (
@@ -207,14 +204,6 @@ export function BestLegsCompare({
               </tr>
             )
           })}
-          <tr className="border-t border-line">
-            <td className="px-3 py-2 text-ink-2">Bordi bolina, poppa, traverso</td>
-            {stats.map((s, k) => (
-              <td key={k} className="px-2 py-2 text-right whitespace-nowrap tabular">
-                {count(s.up)} / {count(s.down)} / {count(s.reach)}
-              </td>
-            ))}
-          </tr>
         </tbody>
       </table>
       <p className="px-3 pt-1 pb-3 text-xs text-ink-2">
